@@ -1,0 +1,182 @@
+[
+  {
+    "id": "whole-number-bias-fraction-addition",
+    "topic": "fractions",
+    "standardCode": "CCSS.MATH.5.NF.A.1",
+    "signature": "Numerators added together and denominators added together, so 1/4 + 2/3 is written as 3/7.",
+    "plainName": "Treating a fraction as two separate numbers when adding",
+    "repairQuestion": "If you add half a pizza to half a pizza, how much pizza is there? Now look at what the rule you used gives for 1/2 + 1/2.",
+    "visualSvg": "<svg viewBox=\"0 0 320 150\" xmlns=\"http://www.w3.org/2000/svg\" font-family=\"IBM Plex Sans, sans-serif\">\n<text x=\"0\" y=\"14\" font-size=\"13\" fill=\"#14201E\">1/2 + 1/2 should be one whole.</text>\n<rect x=\"0\" y=\"26\" width=\"70\" height=\"26\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<rect x=\"70\" y=\"26\" width=\"70\" height=\"26\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<text x=\"146\" y=\"44\" font-size=\"13\" fill=\"#14201E\">= 1</text>\n<text x=\"0\" y=\"82\" font-size=\"13\" fill=\"#14201E\">Adding the bottoms gives 2/4, which is less.</text>\n<rect x=\"0\" y=\"94\" width=\"140\" height=\"26\" fill=\"#F5F1E8\" stroke=\"#14201E\"/>\n<rect x=\"0\" y=\"94\" width=\"70\" height=\"26\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<line x1=\"35\" y1=\"94\" x2=\"35\" y2=\"120\" stroke=\"#14201E\"/>\n<line x1=\"105\" y1=\"94\" x2=\"105\" y2=\"120\" stroke=\"#14201E\"/>\n<text x=\"146\" y=\"112\" font-size=\"13\" fill=\"#14201E\">= 1/2</text>\n<text x=\"0\" y=\"142\" font-size=\"13\" fill=\"#14201E\">The answer got smaller than what went in.</text>\n</svg>"
+  },
+  {
+    "id": "longer-decimal-is-larger",
+    "topic": "decimals",
+    "standardCode": "CCSS.MATH.4.NF.C.7",
+    "signature": "A decimal with more digits after the point is chosen as the larger one, so 0.45 is said to be bigger than 0.5.",
+    "plainName": "Reading a longer decimal as a bigger number",
+    "repairQuestion": "Shade 0.5 and 0.45 on two hundred grids. Which one has more shaded in?",
+    "visualSvg": "<svg viewBox=\"0 0 320 160\" xmlns=\"http://www.w3.org/2000/svg\" font-family=\"IBM Plex Sans, sans-serif\">\n<text x=\"0\" y=\"14\" font-size=\"13\" fill=\"#14201E\">0.5</text>\n<rect x=\"0\" y=\"22\" width=\"100\" height=\"100\" fill=\"#F5F1E8\" stroke=\"#14201E\"/>\n<rect x=\"0\" y=\"22\" width=\"100\" height=\"50\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<g stroke=\"#D9D2C4\">\n<line x1=\"0\" y1=\"42\" x2=\"100\" y2=\"42\"/><line x1=\"0\" y1=\"62\" x2=\"100\" y2=\"62\"/>\n<line x1=\"0\" y1=\"82\" x2=\"100\" y2=\"82\"/><line x1=\"0\" y1=\"102\" x2=\"100\" y2=\"102\"/>\n<line x1=\"20\" y1=\"22\" x2=\"20\" y2=\"122\"/><line x1=\"40\" y1=\"22\" x2=\"40\" y2=\"122\"/>\n<line x1=\"60\" y1=\"22\" x2=\"60\" y2=\"122\"/><line x1=\"80\" y1=\"22\" x2=\"80\" y2=\"122\"/>\n</g>\n<text x=\"150\" y=\"14\" font-size=\"13\" fill=\"#14201E\">0.45</text>\n<rect x=\"150\" y=\"22\" width=\"100\" height=\"100\" fill=\"#F5F1E8\" stroke=\"#14201E\"/>\n<rect x=\"150\" y=\"22\" width=\"100\" height=\"40\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<rect x=\"150\" y=\"62\" width=\"50\" height=\"20\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<g stroke=\"#D9D2C4\">\n<line x1=\"150\" y1=\"42\" x2=\"250\" y2=\"42\"/><line x1=\"150\" y1=\"62\" x2=\"250\" y2=\"62\"/>\n<line x1=\"150\" y1=\"82\" x2=\"250\" y2=\"82\"/><line x1=\"150\" y1=\"102\" x2=\"250\" y2=\"102\"/>\n<line x1=\"170\" y1=\"22\" x2=\"170\" y2=\"122\"/><line x1=\"190\" y1=\"22\" x2=\"190\" y2=\"122\"/>\n<line x1=\"210\" y1=\"22\" x2=\"210\" y2=\"122\"/><line x1=\"230\" y1=\"22\" x2=\"230\" y2=\"122\"/>\n</g>\n<text x=\"0\" y=\"146\" font-size=\"13\" fill=\"#14201E\">More digits, less shaded. 0.5 is the larger one.</text>\n</svg>"
+  },
+  {
+    "id": "multiplication-makes-bigger",
+    "topic": "operations",
+    "standardCode": "CCSS.MATH.5.NF.B.5",
+    "signature": "An answer smaller than the starting number is rejected or corrected after multiplying, because multiplying is expected to increase it.",
+    "plainName": "Expecting multiplying to always make a number bigger",
+    "repairQuestion": "What is half of 10? Now write that as 10 x 1/2. Did multiplying make it bigger?",
+    "visualSvg": null
+  },
+  {
+    "id": "division-makes-smaller",
+    "topic": "operations",
+    "standardCode": "CCSS.MATH.5.NF.B.7",
+    "signature": "An answer larger than the starting number is rejected after dividing, or the divisor and dividend are swapped to force a smaller answer.",
+    "plainName": "Expecting dividing to always make a number smaller",
+    "repairQuestion": "How many halves are there in 3 whole pizzas? Write that as a division and see what you get.",
+    "visualSvg": null
+  },
+  {
+    "id": "equals-means-do-something",
+    "topic": "early algebra",
+    "standardCode": "CCSS.MATH.6.EE.B.5",
+    "signature": "The equals sign is read as an instruction to write an answer, producing running chains like 3 + 4 = 7 + 2 = 9.",
+    "plainName": "Reading the equals sign as do something rather than is the same as",
+    "repairQuestion": "Cover up both sides of your equals sign and read each one out loud. Are those two amounts the same?",
+    "visualSvg": null
+  },
+  {
+    "id": "smaller-from-larger-subtraction",
+    "topic": "subtraction",
+    "standardCode": "CCSS.MATH.4.NBT.B.4",
+    "signature": "In a column subtraction the smaller digit is taken from the larger one regardless of which is on top, so 43 minus 27 gives 24.",
+    "plainName": "Always subtracting the smaller digit from the larger one in a column",
+    "repairQuestion": "Estimate first. Is 43 take away 27 closer to 20 or closer to 10? Now check your answer against that.",
+    "visualSvg": null
+  },
+  {
+    "id": "regrouping-across-zero",
+    "topic": "subtraction",
+    "standardCode": "CCSS.MATH.4.NBT.B.4",
+    "signature": "Regrouping stalls at a zero digit, so the zero is skipped or left unchanged, as in 300 minus 124 giving 276 or 184.",
+    "plainName": "Getting stuck when there is a zero to borrow across",
+    "repairQuestion": "What is 300 written as tens? Show me 300 as 30 tens, then take one of those tens apart.",
+    "visualSvg": null
+  },
+  {
+    "id": "right-aligned-decimal-addition",
+    "topic": "decimals",
+    "standardCode": "CCSS.MATH.5.NBT.B.7",
+    "signature": "Decimals are lined up at the right-hand edge like whole numbers instead of at the decimal point, so 3.5 + 0.25 gives 0.60 or 3.75 gives way to a misaligned sum.",
+    "plainName": "Lining decimals up at the end instead of at the point",
+    "repairQuestion": "Which column is the tenths column in each number? Put your finger on both and see if they line up.",
+    "visualSvg": null
+  },
+  {
+    "id": "larger-denominator-larger-fraction",
+    "topic": "fractions",
+    "standardCode": "CCSS.MATH.3.NF.A.3",
+    "signature": "Fractions are ordered by the size of the denominator, so 1/5 is said to be bigger than 1/3.",
+    "plainName": "Reading a bigger bottom number as a bigger fraction",
+    "repairQuestion": "Would you rather have one slice of a cake cut into 3, or one slice of the same cake cut into 5?",
+    "visualSvg": "<svg viewBox=\"0 0 320 150\" xmlns=\"http://www.w3.org/2000/svg\" font-family=\"IBM Plex Sans, sans-serif\">\n<text x=\"0\" y=\"14\" font-size=\"13\" fill=\"#14201E\">One whole, cut two ways.</text>\n<rect x=\"0\" y=\"24\" width=\"240\" height=\"28\" fill=\"#F5F1E8\" stroke=\"#14201E\"/>\n<rect x=\"0\" y=\"24\" width=\"80\" height=\"28\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<line x1=\"160\" y1=\"24\" x2=\"160\" y2=\"52\" stroke=\"#14201E\"/>\n<text x=\"250\" y=\"43\" font-size=\"13\" fill=\"#14201E\">1/3</text>\n<rect x=\"0\" y=\"66\" width=\"240\" height=\"28\" fill=\"#F5F1E8\" stroke=\"#14201E\"/>\n<rect x=\"0\" y=\"66\" width=\"48\" height=\"28\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<g stroke=\"#14201E\">\n<line x1=\"96\" y1=\"66\" x2=\"96\" y2=\"94\"/><line x1=\"144\" y1=\"66\" x2=\"144\" y2=\"94\"/><line x1=\"192\" y1=\"66\" x2=\"192\" y2=\"94\"/>\n</g>\n<text x=\"250\" y=\"85\" font-size=\"13\" fill=\"#14201E\">1/5</text>\n<text x=\"0\" y=\"122\" font-size=\"13\" fill=\"#14201E\">Five is the bigger number, but 1/5 is the</text>\n<text x=\"0\" y=\"140\" font-size=\"13\" fill=\"#14201E\">smaller piece. More cuts, smaller pieces.</text>\n</svg>"
+  },
+  {
+    "id": "fraction-as-two-whole-numbers",
+    "topic": "fractions",
+    "standardCode": "CCSS.MATH.3.NF.A.1",
+    "signature": "A fraction is read and manipulated as two independent whole numbers stacked up, rather than as one quantity.",
+    "plainName": "Treating a fraction as two separate numbers rather than one amount",
+    "repairQuestion": "Where would 3/4 sit on a line from 0 to 1? Point to it.",
+    "visualSvg": null
+  },
+  {
+    "id": "perimeter-area-confusion",
+    "topic": "measurement",
+    "standardCode": "CCSS.MATH.3.MD.D.8",
+    "signature": "The perimeter formula is used where area is asked for, or the two answers are swapped, and units are given as plain units where squares are needed.",
+    "plainName": "Mixing up the distance round the edge with the space inside",
+    "repairQuestion": "Run your finger round the outside of the shape. Now put your hand flat on the middle of it. Which of those two did the question ask about?",
+    "visualSvg": "<svg viewBox=\"0 0 320 150\" xmlns=\"http://www.w3.org/2000/svg\" font-family=\"IBM Plex Sans, sans-serif\">\n<text x=\"0\" y=\"14\" font-size=\"13\" fill=\"#14201E\">Perimeter is the walk round the edge.</text>\n<rect x=\"0\" y=\"24\" width=\"120\" height=\"80\" fill=\"#F5F1E8\" stroke=\"#00A878\" stroke-width=\"4\"/>\n<text x=\"0\" y=\"126\" font-size=\"13\" fill=\"#14201E\">4 + 6 + 4 + 6 = 20 units</text>\n<text x=\"170\" y=\"14\" font-size=\"13\" fill=\"#14201E\">Area is the squares inside.</text>\n<rect x=\"170\" y=\"24\" width=\"120\" height=\"80\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<g stroke=\"#F5F1E8\">\n<line x1=\"190\" y1=\"24\" x2=\"190\" y2=\"104\"/><line x1=\"210\" y1=\"24\" x2=\"210\" y2=\"104\"/>\n<line x1=\"230\" y1=\"24\" x2=\"230\" y2=\"104\"/><line x1=\"250\" y1=\"24\" x2=\"250\" y2=\"104\"/>\n<line x1=\"270\" y1=\"24\" x2=\"270\" y2=\"104\"/>\n<line x1=\"170\" y1=\"44\" x2=\"290\" y2=\"44\"/><line x1=\"170\" y1=\"64\" x2=\"290\" y2=\"64\"/><line x1=\"170\" y1=\"84\" x2=\"290\" y2=\"84\"/>\n</g>\n<text x=\"170\" y=\"126\" font-size=\"13\" fill=\"#14201E\">24 squares</text>\n<text x=\"0\" y=\"146\" font-size=\"13\" fill=\"#14201E\">Same rectangle, two different questions.</text>\n</svg>"
+  },
+  {
+    "id": "angle-size-from-ray-length",
+    "topic": "geometry",
+    "standardCode": "CCSS.MATH.4.MD.C.5",
+    "signature": "An angle with longer drawn arms is judged to be the larger angle, even when the turn between the arms is the same or smaller.",
+    "plainName": "Judging an angle by how long its lines are drawn",
+    "repairQuestion": "If I rub out the ends of both lines so they are the same length, has the corner changed at all?",
+    "visualSvg": "<svg viewBox=\"0 0 320 150\" xmlns=\"http://www.w3.org/2000/svg\" font-family=\"IBM Plex Sans, sans-serif\">\n<g stroke=\"#14201E\" stroke-width=\"2\" fill=\"none\">\n<path d=\"M 20 110 L 120 110\"/>\n<path d=\"M 20 110 L 91 39\"/>\n<path d=\"M 190 110 L 230 110\"/>\n<path d=\"M 190 110 L 218 82\"/>\n</g>\n<path d=\"M 50 110 A 30 30 0 0 0 41 89\" stroke=\"#00A878\" stroke-width=\"3\" fill=\"none\"/>\n<path d=\"M 220 110 A 30 30 0 0 0 211 89\" stroke=\"#00A878\" stroke-width=\"3\" fill=\"none\"/>\n<text x=\"56\" y=\"86\" font-size=\"13\" fill=\"#00A878\">45</text>\n<text x=\"226\" y=\"86\" font-size=\"13\" fill=\"#00A878\">45</text>\n<text x=\"0\" y=\"134\" font-size=\"13\" fill=\"#14201E\">Longer arms, same turn. The angle is the</text>\n<text x=\"0\" y=\"150\" font-size=\"13\" fill=\"#14201E\">amount of turn, not the length of the lines.</text>\n</svg>"
+  },
+  {
+    "id": "ratio-treated-additively",
+    "topic": "ratio",
+    "standardCode": "CCSS.MATH.6.RP.A.1",
+    "signature": "A ratio is scaled by adding the same amount to both parts rather than multiplying, so 2:3 is scaled to 4:5 instead of 4:6.",
+    "plainName": "Scaling a ratio by adding instead of by multiplying",
+    "repairQuestion": "If the recipe is 2 cups to 3 cups and you double everything, how much of each do you use?",
+    "visualSvg": null
+  },
+  {
+    "id": "percentage-discounts-added",
+    "topic": "percent",
+    "standardCode": "CCSS.MATH.6.RP.A.3",
+    "signature": "Two successive percentage changes are added together, so 20 percent off then a further 10 percent off is treated as 30 percent off.",
+    "plainName": "Adding two discounts together instead of applying them one after the other",
+    "repairQuestion": "Work out the price after the first discount and write it down. Now what is the second discount taken off, the old price or that new one?",
+    "visualSvg": null
+  },
+  {
+    "id": "negative-ordering-reversed",
+    "topic": "negative numbers",
+    "standardCode": "CCSS.MATH.6.NS.C.7",
+    "signature": "Negative numbers are ordered by the size of the digits, so minus 8 is said to be greater than minus 3.",
+    "plainName": "Ordering negative numbers by their digits instead of their position",
+    "repairQuestion": "Which is colder, minus 8 degrees or minus 3 degrees? Now put both on a number line and see which is further left.",
+    "visualSvg": null
+  },
+  {
+    "id": "left-to-right-order-of-operations",
+    "topic": "operations",
+    "standardCode": "CCSS.MATH.5.OA.A.1",
+    "signature": "The expression is evaluated strictly left to right, so 2 + 3 x 4 gives 20.",
+    "plainName": "Working left to right instead of doing the multiplying first",
+    "repairQuestion": "Read the line out loud with the multiplication as a single chunk. What is the 3 x 4 worth before you add anything?",
+    "visualSvg": null
+  },
+  {
+    "id": "variable-as-label",
+    "topic": "early algebra",
+    "standardCode": "CCSS.MATH.6.EE.A.2",
+    "signature": "A letter is treated as an abbreviation for an object rather than a number, so 3a is read as three apples and a plus b is read as a fruit salad.",
+    "plainName": "Reading a letter as a label for a thing rather than a number",
+    "repairQuestion": "Finish this sentence out loud: the letter a stands for the number of what?",
+    "visualSvg": null
+  },
+  {
+    "id": "keyword-strategy-word-problems",
+    "topic": "word problems",
+    "standardCode": "CCSS.MATH.4.OA.A.3",
+    "signature": "An operation is chosen from a keyword rather than the situation, so altogether always triggers addition and left always triggers subtraction.",
+    "plainName": "Picking the operation from a keyword instead of the story",
+    "repairQuestion": "Tell me the story in your own words without using any numbers. What is actually happening?",
+    "visualSvg": null
+  },
+  {
+    "id": "successive-digit-rounding",
+    "topic": "rounding",
+    "standardCode": "CCSS.MATH.5.NBT.A.4",
+    "signature": "Rounding is applied one digit at a time from the right, so 4.649 rounds to 4.65 and then to 4.7 when one decimal place was asked for.",
+    "plainName": "Rounding one digit at a time instead of looking at the whole number",
+    "repairQuestion": "Which two tenths does 4.649 sit between? Which of those two is it closer to?",
+    "visualSvg": null
+  },
+  {
+    "id": "decimal-multiplication-lengthens",
+    "topic": "decimals",
+    "standardCode": "CCSS.MATH.5.NBT.B.7",
+    "signature": "The product of two decimals is expected to be longer or larger than both, so a shorter answer is treated as an error.",
+    "plainName": "Expecting multiplying decimals to make a longer number",
+    "repairQuestion": "What is 0.5 of 0.5? Say it as half of a half and see how big that is.",
+    "visualSvg": null
+  }
+]
