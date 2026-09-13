@@ -1,0 +1,214 @@
+@import "tailwindcss";
+
+/* ParentPilot design system.
+   Square corners, flat fills, editorial rhythm. The forbidden list in the
+   brief is enforced here as much as it can be: there is no radius scale,
+   no gradient utility in use, and no icon font. */
+
+@theme {
+  --color-paper: #f5f1e8;
+  --color-ink: #14201e;
+  --color-emerald: #00a878;
+  --color-teal: #0b4f4a;
+  --color-rule: #d9d2c4;
+  --color-muted: #6e665a;
+  --color-alert: #a8422f;
+
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+
+  /* Every radius token collapses to zero. Anything that reaches for a
+     rounded utility still lands square. */
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --radius-4xl: 0px;
+}
+
+:root {
+  --paper: #f5f1e8;
+  --ink: #14201e;
+  --emerald: #00a878;
+  --teal: #0b4f4a;
+  --rule: #d9d2c4;
+  --muted: #6e665a;
+  --alert: #a8422f;
+
+  color-scheme: light; /* No dark mode in v1. */
+}
+
+* {
+  border-radius: 0 !important;
+}
+
+html {
+  background: var(--paper);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 1.6;
+  margin: 0;
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--teal);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(2rem, 7vw, 2.75rem);
+}
+h2 {
+  font-size: clamp(1.4rem, 5vw, 1.75rem);
+}
+h3 {
+  font-size: 1.175rem;
+  font-weight: 500;
+}
+
+p {
+  margin: 0;
+  max-width: 68ch;
+}
+
+a {
+  color: var(--teal);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  margin: 0;
+}
+
+/* Motion is slow and settling. Nothing bounces or springs. */
+@media (prefers-reduced-motion: no-preference) {
+  .pp-settle {
+    animation: pp-settle 320ms ease-out both;
+  }
+  .pp-rise {
+    animation: pp-rise 340ms ease-out both;
+  }
+}
+
+@keyframes pp-settle {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Compass star draw, shared by the intro reveal and the processing
+   indicator. See components/CompassDraw.tsx. */
+@keyframes pp-draw {
+  from {
+    stroke-dashoffset: var(--pp-dash, 240);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes pp-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Slow breathing mark, used as the resting state of /live. */
+@keyframes pp-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.97);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+}
+
+.pp-breathe {
+  animation: pp-breathe 5.5s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pp-breathe {
+    animation: none;
+    opacity: 0.75;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Focus is visible and square, like everything else. */
+:focus-visible {
+  outline: 2px solid var(--emerald);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--emerald);
+  color: var(--paper);
+}

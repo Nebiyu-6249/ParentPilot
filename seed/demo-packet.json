@@ -1,0 +1,205 @@
+{
+  "problem": {
+    "id": "demo",
+    "index": 0,
+    "printedText": "1/4 + 2/3 =",
+    "childWorkText": "1 + 2 = 3\n4 + 3 = 7\nso 3/7",
+    "childAnswer": "3/7",
+    "ocrConfidence": 0.94,
+    "standardCode": "CCSS.MATH.5.NF.A.1",
+    "expectedMethod": "Cut both fraction strips into the same size parts",
+    "verified": true,
+    "computedAnswer": "11/12",
+    "misconceptionId": "whole-number-bias-fraction-addition",
+    "status": "OPEN"
+  },
+  "standard": {
+    "id": "CCSS.MATH.5.NF.A.1",
+    "code": "CCSS.MATH.5.NF.A.1",
+    "grade": 5,
+    "plainLanguage": "Adding and subtracting fractions with different denominators by finding a common way to cut the whole.",
+    "expectedMethods": [
+      "Cut both fraction strips into the same size parts",
+      "Use a common denominator found from the two denominators",
+      "Show both on the same number line before adding"
+    ],
+    "parentMethod": "Find the lowest common denominator, convert both, then add the numerators."
+  },
+  "misconception": {
+    "id": "whole-number-bias-fraction-addition",
+    "topic": "fractions",
+    "standardCode": "CCSS.MATH.5.NF.A.1",
+    "signature": "Numerators added together and denominators added together, so 1/4 + 2/3 is written as 3/7.",
+    "plainName": "Treating a fraction as two separate numbers when adding",
+    "repairQuestion": "If you add half a pizza to half a pizza, how much pizza is there? Now look at what the rule you used gives for 1/2 + 1/2.",
+    "visualSvg": "<svg viewBox=\"0 0 320 150\" xmlns=\"http://www.w3.org/2000/svg\" font-family=\"IBM Plex Sans, sans-serif\">\n<text x=\"0\" y=\"14\" font-size=\"13\" fill=\"#14201E\">1/2 + 1/2 should be one whole.</text>\n<rect x=\"0\" y=\"26\" width=\"70\" height=\"26\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<rect x=\"70\" y=\"26\" width=\"70\" height=\"26\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<text x=\"146\" y=\"44\" font-size=\"13\" fill=\"#14201E\">= 1</text>\n<text x=\"0\" y=\"82\" font-size=\"13\" fill=\"#14201E\">Adding the bottoms gives 2/4, which is less.</text>\n<rect x=\"0\" y=\"94\" width=\"140\" height=\"26\" fill=\"#F5F1E8\" stroke=\"#14201E\"/>\n<rect x=\"0\" y=\"94\" width=\"70\" height=\"26\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<line x1=\"35\" y1=\"94\" x2=\"35\" y2=\"120\" stroke=\"#14201E\"/>\n<line x1=\"105\" y1=\"94\" x2=\"105\" y2=\"120\" stroke=\"#14201E\"/>\n<text x=\"146\" y=\"112\" font-size=\"13\" fill=\"#14201E\">= 1/2</text>\n<text x=\"0\" y=\"142\" font-size=\"13\" fill=\"#14201E\">The answer got smaller than what went in.</text>\n</svg>"
+  },
+  "language": "en",
+  "packets": {
+    "PLAIN": {
+      "primer": "This page is about adding two fractions that are cut into different numbers of pieces. You cannot add them while the pieces are different sizes, in the same way you cannot add two lengths while one is in inches and one is in centimetres. The job is to cut both into pieces of the same size first, then count. The class is doing this with drawings before they do it with rules, so that the rule makes sense when it arrives.",
+      "methodMatch": {
+        "parentMethod": {
+          "title": "Common denominator, the way you learned it",
+          "steps": [
+            "Find a number both bottoms divide into.",
+            "Change each fraction so it has that bottom number.",
+            "Add the top numbers, leave the bottom alone.",
+            "Simplify if it will simplify."
+          ]
+        },
+        "schoolMethod": {
+          "title": "Bar model, the way the class is doing it",
+          "steps": [
+            "Draw one bar and shade 1/4 of it.",
+            "Draw the same bar again and shade 2/3 of it.",
+            "Cut both bars into pieces that match, so the shading lines up.",
+            "Count how many of those matching pieces are shaded in total.",
+            "Write that count over the number of pieces in the whole bar."
+          ],
+          "svg": "<svg viewBox=\"0 0 300 196\" xmlns=\"http://www.w3.org/2000/svg\" font-family=\"IBM Plex Sans, sans-serif\">\n<text x=\"6\" y=\"14\" font-size=\"13\" fill=\"#14201E\">1/4 of the bar</text>\n<rect x=\"6\" y=\"20\" width=\"288\" height=\"24\" fill=\"#F5F1E8\" stroke=\"#14201E\"/>\n<rect x=\"6\" y=\"20\" width=\"72\" height=\"24\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<line x1=\"78.0\" y1=\"20\" x2=\"78.0\" y2=\"44\" stroke=\"#14201E\"/><line x1=\"150.0\" y1=\"20\" x2=\"150.0\" y2=\"44\" stroke=\"#14201E\"/><line x1=\"222.0\" y1=\"20\" x2=\"222.0\" y2=\"44\" stroke=\"#14201E\"/>\n<text x=\"6\" y=\"70\" font-size=\"13\" fill=\"#14201E\">2/3 of the same bar</text>\n<rect x=\"6\" y=\"76\" width=\"288\" height=\"24\" fill=\"#F5F1E8\" stroke=\"#14201E\"/>\n<rect x=\"6\" y=\"76\" width=\"192\" height=\"24\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<line x1=\"102.0\" y1=\"76\" x2=\"102.0\" y2=\"100\" stroke=\"#14201E\"/><line x1=\"198.0\" y1=\"76\" x2=\"198.0\" y2=\"100\" stroke=\"#14201E\"/>\n<text x=\"6\" y=\"126\" font-size=\"13\" fill=\"#14201E\">Cut both into the same size pieces</text>\n<rect x=\"6\" y=\"132\" width=\"288\" height=\"24\" fill=\"#F5F1E8\" stroke=\"#14201E\"/>\n<rect x=\"6\" y=\"132\" width=\"72\" height=\"24\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<rect x=\"78\" y=\"132\" width=\"192\" height=\"24\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<line x1=\"30.0\" y1=\"132\" x2=\"30.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"54.0\" y1=\"132\" x2=\"54.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"78.0\" y1=\"132\" x2=\"78.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"102.0\" y1=\"132\" x2=\"102.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"126.0\" y1=\"132\" x2=\"126.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"150.0\" y1=\"132\" x2=\"150.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"174.0\" y1=\"132\" x2=\"174.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"198.0\" y1=\"132\" x2=\"198.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"222.0\" y1=\"132\" x2=\"222.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"246.0\" y1=\"132\" x2=\"246.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"270.0\" y1=\"132\" x2=\"270.0\" y2=\"156\" stroke=\"#14201E\"/>\n<line x1=\"6\" y1=\"166\" x2=\"270\" y2=\"166\" stroke=\"#00A878\" stroke-width=\"3\"/>\n<line x1=\"270\" y1=\"162\" x2=\"270\" y2=\"170\" stroke=\"#00A878\" stroke-width=\"3\"/>\n<text x=\"6\" y=\"188\" font-size=\"13\" fill=\"#14201E\">Filled, with one piece of the bar still empty.</text>\n</svg>"
+        },
+        "bothValid": true,
+        "whySchoolWay": "Your way is faster and it is correct. The drawing is slower on purpose: it shows why the bottom numbers have to match, which is the exact thing that has gone wrong here."
+      },
+      "hintLadder": [
+        "Read me what you wrote. What were you adding?",
+        "Are the pieces in the first fraction the same size as the pieces in the second one?",
+        "Can you draw one bar and shade a quarter of it, then draw another and shade two thirds?",
+        "What would you have to do to those bars so that all the pieces matched?",
+        "Is there a number that both 4 and 3 will cut into with nothing left over?"
+      ],
+      "scripts": [
+        {
+          "avoid": "No, that's not right. You have to find a common denominator.",
+          "use": "Show me how you got 7 on the bottom."
+        },
+        {
+          "avoid": "Here, let me just do this one and you watch.",
+          "use": "I'll wait. Have another look at your two bars."
+        },
+        {
+          "avoid": "Come on, this is easy, you did these last week.",
+          "use": "This one is genuinely fiddly. Let's draw it."
+        }
+      ],
+      "lockedAnswer": "11/12. Cut both into twelve pieces: a quarter is 3 of them, two thirds is 8 of them, and 3 and 8 make 11.",
+      "isomorphs": [
+        "1/3 + 1/4 =",
+        "2/5 + 1/2 =",
+        "1/6 + 3/4 ="
+      ],
+      "misconceptionNote": "She has added the two top numbers and then added the two bottom numbers, which is exactly what you do when you add anything else, so it is a sensible thing to try. The catch is that the bottom number is not a quantity being added, it is the size of the pieces, and adding it changes what the pieces are."
+    },
+    "STANDARD": {
+      "primer": "This is fraction addition with unlike denominators. The denominator is not a quantity being counted, it names how many equal parts the whole has been cut into, so two fractions can only be added once both are expressed in the same size part. The curriculum builds this from a bar model or a number line before the common denominator procedure appears, because a child who meets the procedure first tends to apply it as a rule about digits rather than as a statement about parts. The error on this page is the classic one and it is worth a few minutes.",
+      "methodMatch": {
+        "parentMethod": {
+          "title": "Lowest common denominator",
+          "steps": [
+            "Find a number both bottoms divide into.",
+            "Change each fraction so it has that bottom number.",
+            "Add the top numbers, leave the bottom alone.",
+            "Simplify if it will simplify."
+          ]
+        },
+        "schoolMethod": {
+          "title": "Same-size pieces on a bar model",
+          "steps": [
+            "Draw one bar and shade 1/4 of it.",
+            "Draw the same bar again and shade 2/3 of it.",
+            "Cut both bars into pieces that match, so the shading lines up.",
+            "Count how many of those matching pieces are shaded in total.",
+            "Write that count over the number of pieces in the whole bar."
+          ],
+          "svg": "<svg viewBox=\"0 0 300 196\" xmlns=\"http://www.w3.org/2000/svg\" font-family=\"IBM Plex Sans, sans-serif\">\n<text x=\"6\" y=\"14\" font-size=\"13\" fill=\"#14201E\">1/4 of the bar</text>\n<rect x=\"6\" y=\"20\" width=\"288\" height=\"24\" fill=\"#F5F1E8\" stroke=\"#14201E\"/>\n<rect x=\"6\" y=\"20\" width=\"72\" height=\"24\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<line x1=\"78.0\" y1=\"20\" x2=\"78.0\" y2=\"44\" stroke=\"#14201E\"/><line x1=\"150.0\" y1=\"20\" x2=\"150.0\" y2=\"44\" stroke=\"#14201E\"/><line x1=\"222.0\" y1=\"20\" x2=\"222.0\" y2=\"44\" stroke=\"#14201E\"/>\n<text x=\"6\" y=\"70\" font-size=\"13\" fill=\"#14201E\">2/3 of the same bar</text>\n<rect x=\"6\" y=\"76\" width=\"288\" height=\"24\" fill=\"#F5F1E8\" stroke=\"#14201E\"/>\n<rect x=\"6\" y=\"76\" width=\"192\" height=\"24\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<line x1=\"102.0\" y1=\"76\" x2=\"102.0\" y2=\"100\" stroke=\"#14201E\"/><line x1=\"198.0\" y1=\"76\" x2=\"198.0\" y2=\"100\" stroke=\"#14201E\"/>\n<text x=\"6\" y=\"126\" font-size=\"13\" fill=\"#14201E\">Cut both into the same size pieces</text>\n<rect x=\"6\" y=\"132\" width=\"288\" height=\"24\" fill=\"#F5F1E8\" stroke=\"#14201E\"/>\n<rect x=\"6\" y=\"132\" width=\"72\" height=\"24\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<rect x=\"78\" y=\"132\" width=\"192\" height=\"24\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<line x1=\"30.0\" y1=\"132\" x2=\"30.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"54.0\" y1=\"132\" x2=\"54.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"78.0\" y1=\"132\" x2=\"78.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"102.0\" y1=\"132\" x2=\"102.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"126.0\" y1=\"132\" x2=\"126.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"150.0\" y1=\"132\" x2=\"150.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"174.0\" y1=\"132\" x2=\"174.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"198.0\" y1=\"132\" x2=\"198.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"222.0\" y1=\"132\" x2=\"222.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"246.0\" y1=\"132\" x2=\"246.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"270.0\" y1=\"132\" x2=\"270.0\" y2=\"156\" stroke=\"#14201E\"/>\n<line x1=\"6\" y1=\"166\" x2=\"270\" y2=\"166\" stroke=\"#00A878\" stroke-width=\"3\"/>\n<line x1=\"270\" y1=\"162\" x2=\"270\" y2=\"170\" stroke=\"#00A878\" stroke-width=\"3\"/>\n<text x=\"6\" y=\"188\" font-size=\"13\" fill=\"#14201E\">Filled, with one piece of the bar still empty.</text>\n</svg>"
+        },
+        "bothValid": true,
+        "whySchoolWay": "Both reach 11/12. The bar model is slower and that is the point of it: it makes visible why the denominators have to agree before anything is added, which is the step the written procedure hides."
+      },
+      "hintLadder": [
+        "How did you get to this one?",
+        "Are the pieces the same size in both of those fractions?",
+        "Can you draw a bar for each one and shade it?",
+        "What would you need to change so the shaded pieces in both bars lined up?",
+        "What number will both 4 and 3 divide into exactly?"
+      ],
+      "scripts": [
+        {
+          "avoid": "That's wrong, you can't add the denominators.",
+          "use": "Talk me through the bottom number. Where did the 7 come from?"
+        },
+        {
+          "avoid": "Let me show you the quick way.",
+          "use": "Try it on the bars first. I'll wait."
+        },
+        {
+          "avoid": "Good girl, well done.",
+          "use": "You checked it against the drawing before you committed to it. That is the habit that matters."
+        }
+      ],
+      "lockedAnswer": "11/12. With both written in twelfths, 1/4 is 3/12 and 2/3 is 8/12, and 3/12 + 8/12 = 11/12.",
+      "isomorphs": [
+        "1/3 + 1/4 =",
+        "2/5 + 1/2 =",
+        "1/6 + 3/4 ="
+      ],
+      "misconceptionNote": "She has applied whole number addition to both parts of the fraction, treating 1/4 and 2/3 as two pairs of numbers rather than two quantities. It is a reasonable generalisation from everything she has been taught so far, which is why it is so common and why correcting the rule alone rarely sticks."
+    },
+    "TECHNICAL": {
+      "primer": "Addition of fractions with unlike denominators. The denominator specifies the partition of the unit, so the two addends are counts of different units and are not commensurable as written. Rewriting both over a common denominator, here 12, re-expresses both counts in a shared unit, after which the numerators add directly. The curriculum sequences the area or linear model ahead of the algorithm so that the common denominator is understood as a change of unit rather than as a manipulation of digits.",
+      "methodMatch": {
+        "parentMethod": {
+          "title": "LCD procedure",
+          "steps": [
+            "Find a number both bottoms divide into.",
+            "Change each fraction so it has that bottom number.",
+            "Add the top numbers, leave the bottom alone.",
+            "Simplify if it will simplify."
+          ]
+        },
+        "schoolMethod": {
+          "title": "Linear model with a common partition",
+          "steps": [
+            "Draw one bar and shade 1/4 of it.",
+            "Draw the same bar again and shade 2/3 of it.",
+            "Cut both bars into pieces that match, so the shading lines up.",
+            "Count how many of those matching pieces are shaded in total.",
+            "Write that count over the number of pieces in the whole bar."
+          ],
+          "svg": "<svg viewBox=\"0 0 300 196\" xmlns=\"http://www.w3.org/2000/svg\" font-family=\"IBM Plex Sans, sans-serif\">\n<text x=\"6\" y=\"14\" font-size=\"13\" fill=\"#14201E\">1/4 of the bar</text>\n<rect x=\"6\" y=\"20\" width=\"288\" height=\"24\" fill=\"#F5F1E8\" stroke=\"#14201E\"/>\n<rect x=\"6\" y=\"20\" width=\"72\" height=\"24\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<line x1=\"78.0\" y1=\"20\" x2=\"78.0\" y2=\"44\" stroke=\"#14201E\"/><line x1=\"150.0\" y1=\"20\" x2=\"150.0\" y2=\"44\" stroke=\"#14201E\"/><line x1=\"222.0\" y1=\"20\" x2=\"222.0\" y2=\"44\" stroke=\"#14201E\"/>\n<text x=\"6\" y=\"70\" font-size=\"13\" fill=\"#14201E\">2/3 of the same bar</text>\n<rect x=\"6\" y=\"76\" width=\"288\" height=\"24\" fill=\"#F5F1E8\" stroke=\"#14201E\"/>\n<rect x=\"6\" y=\"76\" width=\"192\" height=\"24\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<line x1=\"102.0\" y1=\"76\" x2=\"102.0\" y2=\"100\" stroke=\"#14201E\"/><line x1=\"198.0\" y1=\"76\" x2=\"198.0\" y2=\"100\" stroke=\"#14201E\"/>\n<text x=\"6\" y=\"126\" font-size=\"13\" fill=\"#14201E\">Cut both into the same size pieces</text>\n<rect x=\"6\" y=\"132\" width=\"288\" height=\"24\" fill=\"#F5F1E8\" stroke=\"#14201E\"/>\n<rect x=\"6\" y=\"132\" width=\"72\" height=\"24\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<rect x=\"78\" y=\"132\" width=\"192\" height=\"24\" fill=\"#00A878\" stroke=\"#14201E\"/>\n<line x1=\"30.0\" y1=\"132\" x2=\"30.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"54.0\" y1=\"132\" x2=\"54.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"78.0\" y1=\"132\" x2=\"78.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"102.0\" y1=\"132\" x2=\"102.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"126.0\" y1=\"132\" x2=\"126.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"150.0\" y1=\"132\" x2=\"150.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"174.0\" y1=\"132\" x2=\"174.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"198.0\" y1=\"132\" x2=\"198.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"222.0\" y1=\"132\" x2=\"222.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"246.0\" y1=\"132\" x2=\"246.0\" y2=\"156\" stroke=\"#14201E\"/><line x1=\"270.0\" y1=\"132\" x2=\"270.0\" y2=\"156\" stroke=\"#14201E\"/>\n<line x1=\"6\" y1=\"166\" x2=\"270\" y2=\"166\" stroke=\"#00A878\" stroke-width=\"3\"/>\n<line x1=\"270\" y1=\"162\" x2=\"270\" y2=\"170\" stroke=\"#00A878\" stroke-width=\"3\"/>\n<text x=\"6\" y=\"188\" font-size=\"13\" fill=\"#14201E\">Filled, with one piece of the bar still empty.</text>\n</svg>"
+        },
+        "bothValid": true,
+        "whySchoolWay": "Both are correct and both give 11/12. The model makes the change of unit explicit, which the procedure leaves implicit, and it is precisely that implicit step that has been skipped here."
+      },
+      "hintLadder": [
+        "How did you work this one out?",
+        "What does the denominator tell you in each of those two fractions?",
+        "Are those two fractions counting the same sized unit?",
+        "How would you re-express both of them so they count the same unit?",
+        "What is the smallest number that both 4 and 3 divide into?"
+      ],
+      "scripts": [
+        {
+          "avoid": "You've added the denominators, which you can't do.",
+          "use": "What does the 4 in 1/4 tell you? And the 3 in 2/3?"
+        },
+        {
+          "avoid": "The rule is you need a common denominator.",
+          "use": "See if the bar model gets you to a unit that works for both."
+        },
+        {
+          "avoid": "Nearly. Try again.",
+          "use": "You noticed your answer was smaller than what you started with. That check is worth more than the answer."
+        }
+      ],
+      "lockedAnswer": "11/12. Over a common denominator of 12, 1/4 = 3/12 and 2/3 = 8/12, so the sum is 11/12, which is already in lowest terms.",
+      "isomorphs": [
+        "1/3 + 1/4 =",
+        "2/5 + 1/2 =",
+        "1/6 + 3/4 ="
+      ],
+      "misconceptionNote": "The working shows componentwise addition of numerators and denominators, a whole number generalisation applied to a rational quantity. It is a coherent inference from prior instruction rather than carelessness, and the useful intervention is to make the unit visible rather than to restate the rule."
+    }
+  }
+}

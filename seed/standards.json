@@ -1,0 +1,801 @@
+[
+  {
+    "id": "CCSS.MATH.3.OA.A.1",
+    "code": "CCSS.MATH.3.OA.A.1",
+    "grade": 3,
+    "plainLanguage": "Multiplication means a number of equal groups. 4 x 6 is four groups with six in each group.",
+    "expectedMethods": [
+      "Draw or describe the equal groups",
+      "Build an array of rows and columns",
+      "Skip count by the group size"
+    ],
+    "parentMethod": "Recite the times tables until the fact is automatic."
+  },
+  {
+    "id": "CCSS.MATH.3.OA.A.2",
+    "code": "CCSS.MATH.3.OA.A.2",
+    "grade": 3,
+    "plainLanguage": "Division means splitting a total into equal groups, either asking how many groups or how many in each group.",
+    "expectedMethods": [
+      "Share the total out one at a time into groups",
+      "Draw an array and find the missing side",
+      "Ask what times the divisor gives the total"
+    ],
+    "parentMethod": "Short division, the bus stop method, done digit by digit."
+  },
+  {
+    "id": "CCSS.MATH.3.OA.A.3",
+    "code": "CCSS.MATH.3.OA.A.3",
+    "grade": 3,
+    "plainLanguage": "Word problems where the numbers are joined by multiplying or dividing, up to 100.",
+    "expectedMethods": [
+      "Draw a bar model showing the parts and the whole",
+      "Write the equation with a box for the unknown",
+      "Act the situation out with counters"
+    ],
+    "parentMethod": "Look for a keyword in the question and pick the operation it suggests."
+  },
+  {
+    "id": "CCSS.MATH.3.OA.A.4",
+    "code": "CCSS.MATH.3.OA.A.4",
+    "grade": 3,
+    "plainLanguage": "Finding the missing number in something like 8 x ? = 48.",
+    "expectedMethods": [
+      "Use the matching division fact",
+      "Count up in groups until you reach the total",
+      "Use an array with one side unknown"
+    ],
+    "parentMethod": "Divide the total by the number you know."
+  },
+  {
+    "id": "CCSS.MATH.3.OA.B.5",
+    "code": "CCSS.MATH.3.OA.B.5",
+    "grade": 3,
+    "plainLanguage": "Multiplication can be reordered and regrouped without changing the answer, which makes hard facts easier.",
+    "expectedMethods": [
+      "Break one factor into friendlier parts, so 7 x 6 becomes 5 x 6 plus 2 x 6",
+      "Swap the order to use the easier fact",
+      "Use a known fact to reach a nearby one"
+    ],
+    "parentMethod": "Memorise each fact separately as its own item."
+  },
+  {
+    "id": "CCSS.MATH.3.OA.B.6",
+    "code": "CCSS.MATH.3.OA.B.6",
+    "grade": 3,
+    "plainLanguage": "Division is a multiplication with one factor missing.",
+    "expectedMethods": [
+      "Rewrite the division as a multiplication with a box",
+      "Use the related fact family"
+    ],
+    "parentMethod": "Treat division as its own separate procedure."
+  },
+  {
+    "id": "CCSS.MATH.3.OA.C.7",
+    "code": "CCSS.MATH.3.OA.C.7",
+    "grade": 3,
+    "plainLanguage": "Knowing multiplication and division facts within 100 quickly and accurately.",
+    "expectedMethods": [
+      "Derive an unknown fact from a known one",
+      "Use doubling and halving",
+      "Practise the facts in fact families"
+    ],
+    "parentMethod": "Rote recitation of the tables in order."
+  },
+  {
+    "id": "CCSS.MATH.3.OA.D.8",
+    "code": "CCSS.MATH.3.OA.D.8",
+    "grade": 3,
+    "plainLanguage": "Two-step word problems, where you have to do one thing and then another.",
+    "expectedMethods": [
+      "Draw a bar model for each step",
+      "Write an equation with a letter for the unknown",
+      "Estimate first, then check the answer is reasonable"
+    ],
+    "parentMethod": "Work through the sentence left to right in the order the numbers appear."
+  },
+  {
+    "id": "CCSS.MATH.3.NBT.A.1",
+    "code": "CCSS.MATH.3.NBT.A.1",
+    "grade": 3,
+    "plainLanguage": "Rounding a number to the nearest ten or hundred.",
+    "expectedMethods": [
+      "Place the number on a number line between the two nearest tens or hundreds",
+      "Decide which one it is closer to"
+    ],
+    "parentMethod": "Look at the next digit, five or more rounds up, four or less rounds down."
+  },
+  {
+    "id": "CCSS.MATH.3.NBT.A.2",
+    "code": "CCSS.MATH.3.NBT.A.2",
+    "grade": 3,
+    "plainLanguage": "Adding and subtracting numbers up to 1000 fluently.",
+    "expectedMethods": [
+      "Partition into hundreds, tens and ones and add each part",
+      "Count on or back in jumps on an empty number line",
+      "Use a written column method once the parts are understood"
+    ],
+    "parentMethod": "Column addition and subtraction with carrying and borrowing."
+  },
+  {
+    "id": "CCSS.MATH.3.NBT.A.3",
+    "code": "CCSS.MATH.3.NBT.A.3",
+    "grade": 3,
+    "plainLanguage": "Multiplying a single digit by a multiple of ten, like 6 x 40.",
+    "expectedMethods": [
+      "Multiply by the single digit, then by ten",
+      "Think of it as six groups of four tens"
+    ],
+    "parentMethod": "Multiply the non-zero digits and add the zero on the end."
+  },
+  {
+    "id": "CCSS.MATH.3.NF.A.1",
+    "code": "CCSS.MATH.3.NF.A.1",
+    "grade": 3,
+    "plainLanguage": "A fraction like 3/4 is three copies of one part when a whole is cut into four equal parts.",
+    "expectedMethods": [
+      "Fold or shade a shape into equal parts",
+      "Name the unit fraction first, then count copies of it"
+    ],
+    "parentMethod": "Read the top number and the bottom number as two separate numbers."
+  },
+  {
+    "id": "CCSS.MATH.3.NF.A.2",
+    "code": "CCSS.MATH.3.NF.A.2",
+    "grade": 3,
+    "plainLanguage": "A fraction is a number with a place on the number line, not just a piece of a shape.",
+    "expectedMethods": [
+      "Mark the whole from 0 to 1 and cut it into equal parts",
+      "Count unit fractions along the line"
+    ],
+    "parentMethod": "Think of fractions only as slices of a pizza or a cake."
+  },
+  {
+    "id": "CCSS.MATH.3.NF.A.3",
+    "code": "CCSS.MATH.3.NF.A.3",
+    "grade": 3,
+    "plainLanguage": "Two different fractions can be the same size, and fractions can be compared when the whole is the same.",
+    "expectedMethods": [
+      "Line both fractions up on the same number line",
+      "Use a fraction wall to see which is longer",
+      "Find a common way of cutting the whole"
+    ],
+    "parentMethod": "Compare the numbers on the bottom, or cross multiply."
+  },
+  {
+    "id": "CCSS.MATH.3.MD.C.7",
+    "code": "CCSS.MATH.3.MD.C.7",
+    "grade": 3,
+    "plainLanguage": "Area is found by covering a shape with unit squares, which is why length times width works.",
+    "expectedMethods": [
+      "Tile the rectangle with unit squares and count them",
+      "Split a shape into two rectangles and add the areas"
+    ],
+    "parentMethod": "Apply the formula length times width without drawing anything."
+  },
+  {
+    "id": "CCSS.MATH.3.MD.D.8",
+    "code": "CCSS.MATH.3.MD.D.8",
+    "grade": 3,
+    "plainLanguage": "Perimeter is the distance all the way around the edge, area is the space inside.",
+    "expectedMethods": [
+      "Walk a finger round the edge and add each side",
+      "Compare two shapes with the same perimeter and different areas"
+    ],
+    "parentMethod": "Use the formula for perimeter and the formula for area and keep them separate."
+  },
+  {
+    "id": "CCSS.MATH.4.OA.A.1",
+    "code": "CCSS.MATH.4.OA.A.1",
+    "grade": 4,
+    "plainLanguage": "Reading 35 = 5 x 7 as a comparison: 35 is five times as many as seven.",
+    "expectedMethods": [
+      "Draw two bars, one five times the length of the other",
+      "Say the sentence out loud as a comparison"
+    ],
+    "parentMethod": "Read the equation as an instruction to multiply."
+  },
+  {
+    "id": "CCSS.MATH.4.OA.A.2",
+    "code": "CCSS.MATH.4.OA.A.2",
+    "grade": 4,
+    "plainLanguage": "Word problems about one amount being a number of times another amount.",
+    "expectedMethods": [
+      "Draw a comparison bar model",
+      "Write the equation with a letter for the unknown"
+    ],
+    "parentMethod": "Pick the operation from a keyword in the sentence."
+  },
+  {
+    "id": "CCSS.MATH.4.OA.A.3",
+    "code": "CCSS.MATH.4.OA.A.3",
+    "grade": 4,
+    "plainLanguage": "Multi-step word problems, including deciding what to do with a remainder.",
+    "expectedMethods": [
+      "Bar model the whole situation before calculating",
+      "Estimate first and check the answer is sensible",
+      "Say in words what the remainder means here"
+    ],
+    "parentMethod": "Calculate in the order the numbers appear and give the remainder as r."
+  },
+  {
+    "id": "CCSS.MATH.4.OA.B.4",
+    "code": "CCSS.MATH.4.OA.B.4",
+    "grade": 4,
+    "plainLanguage": "Factors, multiples, and whether a number is prime or composite.",
+    "expectedMethods": [
+      "Build rectangles of the number to find factor pairs",
+      "List factor pairs in order from one upwards"
+    ],
+    "parentMethod": "Test each number in turn to see if it divides."
+  },
+  {
+    "id": "CCSS.MATH.4.NBT.A.1",
+    "code": "CCSS.MATH.4.NBT.A.1",
+    "grade": 4,
+    "plainLanguage": "Each place is worth ten times the place to its right.",
+    "expectedMethods": [
+      "Use a place value chart and move a digit one column",
+      "Exchange ten of one unit for one of the next"
+    ],
+    "parentMethod": "Name the columns from memory: ones, tens, hundreds."
+  },
+  {
+    "id": "CCSS.MATH.4.NBT.A.2",
+    "code": "CCSS.MATH.4.NBT.A.2",
+    "grade": 4,
+    "plainLanguage": "Reading, writing and comparing multi-digit numbers in digits, words and expanded form.",
+    "expectedMethods": [
+      "Write the number in expanded form as a sum of place values",
+      "Compare digit by digit from the left"
+    ],
+    "parentMethod": "Compare by length first, then read left to right."
+  },
+  {
+    "id": "CCSS.MATH.4.NBT.A.3",
+    "code": "CCSS.MATH.4.NBT.A.3",
+    "grade": 4,
+    "plainLanguage": "Rounding a multi-digit whole number to any place.",
+    "expectedMethods": [
+      "Place the number between the two nearest round numbers on a line",
+      "Ask which of the two it sits closer to"
+    ],
+    "parentMethod": "Look at the digit to the right and round up on five."
+  },
+  {
+    "id": "CCSS.MATH.4.NBT.B.4",
+    "code": "CCSS.MATH.4.NBT.B.4",
+    "grade": 4,
+    "plainLanguage": "Adding and subtracting multi-digit numbers fluently.",
+    "expectedMethods": [
+      "Partition both numbers and add each place",
+      "Use an empty number line to count on",
+      "Use the column method once regrouping is understood"
+    ],
+    "parentMethod": "Column addition and subtraction with carrying and borrowing."
+  },
+  {
+    "id": "CCSS.MATH.4.NBT.B.5",
+    "code": "CCSS.MATH.4.NBT.B.5",
+    "grade": 4,
+    "plainLanguage": "Multiplying up to four digits by one digit, and two digits by two digits.",
+    "expectedMethods": [
+      "Use an area model, splitting each number by place value",
+      "Use partial products and add them",
+      "Use the grid method"
+    ],
+    "parentMethod": "Long multiplication in columns, with carried digits above."
+  },
+  {
+    "id": "CCSS.MATH.4.NBT.B.6",
+    "code": "CCSS.MATH.4.NBT.B.6",
+    "grade": 4,
+    "plainLanguage": "Dividing up to four digits by one digit, with remainders.",
+    "expectedMethods": [
+      "Partial quotients, taking away easy chunks of the divisor",
+      "Use an area model with the divisor as one side",
+      "Estimate with a friendly multiple first"
+    ],
+    "parentMethod": "Long division, the bring-down method, or short division at the bus stop."
+  },
+  {
+    "id": "CCSS.MATH.4.NF.A.1",
+    "code": "CCSS.MATH.4.NF.A.1",
+    "grade": 4,
+    "plainLanguage": "Two fractions are equivalent when the whole is cut into more parts but the same amount is taken.",
+    "expectedMethods": [
+      "Cut each part of a fraction strip into the same number of smaller parts",
+      "Use a fraction wall to find equal lengths",
+      "Multiply top and bottom by the same number once the model is understood"
+    ],
+    "parentMethod": "Multiply the top and the bottom by the same number."
+  },
+  {
+    "id": "CCSS.MATH.4.NF.A.2",
+    "code": "CCSS.MATH.4.NF.A.2",
+    "grade": 4,
+    "plainLanguage": "Comparing two fractions with different numerators and denominators.",
+    "expectedMethods": [
+      "Compare each to a half as a benchmark",
+      "Rewrite both with the same denominator",
+      "Place both on the same number line"
+    ],
+    "parentMethod": "Cross multiply and compare the two products."
+  },
+  {
+    "id": "CCSS.MATH.4.NF.B.3",
+    "code": "CCSS.MATH.4.NF.B.3",
+    "grade": 4,
+    "plainLanguage": "Adding and subtracting fractions with the same denominator, by counting unit fractions.",
+    "expectedMethods": [
+      "Count in unit fractions along a number line",
+      "Join fraction strips end to end",
+      "Decompose the fraction into a sum of unit fractions"
+    ],
+    "parentMethod": "Add the tops and keep the bottom the same."
+  },
+  {
+    "id": "CCSS.MATH.4.NF.B.4",
+    "code": "CCSS.MATH.4.NF.B.4",
+    "grade": 4,
+    "plainLanguage": "Multiplying a fraction by a whole number, understood as repeated addition of the fraction.",
+    "expectedMethods": [
+      "Repeat the fraction on a number line",
+      "Show the whole number as that many copies of the fraction"
+    ],
+    "parentMethod": "Multiply the numerator by the whole number."
+  },
+  {
+    "id": "CCSS.MATH.4.NF.C.5",
+    "code": "CCSS.MATH.4.NF.C.5",
+    "grade": 4,
+    "plainLanguage": "Adding fractions with denominators of ten and a hundred, which leads into decimals.",
+    "expectedMethods": [
+      "Use a hundred grid, ten columns shaded for each tenth",
+      "Rewrite tenths as hundredths before adding"
+    ],
+    "parentMethod": "Convert both to hundredths and add the numerators."
+  },
+  {
+    "id": "CCSS.MATH.4.NF.C.6",
+    "code": "CCSS.MATH.4.NF.C.6",
+    "grade": 4,
+    "plainLanguage": "Writing fractions with denominators of ten and a hundred as decimals.",
+    "expectedMethods": [
+      "Shade a hundred grid and read it two ways",
+      "Place both forms on the same number line"
+    ],
+    "parentMethod": "Move the decimal point the right number of places."
+  },
+  {
+    "id": "CCSS.MATH.4.NF.C.7",
+    "code": "CCSS.MATH.4.NF.C.7",
+    "grade": 4,
+    "plainLanguage": "Comparing decimals to hundredths, where the number of digits does not decide the size.",
+    "expectedMethods": [
+      "Line the numbers up on a place value chart",
+      "Put both on a number line between the same two whole numbers",
+      "Shade both on hundred grids and compare the shading"
+    ],
+    "parentMethod": "Compare place by place after lining up the decimal points."
+  },
+  {
+    "id": "CCSS.MATH.4.MD.A.3",
+    "code": "CCSS.MATH.4.MD.A.3",
+    "grade": 4,
+    "plainLanguage": "Using formulas for the area and perimeter of a rectangle in real situations.",
+    "expectedMethods": [
+      "Draw the rectangle and label both dimensions",
+      "Tile or partition before reaching for the formula"
+    ],
+    "parentMethod": "Apply the formula for whichever one the question names."
+  },
+  {
+    "id": "CCSS.MATH.4.MD.C.5",
+    "code": "CCSS.MATH.4.MD.C.5",
+    "grade": 4,
+    "plainLanguage": "An angle is an amount of turn, measured in degrees, not a length.",
+    "expectedMethods": [
+      "Turn a pencil through the angle to feel the rotation",
+      "Compare the angle to a right angle"
+    ],
+    "parentMethod": "Read the number off the protractor."
+  },
+  {
+    "id": "CCSS.MATH.4.MD.C.7",
+    "code": "CCSS.MATH.4.MD.C.7",
+    "grade": 4,
+    "plainLanguage": "Angles that meet add together, so a missing angle can be found by subtracting.",
+    "expectedMethods": [
+      "Draw the angles meeting at a point and label the known parts",
+      "Write an addition equation with the unknown as a letter"
+    ],
+    "parentMethod": "Subtract the known angles from 180 or 360."
+  },
+  {
+    "id": "CCSS.MATH.5.OA.A.1",
+    "code": "CCSS.MATH.5.OA.A.1",
+    "grade": 5,
+    "plainLanguage": "Brackets say which part of a calculation to do first.",
+    "expectedMethods": [
+      "Work out the innermost bracket first and rewrite the line",
+      "Read the expression aloud as a sentence"
+    ],
+    "parentMethod": "Follow the order of operations, brackets then powers then times and divide then add and subtract."
+  },
+  {
+    "id": "CCSS.MATH.5.OA.A.2",
+    "code": "CCSS.MATH.5.OA.A.2",
+    "grade": 5,
+    "plainLanguage": "Writing an expression for a situation without working it out.",
+    "expectedMethods": [
+      "Write the expression, then say in words what it represents",
+      "Compare two expressions without calculating either"
+    ],
+    "parentMethod": "Calculate a value straight away rather than leaving it as an expression."
+  },
+  {
+    "id": "CCSS.MATH.5.NBT.A.1",
+    "code": "CCSS.MATH.5.NBT.A.1",
+    "grade": 5,
+    "plainLanguage": "A digit is worth ten times the place to its right and one tenth of the place to its left.",
+    "expectedMethods": [
+      "Use a place value chart that runs past the decimal point",
+      "Multiply and divide by ten and watch the digits shift"
+    ],
+    "parentMethod": "Move the decimal point left or right."
+  },
+  {
+    "id": "CCSS.MATH.5.NBT.A.2",
+    "code": "CCSS.MATH.5.NBT.A.2",
+    "grade": 5,
+    "plainLanguage": "Multiplying and dividing by powers of ten, and what happens to the zeros.",
+    "expectedMethods": [
+      "Shift the digits along a place value chart",
+      "Write the power of ten out in full first"
+    ],
+    "parentMethod": "Add or remove zeros, or move the decimal point."
+  },
+  {
+    "id": "CCSS.MATH.5.NBT.A.3",
+    "code": "CCSS.MATH.5.NBT.A.3",
+    "grade": 5,
+    "plainLanguage": "Reading, writing and comparing decimals to thousandths.",
+    "expectedMethods": [
+      "Write the decimal in expanded form as tenths, hundredths and thousandths",
+      "Compare on a place value chart, left to right",
+      "Place both on a number line between the same two tenths"
+    ],
+    "parentMethod": "Line up the decimal points and compare column by column."
+  },
+  {
+    "id": "CCSS.MATH.5.NBT.A.4",
+    "code": "CCSS.MATH.5.NBT.A.4",
+    "grade": 5,
+    "plainLanguage": "Rounding decimals to any place.",
+    "expectedMethods": [
+      "Find the two nearest values on a number line and see which is closer",
+      "Say which two tenths or hundredths the number sits between"
+    ],
+    "parentMethod": "Look at the next digit and round up on five."
+  },
+  {
+    "id": "CCSS.MATH.5.NBT.B.5",
+    "code": "CCSS.MATH.5.NBT.B.5",
+    "grade": 5,
+    "plainLanguage": "Multiplying multi-digit whole numbers fluently.",
+    "expectedMethods": [
+      "Area model split by place value",
+      "Partial products written out and added",
+      "The standard algorithm once the partial products are understood"
+    ],
+    "parentMethod": "Long multiplication in columns."
+  },
+  {
+    "id": "CCSS.MATH.5.NBT.B.6",
+    "code": "CCSS.MATH.5.NBT.B.6",
+    "grade": 5,
+    "plainLanguage": "Dividing with up to four-digit dividends and two-digit divisors.",
+    "expectedMethods": [
+      "Partial quotients, subtracting friendly multiples of the divisor",
+      "Area model with the divisor as one side",
+      "Estimate with a rounded divisor first"
+    ],
+    "parentMethod": "Long division with bring-down steps."
+  },
+  {
+    "id": "CCSS.MATH.5.NBT.B.7",
+    "code": "CCSS.MATH.5.NBT.B.7",
+    "grade": 5,
+    "plainLanguage": "Adding, subtracting, multiplying and dividing decimals to hundredths.",
+    "expectedMethods": [
+      "Use a hundred grid or base ten blocks for the operation",
+      "Estimate with whole numbers before calculating",
+      "Relate the decimal calculation to the matching whole number one"
+    ],
+    "parentMethod": "Line up the decimal points, or count the decimal places in the question."
+  },
+  {
+    "id": "CCSS.MATH.5.NF.A.1",
+    "code": "CCSS.MATH.5.NF.A.1",
+    "grade": 5,
+    "plainLanguage": "Adding and subtracting fractions with different denominators by finding a common way to cut the whole.",
+    "expectedMethods": [
+      "Cut both fraction strips into the same size parts",
+      "Use a common denominator found from the two denominators",
+      "Show both on the same number line before adding"
+    ],
+    "parentMethod": "Find the lowest common denominator, convert both, then add the numerators."
+  },
+  {
+    "id": "CCSS.MATH.5.NF.A.2",
+    "code": "CCSS.MATH.5.NF.A.2",
+    "grade": 5,
+    "plainLanguage": "Word problems that add or subtract fractions, including checking the answer is sensible.",
+    "expectedMethods": [
+      "Bar model the whole and the parts",
+      "Estimate with benchmarks like a half before calculating"
+    ],
+    "parentMethod": "Convert to a common denominator and calculate."
+  },
+  {
+    "id": "CCSS.MATH.5.NF.B.3",
+    "code": "CCSS.MATH.5.NF.B.3",
+    "grade": 5,
+    "plainLanguage": "A fraction is a division: 3/4 is three divided by four.",
+    "expectedMethods": [
+      "Share three things between four people and see what each gets",
+      "Read the fraction bar aloud as divided by"
+    ],
+    "parentMethod": "Treat the fraction bar as separate from division."
+  },
+  {
+    "id": "CCSS.MATH.5.NF.B.4",
+    "code": "CCSS.MATH.5.NF.B.4",
+    "grade": 5,
+    "plainLanguage": "Multiplying a fraction by a fraction, understood as taking a part of a part.",
+    "expectedMethods": [
+      "Fold or shade an area model twice, once each way",
+      "Say the calculation aloud as a part of a part"
+    ],
+    "parentMethod": "Multiply the tops and multiply the bottoms."
+  },
+  {
+    "id": "CCSS.MATH.5.NF.B.5",
+    "code": "CCSS.MATH.5.NF.B.5",
+    "grade": 5,
+    "plainLanguage": "Multiplying by a number less than one makes the result smaller, and this is not a special case.",
+    "expectedMethods": [
+      "Compare the size of the answer to the starting number before calculating",
+      "Show the scaling on a number line"
+    ],
+    "parentMethod": "Multiply and notice afterwards that the answer got smaller."
+  },
+  {
+    "id": "CCSS.MATH.5.NF.B.6",
+    "code": "CCSS.MATH.5.NF.B.6",
+    "grade": 5,
+    "plainLanguage": "Real world problems that multiply fractions and mixed numbers.",
+    "expectedMethods": [
+      "Bar model the situation before choosing an operation",
+      "Estimate the answer with benchmarks first"
+    ],
+    "parentMethod": "Convert mixed numbers to improper fractions and multiply."
+  },
+  {
+    "id": "CCSS.MATH.5.NF.B.7",
+    "code": "CCSS.MATH.5.NF.B.7",
+    "grade": 5,
+    "plainLanguage": "Dividing a unit fraction by a whole number and a whole number by a unit fraction.",
+    "expectedMethods": [
+      "Ask how many of the divisor fit into the dividend",
+      "Draw the division on a number line",
+      "Act it out with a real quantity"
+    ],
+    "parentMethod": "Invert the second fraction and multiply."
+  },
+  {
+    "id": "CCSS.MATH.5.MD.C.5",
+    "code": "CCSS.MATH.5.MD.C.5",
+    "grade": 5,
+    "plainLanguage": "Volume is found by filling a solid with unit cubes.",
+    "expectedMethods": [
+      "Build or picture the layers of unit cubes",
+      "Count one layer then multiply by the number of layers"
+    ],
+    "parentMethod": "Apply the formula length times width times height."
+  },
+  {
+    "id": "CCSS.MATH.6.RP.A.1",
+    "code": "CCSS.MATH.6.RP.A.1",
+    "grade": 6,
+    "plainLanguage": "A ratio compares two quantities by how many times one fits the other, not by how far apart they are.",
+    "expectedMethods": [
+      "Draw a tape diagram with one bar per part",
+      "Build a ratio table by scaling both quantities together",
+      "Say the ratio aloud as for every this, that"
+    ],
+    "parentMethod": "Write the ratio as a fraction and simplify."
+  },
+  {
+    "id": "CCSS.MATH.6.RP.A.2",
+    "code": "CCSS.MATH.6.RP.A.2",
+    "grade": 6,
+    "plainLanguage": "A unit rate is how much of one quantity goes with exactly one of the other.",
+    "expectedMethods": [
+      "Scale a ratio table down until one column reads one",
+      "Use a double number line"
+    ],
+    "parentMethod": "Divide the first number by the second."
+  },
+  {
+    "id": "CCSS.MATH.6.RP.A.3",
+    "code": "CCSS.MATH.6.RP.A.3",
+    "grade": 6,
+    "plainLanguage": "Using ratio and rate reasoning for real problems, including percentages and unit conversion.",
+    "expectedMethods": [
+      "Ratio table with both quantities scaled together",
+      "Double number line with percent on one line and amount on the other",
+      "Find one percent first, then scale"
+    ],
+    "parentMethod": "Set up a proportion and cross multiply."
+  },
+  {
+    "id": "CCSS.MATH.6.NS.A.1",
+    "code": "CCSS.MATH.6.NS.A.1",
+    "grade": 6,
+    "plainLanguage": "Dividing a fraction by a fraction, understood as how many of these fit into that.",
+    "expectedMethods": [
+      "Ask how many of the divisor fit inside the dividend",
+      "Draw both on the same number line",
+      "Use a common denominator and divide the numerators"
+    ],
+    "parentMethod": "Keep, change, flip: invert the second fraction and multiply."
+  },
+  {
+    "id": "CCSS.MATH.6.NS.B.2",
+    "code": "CCSS.MATH.6.NS.B.2",
+    "grade": 6,
+    "plainLanguage": "Dividing multi-digit numbers fluently.",
+    "expectedMethods": [
+      "Partial quotients with friendly multiples",
+      "Estimate with rounded numbers first"
+    ],
+    "parentMethod": "Long division with bring-down steps."
+  },
+  {
+    "id": "CCSS.MATH.6.NS.B.3",
+    "code": "CCSS.MATH.6.NS.B.3",
+    "grade": 6,
+    "plainLanguage": "Adding, subtracting, multiplying and dividing multi-digit decimals fluently.",
+    "expectedMethods": [
+      "Estimate with whole numbers before calculating",
+      "Relate the decimal calculation to the whole number one"
+    ],
+    "parentMethod": "Line up the points, or count decimal places at the end."
+  },
+  {
+    "id": "CCSS.MATH.6.NS.B.4",
+    "code": "CCSS.MATH.6.NS.B.4",
+    "grade": 6,
+    "plainLanguage": "Greatest common factor and least common multiple, and using them to rewrite sums.",
+    "expectedMethods": [
+      "List factors or multiples systematically",
+      "Use prime factorisation and take what is shared",
+      "Use the distributive property to factor a sum"
+    ],
+    "parentMethod": "List multiples of each number until one appears in both lists."
+  },
+  {
+    "id": "CCSS.MATH.6.NS.C.5",
+    "code": "CCSS.MATH.6.NS.C.5",
+    "grade": 6,
+    "plainLanguage": "Negative numbers describe quantities in opposite directions from zero.",
+    "expectedMethods": [
+      "Put the situation on a number line through zero",
+      "Describe the opposite in context, such as below sea level"
+    ],
+    "parentMethod": "Treat the minus sign as an instruction to subtract."
+  },
+  {
+    "id": "CCSS.MATH.6.NS.C.6",
+    "code": "CCSS.MATH.6.NS.C.6",
+    "grade": 6,
+    "plainLanguage": "Placing positive and negative rational numbers on a number line and in the coordinate plane.",
+    "expectedMethods": [
+      "Locate the number on a horizontal number line through zero",
+      "Reflect a point across an axis and read the new coordinates"
+    ],
+    "parentMethod": "Read the sign and place it left or right of zero."
+  },
+  {
+    "id": "CCSS.MATH.6.NS.C.7",
+    "code": "CCSS.MATH.6.NS.C.7",
+    "grade": 6,
+    "plainLanguage": "Ordering negative numbers, where further left means smaller even when the digits look bigger.",
+    "expectedMethods": [
+      "Order by position on the number line, left to right",
+      "Say the comparison in context, such as colder than",
+      "Separate size from order by comparing absolute values as well"
+    ],
+    "parentMethod": "Compare the digits and ignore the sign."
+  },
+  {
+    "id": "CCSS.MATH.6.EE.A.1",
+    "code": "CCSS.MATH.6.EE.A.1",
+    "grade": 6,
+    "plainLanguage": "Exponents are repeated multiplication, not repeated addition.",
+    "expectedMethods": [
+      "Write the power out in full before evaluating",
+      "Say it aloud as this many copies multiplied"
+    ],
+    "parentMethod": "Multiply the base by the exponent."
+  },
+  {
+    "id": "CCSS.MATH.6.EE.A.2",
+    "code": "CCSS.MATH.6.EE.A.2",
+    "grade": 6,
+    "plainLanguage": "A letter in an expression stands for a quantity that can vary, not a label for an object.",
+    "expectedMethods": [
+      "Say aloud what the letter counts, in units",
+      "Substitute a value and evaluate",
+      "Read the expression as a sentence"
+    ],
+    "parentMethod": "Use the first letter of the word as a shorthand for the object."
+  },
+  {
+    "id": "CCSS.MATH.6.EE.A.3",
+    "code": "CCSS.MATH.6.EE.A.3",
+    "grade": 6,
+    "plainLanguage": "Rewriting an expression into an equivalent one using the properties of operations.",
+    "expectedMethods": [
+      "Use an area model to see the distributive property",
+      "Check equivalence by substituting a value into both"
+    ],
+    "parentMethod": "Expand the brackets and collect like terms."
+  },
+  {
+    "id": "CCSS.MATH.6.EE.B.5",
+    "code": "CCSS.MATH.6.EE.B.5",
+    "grade": 6,
+    "plainLanguage": "Solving an equation means finding the values that make both sides equal, and the equals sign means the same as.",
+    "expectedMethods": [
+      "Use a balance model, doing the same to both sides",
+      "Substitute the candidate back in and check both sides"
+    ],
+    "parentMethod": "Move the number to the other side and change the sign."
+  },
+  {
+    "id": "CCSS.MATH.6.EE.B.6",
+    "code": "CCSS.MATH.6.EE.B.6",
+    "grade": 6,
+    "plainLanguage": "Using a letter to represent an unknown number in a real situation.",
+    "expectedMethods": [
+      "Define the letter in a sentence before writing the equation",
+      "Write the equation directly from the situation"
+    ],
+    "parentMethod": "Set up the sum and solve it without naming the unknown."
+  },
+  {
+    "id": "CCSS.MATH.6.EE.B.7",
+    "code": "CCSS.MATH.6.EE.B.7",
+    "grade": 6,
+    "plainLanguage": "Solving equations of the form x plus p equals q, and p times x equals q.",
+    "expectedMethods": [
+      "Use a bar model with the unknown as one part",
+      "Do the same operation to both sides and show each line"
+    ],
+    "parentMethod": "Move the term across the equals sign and change its sign."
+  },
+  {
+    "id": "CCSS.MATH.6.G.A.1",
+    "code": "CCSS.MATH.6.G.A.1",
+    "grade": 6,
+    "plainLanguage": "Area of triangles and quadrilaterals, built from the area of a rectangle.",
+    "expectedMethods": [
+      "Cut and rearrange the shape into a rectangle",
+      "See a triangle as half of a rectangle around it"
+    ],
+    "parentMethod": "Apply the formula for each shape as a separate rule."
+  }
+]

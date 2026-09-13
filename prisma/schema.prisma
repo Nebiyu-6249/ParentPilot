@@ -1,0 +1,222 @@
+// ParentPilot data model.
+//
+// Two invariants are enforced here, not just in application code:
+//   1. There is no Child account. `Child` is a profile owned by a Parent:
+//      no email, no password, no session, no login path of any kind.
+//   2. `Move` has no transcript column. Live Mode derives a label and a
+//      timestamp and discards the words. Adding a transcript column here
+//      would silently break the privacy promise made on /privacy.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector")]
+}
+
+model Parent {
+  id          String   @id @default(cuid())
+  email       String?  @unique
+  register    Register @default(STANDARD)
+  anxietyBand Int      @default(2) // 1 loved it .. 4 miserable
+  language    String   @default("en")
+  createdAt   DateTime @default(now())
+  children    Child[]
+}
+
+model Child {
+  id         String   @id @default(cuid())
+  parentId   String
+  firstName  String? // optional, used only in scripts
+  grade      Int // 0 = K, 1..8
+  curriculum String   @default("CCSS")
+  subjects   String[]
+  parent     Parent   @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  assignments Assignment[]
+  sessions    Session[]
+
+  @@index([parentId])
+}
+
+model Assignment {
+  id         String   @id @default(cuid())
+  childId    String
+  source     Source // PHOTO | PDF | VOICE | TEXT
+  capturedAt DateTime @default(now())
+  pageUrls   String[]
+  problems   Problem[]
+  child      Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@index([childId])
+}
+
+model Problem {
+  id              String     @id @default(cuid())
+  assignmentId    String
+  index           Int
+  printedText     String
+  childWorkText   String?
+  childAnswer     String?
+  ocrConfidence   Float?
+  standardCode    String?
+  expectedMethod  String?
+  verified        Boolean    @default(false)
+  computedAnswer  String?
+  misconceptionId String?
+  status          Status     @default(OPEN) // OPEN | SOLVED | PARKED
+  assignment      Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  packets         Packet[]
+
+  @@index([assignmentId])
+}
+
+model Packet {
+  id              String   @id @default(cuid())
+  problemId       String
+  register        Register
+  language        String
+  cacheKey        String   @unique // standardCode:register:language
+  primer          String
+  methodMatchJson Json
+  hintLadderJson  Json // string[5]
+  scriptsJson     Json // { avoid, use }[]
+  lockedAnswer    String
+  isomorphsJson   Json // string[3]
+  createdAt       DateTime @default(now())
+  problem         Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@index([problemId])
+}
+
+model Session {
+  id             String    @id @default(cuid())
+  childId        String
+  startedAt      DateTime  @default(now())
+  endedAt        DateTime?
+  mode           Mode // COACH | LIVE
+  autonomyScore  Float?
+  moveCountsJson Json?
+  parked         Boolean   @default(false)
+  moves          Move[]
+  cards          Card[]
+  child          Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@index([childId])
+}
+
+model Move {
+  id         String    @id @default(cuid())
+  sessionId  String
+  tOffset    Int // seconds from session start
+  label      MoveLabel
+  confidence Float
+  session    Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  // NOTE: no transcript column. Never store what was said.
+
+  @@index([sessionId])
+}
+
+model Card {
+  id           String    @id @default(cuid())
+  sessionId    String
+  tOffset      Int
+  triggerLabel MoveLabel
+  text         String
+  dismissed    Boolean   @default(false)
+  session      Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+model Misconception {
+  id             String  @id
+  topic          String
+  standardCode   String
+  signature      String // what the wrong work looks like
+  plainName      String // parent-facing, non-clinical
+  repairQuestion String
+  visualSvg      String?
+
+  @@index([standardCode])
+}
+
+model Standard {
+  id              String   @id
+  code            String   @unique // e.g. CCSS.MATH.4.NF.B.3
+  grade           Int
+  plainLanguage   String
+  expectedMethods String[]
+  parentMethod    String
+  // embedding vector(1536) added via raw SQL migration; Prisma has no
+  // native vector type, so it is read and written with $queryRaw.
+
+  @@index([grade])
+}
+
+model RateBucket {
+  id       String   @id @default(cuid())
+  key      String // ip:scope
+  windowAt DateTime
+  count    Int      @default(0)
+
+  @@unique([key, windowAt])
+}
+
+model SpendLog {
+  id  String @id @default(cuid())
+  day String @unique // YYYY-MM-DD
+  usd Float  @default(0)
+}
+
+model FailureLog {
+  id        String   @id @default(cuid())
+  at        DateTime @default(now())
+  scope     String
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([at])
+}
+
+enum Register {
+  PLAIN
+  STANDARD
+  TECHNICAL
+}
+
+enum Source {
+  PHOTO
+  PDF
+  VOICE
+  TEXT
+}
+
+enum Status {
+  OPEN
+  SOLVED
+  PARKED
+}
+
+enum Mode {
+  COACH
+  LIVE
+}
+
+enum MoveLabel {
+  GIVES_ANSWER
+  PROBING_QUESTION
+  GENERIC_PRAISE
+  SPECIFIC_PRAISE
+  CRITICISM
+  TAKES_OVER
+  PRODUCTIVE_WAIT
+  ANXIETY_STATEMENT
+  ESCALATION
+  NEUTRAL
+}
