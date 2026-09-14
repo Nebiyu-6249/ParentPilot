@@ -442,3 +442,119 @@ action or a category, never decorates prose.
 | Elevation was going onto the sheet as well | Soft shadow on the Live Mode card only; the sheet keeps its hard offset |
 | A genuinely new fourth hue was tempting for `--action` | Deep teal, already in the brand; a fourth hue would be decoration |
 | The relaxed ban list would have quietly permitted skeleton loaders | The status line stays; it is a product decision from the original brief, not a ban-list artefact |
+
+---
+
+# Round four, Part 1: chat-first, and a website around it
+
+## The move
+
+Two surfaces with opposite design rules, and that opposition is the plan.
+
+**The shell is deliberately unoriginal.** Sidebar left, thread centred,
+composer sticky at the bottom, history grouped by recency. A parent who has
+opened ChatGPT or Claude already knows where everything is, and every gram of
+novelty spent on the shell is a gram of learning charged to someone at eight in
+the evening with a frustrated child next to them.
+
+**The cards are where the product is unlike anything else**, so that is where
+the whole distinctiveness budget goes: the worksheet with its pencil working,
+the single large question, the press-and-hold answer, the method comparison.
+
+## Tokens: a new layer, not a replacement
+
+The existing `--surface-frame` / `--surface-sheet` layer stays exactly as it
+is, because `/problem/[id]`, `/shared`, `/privacy` and the rest still use it
+and are restyled in steps 6 and 7. `/app` gets its own layer beside it.
+
+Teal and emerald stop being surfaces and become accent and identity only, as
+the brief asks.
+
+| Token | Light | Dark | Role |
+|---|---|---|---|
+| `--app-bg` | `#FFFFFF` | `#191918` | the thread column |
+| `--app-rail` | `#F7F6F3` | `#141413` | the sidebar |
+| `--app-card` | `#FFFFFF` | `#212120` | a card in the thread |
+| `--app-bubble` | `#F2F1ED` | `#2B2B28` | the parent's own turn |
+| `--app-line` | `#E6E4DE` | `#34332E` | dividers and card edges |
+| `--app-text` | `#1A1A18` | `#EDEDE9` | body |
+| `--app-text-dim` | `#6B6862` | `#A8A49B` | secondary |
+| `--accent` | `#00A878` | `#00A878` | the brand, as accent |
+| `--accent-ink` | `#00664A` | `#3FD0A2` | accent as text, where it must pass AA |
+
+Contrast is computed from these in `npm run check`, same as the existing layer.
+
+## Type
+
+**Inter for the interface.** It was banned in round two and un-banned here, and
+un-banning it is the right call for this round specifically: it is the typeface
+of the products this shell is imitating, and imitation is the objective.
+
+**Fraunces stays for the wordmark and for the one large question in the `ask`
+card.** That is the whole of its remaining job. The mark keeps the brand
+present without the brand taking over the surface.
+
+## Radius and elevation, at mainstream values
+
+Round three capped radius at 4px. That cap is lifted here, because a 4px chat
+composer reads as a text input on a form rather than as a composer.
+
+```
+--r-control  8px     buttons, segmented control
+--r-card    12px     cards in the thread
+--r-bubble  18px     the parent's turn
+--r-composer 24px    the composer shell
+```
+
+Cards get one soft shadow, not three. The composer gets a slightly stronger one
+because it floats over scrolling content.
+
+## The empty state does the selling
+
+A blank composer is the single worst thing to show a parent who has just
+arrived, so the empty thread carries one line of intent, a large camera button,
+**the demo worksheet as a tappable card**, and three follow-ups written the way
+a parent actually types: "she's getting frustrated", "she got it but I don't
+think she understands", "what should I not say".
+
+The demo card matters most: it runs the entire loop with no photo, no account
+and no model call, so a parent can see what the product does before deciding
+whether to trust it with a photograph of their child's work.
+
+## Review pass
+
+| Caught | Changed to |
+|---|---|
+| Replacing the token layer would have broken every unrestyled route at once | A second layer beside the first; the old routes restyle in steps 6 and 7 |
+| Teal as the app background would have kept the old shell wearing new clothes | Neutral chrome; teal and emerald are accent and identity only |
+| Fraunces everywhere would have fought the convention the shell is imitating | Fraunces on the wordmark and the one large question, nowhere else |
+| The composer was drifting toward a paperclip menu | The camera is a first-class button; photographing a worksheet is the primary input |
+| Cards were all going to be open, which is the wall of panels this replaces | Collapsed by default except `ask`, which is always open |
+
+## What the first render of the shell got wrong
+
+The plan above survived contact with a browser; the execution did not. Six
+defects, all found by screenshotting the thing rather than reading the code.
+
+| Found on screen | Cause | Fix |
+|---|---|---|
+| On a phone the sidebar opened over the thread | `railOpen` defaulted to `true`, and below 860px the rail is a drawer | The stored preference is a desktop preference; the drawer starts closed, and a scrim dismisses it |
+| The whole surface squeezed into the left quarter of a phone | `.pp-app[data-rail="collapsed"]` is specificity 0,2,0 and beat the media query's bare `.pp-app`, leaving the thread in the 0-width track | The media query names all three rail states |
+| A degraded packet rendered exactly like a real reading | `cardsForPacket` dropped `bundle.notice` | A `notice` card, first in the turn, never collapsed |
+| Two tracked-out all-caps eyebrows, the round-two tell | `textTransform: uppercase` in the register control and the `ask` card | Sentence case in both; asserted so neither comes back |
+| The wordmark was near-invisible on the dark rail | `Logo` used `--brand-teal`, a fixed brand constant, on a surface whose ground changes with the theme | `Logo` takes a surface; on `app` the mark uses `--app-text` and emerald carries the brand |
+| The composer placeholder wrapped and the second line was clipped | 196px of text in a 194px box | The disabled send button, 46px of dead weight, now shares one slot with the microphone |
+
+Two of these are the kind that only a measurement catches, so both are now
+measured rather than described: `check:ui` asserts the thread fills a 390px
+phone and that the placeholder fits on one line in whatever font actually
+rendered.
+
+## Contrast, on a second surface
+
+The `--app-*` layer arrived with no contrast assertions at all, which is how
+the paper surface got to 1.10:1 in round three. Twelve pairs are now checked in
+both themes. One was a real failure: `--app-line` at 1.2:1 was drawing the
+composer and the outline buttons, and WCAG 1.4.11 wants 3:1 for a control
+identified by its border. `--app-border-interactive` splits the hairline from
+the boundary, the same split the paper surface already makes.

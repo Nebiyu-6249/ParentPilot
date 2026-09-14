@@ -276,6 +276,22 @@ export function ColumnsIcon(props: IconProps) {
   );
 }
 
+/**
+ * A panel beside a page. Toggles the thread sidebar.
+ *
+ * A cross was wrong here: a cross means dismiss, and the sidebar is not
+ * dismissed, it is folded away and comes back. This shows what the layout
+ * becomes.
+ */
+export function PanelIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 5h16v14H4z" />
+      <path d="M10 5v14" />
+    </Icon>
+  );
+}
+
 /** An open page. Used by the "what is this teaching" disclosure. */
 export function BookIcon(props: IconProps) {
   return (

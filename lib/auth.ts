@@ -23,15 +23,28 @@ import { prisma, hasDatabase } from "@/lib/db";
 const LINK_TTL_MINUTES = 15;
 const TOKEN_BYTES = 32;
 
+const DEVELOPMENT_SECRET = "parentpilot-development-secret-not-for-deployment";
+
 /**
  * The signing secret.
  *
- * A missing `AUTH_SECRET` falls back to a fixed development value so local
- * work is not blocked, and `/ops/doctor` reports it loudly, because a
- * deployment running on the development secret has forgeable sessions.
+ * In development a missing `AUTH_SECRET` falls back so local work is not
+ * blocked. **In production it throws.** A deployment signing sessions with a
+ * value published in this file has forgeable cookies for anyone who has read
+ * the source, which is everyone. Failing closed turns that from a silent
+ * vulnerability into a visible outage, and an outage is the lesser harm.
  */
 function secret(): string {
-  return process.env.AUTH_SECRET ?? "parentpilot-development-secret-not-for-deployment";
+  const configured = process.env.AUTH_SECRET;
+  if (configured) return configured;
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "AUTH_SECRET is not set. Refusing to sign sessions with the development fallback in production.",
+    );
+  }
+
+  return DEVELOPMENT_SECRET;
 }
 
 export function authSecretIsDefault(): boolean {
