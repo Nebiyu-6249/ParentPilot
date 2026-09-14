@@ -71,11 +71,11 @@ export default async function LandingPage() {
                 </p>
 
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 30 }}>
-                  <Link href="/problem/demo" style={onFrameButton("solid")}>
+                  <Link href="/app" style={onFrameButton("solid")}>
                     {copy.landing.tryButton}
                   </Link>
-                  <Link href="/setup" style={onFrameButton("outline")}>
-                    {copy.landing.secondaryCta}
+                  <Link href="/how-it-works" style={onFrameButton("outline")}>
+                    {copy.nav.howItWorks}
                   </Link>
                 </div>
 
@@ -177,6 +177,10 @@ export default async function LandingPage() {
             </figure>
           )}
 
+          <p style={{ marginTop: 22, fontSize: 16 }}>
+            <a href="/research">{copy.landing.researchLink}</a>
+          </p>
+
           <details style={{ marginTop: 26 }}>
             <summary
               style={{
@@ -210,7 +214,7 @@ export default async function LandingPage() {
 
         <div style={{ marginTop: 52, paddingTop: 32, borderTop: "1px solid var(--rule-on-sheet)" }}>
           <Link
-            href="/capture"
+            href="/app"
             style={{
               display: "inline-block",
               padding: "15px 26px",

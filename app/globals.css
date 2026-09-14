@@ -722,6 +722,19 @@ hr {
   white-space: nowrap;
 }
 
+/* The one door into the product, marked as such. Outlined rather than filled:
+   a solid button in a header competes with the hero's own action, and the hero
+   is where a first-time visitor should be looking. */
+.pp-nav-cta {
+  padding: 7px 14px;
+  border: 1px solid var(--border-interactive-frame);
+  text-decoration: none;
+}
+
+.pp-nav-cta:hover {
+  background: color-mix(in srgb, var(--text-on-frame) 10%, transparent);
+}
+
 /* On a phone the header was costing about 230px of an 844px viewport, which
    is a quarter of the screen spent on chrome before the parent sees anything.
    Tightened so every screen keeps its primary action above the fold with real
@@ -730,6 +743,13 @@ hr {
   .pp-nav {
     gap: 13px;
     font-size: 0.875rem;
+  }
+  /* Logo on the left, one door on the right, nothing else. Four links plus a
+     bordered call to action measured 478px in a 390px viewport and pushed the
+     whole page sideways. The three content links are in the footer, and each
+     page's own body links onward, so nothing becomes unreachable. */
+  .pp-nav a:not(.pp-nav-cta) {
+    display: none;
   }
   .pp-header-bar {
     padding-block: 8px !important;
@@ -775,6 +795,198 @@ hr {
   .pp-sheet-page {
     padding: 26px 20px 96px;
     box-shadow: none;
+  }
+}
+
+/* A page whose opening has no artifact beside it. The headline and the line
+   under it become the two columns, which fills the band without inventing
+   something to put in it. Asymmetric, because a display line and a paragraph
+   are not the same weight. */
+.pp-hero-cover {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: 56px;
+  align-items: end;
+}
+
+.pp-hero-standfirst {
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--text-on-frame-muted);
+  max-width: 46ch;
+}
+
+.pp-hero-standfirst-cover {
+  padding-bottom: 8px;
+}
+
+@media (max-width: 860px) {
+  .pp-hero-cover {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  .pp-hero-standfirst-cover {
+    padding-bottom: 0;
+  }
+}
+
+/* ---- The marketing site ---------------------------------------------
+
+   Four pages that each open on a real artifact rather than on a slogan. The
+   structures below exist because the content has a shape, not to decorate it:
+   a numbered sequence where the content is a sequence, a two column finding
+   where a finding and its consequence must not be read as one claim. */
+
+/* What happens to the photograph. Numbered because it genuinely is an
+   ordered process, and each stage carries the artifact it produces. */
+.pp-stages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  counter-reset: stage;
+}
+
+.pp-stage {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 20px;
+  padding: 26px 0;
+  border-top: 1px solid var(--rule-on-sheet);
+}
+
+.pp-stage:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.pp-stage-mark {
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1;
+  color: var(--annotation);
+  font-variant-numeric: tabular-nums;
+}
+
+.pp-stage-title {
+  font-size: 1.15rem;
+  margin-bottom: 8px;
+}
+
+.pp-stage-body {
+  font-size: 16.5px;
+  line-height: 1.6;
+  max-width: 62ch;
+}
+
+/* The thing that stage produced, quoted from the fixture. Set apart from the
+   prose so it reads as output rather than as more description. */
+.pp-stage-artifact {
+  margin-top: 14px;
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--annotation) 6%, transparent);
+  border-left: 2px solid var(--annotation);
+  font-size: 15.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  max-width: 62ch;
+}
+
+/* A finding and what it changed, side by side. The rule between them is the
+   argument of the page: the left column is somebody else's result and the
+   right column is ours, and they are not the same kind of statement. */
+.pp-findings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pp-finding {
+  display: grid;
+  grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  gap: 40px;
+  padding: 28px 0;
+  border-top: 1px solid var(--rule-on-sheet);
+}
+
+.pp-finding:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.pp-finding-consequence {
+  padding-left: 40px;
+  border-left: 1px solid var(--rule-on-sheet);
+}
+
+.pp-promises {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 32px 44px;
+}
+
+.pp-promise {
+  max-width: 46ch;
+}
+
+.pp-plain-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 62ch;
+}
+
+.pp-plain-list li {
+  padding: 14px 0 14px 22px;
+  border-top: 1px solid var(--rule-on-sheet);
+  font-size: 16.5px;
+  line-height: 1.6;
+  position: relative;
+}
+
+.pp-plain-list li:first-child {
+  border-top: 0;
+}
+
+/* A short rule standing in for a bullet. The list is a set of refusals, and a
+   dot would make them read as features. */
+.pp-plain-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 25px;
+  width: 12px;
+  height: 1px;
+  background: var(--annotation);
+}
+
+/* A file path, named on the privacy page so a claim can be checked against
+   the code that makes it true. */
+.pp-source-file {
+  display: inline-block;
+  margin-top: 10px;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 13px;
+  color: var(--text-on-sheet-muted);
+}
+
+@media (max-width: 860px) {
+  .pp-finding,
+  .pp-promises {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  .pp-finding-consequence {
+    padding-left: 0;
+    padding-top: 18px;
+    border-left: 0;
+    border-top: 1px solid var(--rule-on-sheet);
+  }
+  .pp-stage {
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 14px;
+  }
+  .pp-stage-mark {
+    font-size: 20px;
   }
 }
 

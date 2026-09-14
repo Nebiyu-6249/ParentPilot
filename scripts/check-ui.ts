@@ -74,6 +74,29 @@ async function run(browser: Browser): Promise<void> {
     await context.close();
   }
 
+  section("The marketing site fits a phone");
+
+  {
+    /* Every page, at the narrow size, measured rather than eyeballed. The nav
+       regressed here the moment it grew a fourth link: 478px of links in a
+       390px viewport pushed all five pages sideways. */
+    const narrow = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    for (const url of ["/", "/how-it-works", "/research", "/for-teachers", "/privacy"]) {
+      const page = await narrow.newPage();
+      await page.goto(BASE + url, { waitUntil: "networkidle" });
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(400);
+      const widths = await page.evaluate(() => ({
+        client: document.documentElement.clientWidth,
+        scroll: document.documentElement.scrollWidth,
+      }));
+      ok(`${url}: nothing overflows sideways  (${widths.scroll}px in ${widths.client}px)`,
+        widths.scroll <= widths.client + 1);
+      await page.close();
+    }
+    await narrow.close();
+  }
+
   section("The problem screen is one question");
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
