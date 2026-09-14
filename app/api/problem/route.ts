@@ -6,6 +6,11 @@ import { ensureParent } from "@/lib/session";
 
 export const runtime = "nodejs";
 
+const statusSchema = z.object({
+  problemId: z.string().min(1),
+  status: z.enum(["OPEN", "SOLVED", "PARKED"]),
+});
+
 const bodySchema = z.object({
   printedText: z.string().min(1).max(600),
   childWorkText: z.string().max(2000).nullable().optional(),
@@ -52,5 +57,35 @@ export async function POST(request: Request): Promise<Response> {
   } catch (error) {
     console.error("[api/problem] failed", error);
     return NextResponse.json({ problemId: null });
+  }
+}
+
+/**
+ * Records the outcome of a problem.
+ *
+ * Called when the parent taps "She answered it". Best effort on the client
+ * side: a failed write costs the recap a row and the parent nothing, so it
+ * never blocks the screen.
+ */
+export async function PATCH(request: Request): Promise<Response> {
+  const parsed = statusSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: "bad request" }, { status: 400 });
+
+  // The demo fixture is not a row. Accepting the call keeps the demo path
+  // identical to the real one rather than erroring on a screen a reviewer is
+  // most likely to be looking at.
+  if (parsed.data.problemId === "demo" || !hasDatabase()) {
+    return NextResponse.json({ ok: true, persisted: false });
+  }
+
+  try {
+    await prisma.problem.update({
+      where: { id: parsed.data.problemId },
+      data: { status: parsed.data.status },
+    });
+    return NextResponse.json({ ok: true, persisted: true });
+  } catch (error) {
+    console.error("[api/problem] status update failed", error);
+    return NextResponse.json({ ok: false }, { status: 500 });
   }
 }

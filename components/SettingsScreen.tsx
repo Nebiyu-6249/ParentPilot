@@ -114,9 +114,9 @@ export default function SettingsScreen({
               padding: "14px 18px",
               marginBottom: 10,
               fontSize: 16,
-              background: anxietyBand === option.band ? "var(--emerald)" : "transparent",
-              color: anxietyBand === option.band ? "var(--paper)" : "var(--ink)",
-              border: `1px solid ${anxietyBand === option.band ? "var(--emerald)" : "var(--rule)"}`,
+              background: anxietyBand === option.band ? "var(--action)" : "transparent",
+              color: anxietyBand === option.band ? "var(--action-label)" : "var(--ink)",
+              border: `1px solid ${anxietyBand === option.band ? "var(--action)" : "var(--border-interactive)"}`,
             }}
           >
             {option.label}

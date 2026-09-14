@@ -13,7 +13,7 @@
  * README.md, which needs a key and a human reading the output.
  */
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
 import { copy, sanitize, sanitizeDeep } from "../lib/copy";
@@ -209,11 +209,24 @@ ok("rejects a gradient", sanitizeSvg('<svg viewBox="0 0 10 10"><linearGradient i
 ok("rejects an external image", sanitizeSvg('<svg viewBox="0 0 10 10"><image href="http://x/y.png"/></svg>') === null);
 ok("rejects non-svg input", sanitizeSvg("<div>hi</div>") === null);
 {
-  const rounded = sanitizeSvg('<svg viewBox="0 0 10 10"><rect width="5" height="5" rx="3" fill="#00A878"/></svg>');
+  const rounded = sanitizeSvg('<svg viewBox="0 0 10 10"><rect width="5" height="5" rx="3" fill="currentColor"/></svg>');
   ok("strips a rounded corner", rounded !== null && !rounded.includes("rx="));
-  ok("keeps a palette colour", rounded !== null && rounded.includes('fill="#00A878"'));
+  ok("keeps currentColor", rounded !== null && rounded.includes('fill="currentColor"'));
+
+  const token = sanitizeSvg('<svg viewBox="0 0 10 10"><rect width="5" height="5" fill="var(--annotation)"/></svg>');
+  ok("keeps an allowed semantic token", token !== null && token.includes("var(--annotation)"));
+
+  const unknownToken = sanitizeSvg('<svg viewBox="0 0 10 10"><rect width="5" height="5" fill="var(--not-a-token)"/></svg>');
+  ok("strips an unknown token", unknownToken !== null && !unknownToken.includes("--not-a-token"));
+
+  // A hex paints identically in both themes. #14201E on the dark sheet is
+  // 1.1 to 1, which is invisible, so hex is rejected even from the brand
+  // palette rather than trusted to be the right value.
+  const brandHex = sanitizeSvg('<svg viewBox="0 0 10 10"><rect width="5" height="5" fill="#00A878"/></svg>');
+  ok("strips a brand hex, because a hex cannot follow the theme",
+    brandHex !== null && !brandHex.includes("#00A878"));
   const off = sanitizeSvg('<svg viewBox="0 0 10 10"><rect width="5" height="5" fill="#ff00ff"/></svg>');
-  ok("strips an off-palette colour", off !== null && !off.includes("ff00ff"));
+  ok("strips an off-palette hex", off !== null && !off.includes("ff00ff"));
 }
 
 // ---------------------------------------------------------------------------
@@ -399,15 +412,39 @@ section("Colour contrast, computed from the tokens rather than asserted");
     const close = css.indexOf("}", open);
     const body = css.slice(open + 1, close);
     const out: Record<string, string> = {};
-    for (const m of body.matchAll(/(--[\w-]+)\s*:\s*(#[0-9a-fA-F]{3,8})\s*;/g)) {
+    for (const m of body.matchAll(/(--[\w-]+)\s*:\s*(#[0-9a-fA-F]{3,8}|var\([^)]*\))\s*;/g)) {
       const [, name, value] = m;
-      if (name && value) out[name] = value;
+      if (name && value) out[name] = value.trim();
     }
     return out;
   };
 
-  const light = readTokens(":root {");
-  const dark = { ...light, ...readTokens(':root[data-theme="dark"] {') };
+  /**
+   * Follows `--ink: var(--text-on-sheet)` through to a literal.
+   *
+   * The legacy tokens are aliases now. Reading them without resolving would
+   * silently skip exactly the ones that were broken: --ink rendered at
+   * 1.10 to 1 in dark mode and no assertion noticed, because the parser only
+   * looked at literal hex.
+   */
+  const resolve = (tokens: Record<string, string>): Record<string, string> => {
+    const out: Record<string, string> = {};
+    for (const key of Object.keys(tokens)) {
+      let value = tokens[key] ?? "";
+      for (let hop = 0; hop < 8 && value.startsWith("var("); hop += 1) {
+        const ref = value.match(/^var\(\s*(--[\w-]+)\s*\)$/)?.[1];
+        if (!ref) break;
+        value = tokens[ref] ?? "";
+      }
+      if (value.startsWith("#")) out[key] = value;
+    }
+    return out;
+  };
+
+  const lightRaw = readTokens(":root {");
+  const darkRaw = { ...lightRaw, ...readTokens(':root[data-theme="dark"] {') };
+  const light = resolve(lightRaw);
+  const dark = resolve(darkRaw);
 
   const channel = (v: number): number => {
     const c = v / 255;
@@ -441,6 +478,28 @@ section("Colour contrast, computed from the tokens rather than asserted");
     ["--annotation-on-frame", "--surface-frame", 3.0, "the pen mark on the desk"],
     ["--pencil", "--surface-sheet", 4.5, "the child's handwriting on paper"],
     ["--alert-fg", "--surface-sheet", 4.5, "alert text on paper"],
+
+    // The legacy aliases. Most of the app still asks for these by name, so
+    // they are assertable surface, not internal detail. Before they became
+    // aliases, --ink on the dark sheet was 1.10 to 1.
+    ["--ink", "--paper", 4.5, "legacy --ink on legacy --paper"],
+    ["--muted", "--paper", 4.5, "legacy --muted on legacy --paper"],
+    ["--teal", "--paper", 4.5, "legacy --teal, used for headings and badges"],
+    ["--emerald", "--paper", 3.0, "legacy --emerald, used for marks and fills"],
+    ["--alert", "--paper", 4.5, "legacy --alert"],
+    // A divider hairline is decorative and carries no meaning, so it has no
+    // contrast floor. The boundary of an interactive control does, under WCAG
+    // 1.4.11, and it used to share the divider token at 1.33 to 1 on paper.
+    ["--border-interactive", "--surface-sheet", 3.0, "input and button borders on paper"],
+    ["--border-interactive-frame", "--surface-frame", 3.0, "control borders on the desk"],
+    ["--border-interactive-frame", "--surface-frame-deep", 3.0, "control borders in the header"],
+    // The selected segment of the register control is text on the annotation
+    // fill, which is a primary control and easy to miss when only surfaces
+    // are checked.
+    ["--paper", "--annotation", 4.5, "label on a selected control"],
+    // The third voice. A filled action with its own label colour.
+    ["--action-label", "--action", 4.5, "label on a primary action"],
+    ["--action", "--surface-sheet", 4.5, "an outlined action on paper"],
   ];
 
   for (const [mode, tokens] of [["light", light], ["dark", dark]] as const) {
@@ -463,11 +522,42 @@ section("Colour contrast, computed from the tokens rather than asserted");
   // even the non-text threshold, so the on-paper variant must be darker.
   ok("the on-paper pen is darker than brand emerald, because #00A878 on paper is 2.71",
     (light["--annotation"] ?? "").toLowerCase() !== "#00a878");
-  ok("emerald holds in dark mode",
-    (dark["--annotation"] ?? "").toLowerCase() === "#00a878");
-  // "Rules get lighter rather than darker" in dark mode.
-  ok("dark rules are lighter than the surface they sit on",
-    luminance(dark["--rule-on-sheet"] ?? "#000000") > luminance(dark["--surface-sheet"] ?? "#ffffff"));
+
+  /* ---- The Part B invariant -------------------------------------------
+
+     Dark mode is the same scene at night, not an inversion. The room goes
+     unlit and the paper stays paper, dimmed. The first attempt made the sheet
+     #132A25 against a #0A1614 desk: two dark greens close in value, so the
+     paper stopped reading as paper and the child's pencil working read as
+     chalk on a blackboard, which inverts whose surface it is. */
+  const lighter = (a: string | undefined, b: string | undefined): boolean =>
+    luminance(a ?? "#000000") > luminance(b ?? "#ffffff");
+
+  for (const [mode, tokens] of [["light", light], ["dark", dark]] as const) {
+    ok(`${mode}: the sheet is lighter than the desk, so paper reads as paper`,
+      lighter(tokens["--surface-sheet"], tokens["--surface-frame"]));
+    ok(`${mode}: ink is darker than the sheet it is written on`,
+      lighter(tokens["--surface-sheet"], tokens["--text-on-sheet"]));
+    ok(`${mode}: rules on paper are darker than the paper`,
+      lighter(tokens["--surface-sheet"], tokens["--rule-on-sheet"]));
+    ok(`${mode}: rules on the desk are lighter than the desk`,
+      lighter(tokens["--rule-on-frame"], tokens["--surface-frame"]));
+  }
+
+  // The dimmed sheet must genuinely be dimmer, or dark mode emits as much
+  // light as day mode and the setting is cosmetic.
+  const dayPaper = luminance(light["--surface-sheet"] ?? "#ffffff");
+  const nightPaper = luminance(dark["--surface-sheet"] ?? "#ffffff");
+  ok(`the night sheet is dimmed, not merely tinted  (${((nightPaper / dayPaper) * 100).toFixed(0)}% of daytime luminance)`,
+    nightPaper < dayPaper * 0.9);
+
+  /* Because the sheet stays paper, everything written on it is unchanged
+     between modes. That is the economy the design buys: a designed variant
+     needs fewer overrides than a darkened copy, not more. */
+  for (const token of ["--text-on-sheet", "--pencil", "--annotation", "--accent-on-sheet"]) {
+    ok(`${token} is one value in both modes`,
+      (light[token] ?? "L").toLowerCase() === (dark[token] ?? "D").toLowerCase());
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -507,6 +597,250 @@ section("Redesign direction holds");
   ok(`the compass diamond is used once, in the compass icon only (${diamondUses})`, diamondUses === 1);
   ok("no icon library", !/lucide|heroicons|phosphor|react-icons/i.test(icons));
   ok("icons are a 24px grid at 1.5px", icons.includes('viewBox="0 0 24 24"') && icons.includes("strokeWidth={1.5}"));
+}
+
+// ---------------------------------------------------------------------------
+
+section("No literal colour inside any seeded or generated markup");
+
+{
+  /**
+   * A hex inside an SVG paints identically in both themes. `#14201E` on the
+   * dark sheet is 1.1 to 1, which is invisible, and every diagram in the seed
+   * files carried one. The rule is enforced in three places so it cannot come
+   * back: here, in the sanitiser, and in the packet prompt.
+   */
+  const HEX = /#[0-9a-fA-F]{3,8}\b/;
+  const MARKUP_FIELDS = new Set(["visualSvg", "svg"]);
+
+  const findHex = (node: unknown, at: string, into: string[]): void => {
+    if (typeof node === "string") {
+      if (node.includes("<svg") && HEX.test(node)) {
+        into.push(`${at}: ${node.match(HEX)?.[0] ?? ""}`);
+      }
+      return;
+    }
+    if (Array.isArray(node)) {
+      node.forEach((v, i) => findHex(v, `${at}[${i}]`, into));
+      return;
+    }
+    if (node && typeof node === "object") {
+      for (const [k, v] of Object.entries(node)) {
+        // Markup fields are checked whether or not they announce themselves,
+        // and every other string is checked for embedded markup too.
+        if (MARKUP_FIELDS.has(k) && typeof v === "string" && HEX.test(v)) {
+          into.push(`${at}.${k}: ${v.match(HEX)?.[0] ?? ""}`);
+        } else {
+          findHex(v, `${at}.${k}`, into);
+        }
+      }
+    }
+  };
+
+  for (const file of ["standards.json", "misconceptions.json", "demo-packet.json"]) {
+    const found: string[] = [];
+    findHex(readSeed<unknown>(file), file, found);
+    ok(`${file} contains no literal hex inside markup${found.length ? `  (${found.join(", ")})` : ""}`,
+      found.length === 0);
+  }
+
+  // Every diagram in the seed must still survive the sanitiser, which now
+  // rejects hex. A stripped fill is a missing shape, not a wrong colour.
+  interface WithSvg { id: string; visualSvg: string | null }
+  const misconceptions = readSeed<WithSvg[]>("misconceptions.json");
+  for (const m of misconceptions) {
+    if (!m.visualSvg) continue;
+    const clean = sanitizeSvg(m.visualSvg);
+    ok(`${m.id}: diagram survives the sanitiser`, clean !== null);
+    ok(`${m.id}: diagram inherits colour rather than naming one`,
+      clean !== null && (clean.includes("currentColor") || clean.includes("var(--")));
+  }
+
+  const demoPackets = readSeed<{ packets: Record<string, { methodMatch: { schoolMethod: { svg: string } } }> }>(
+    "demo-packet.json",
+  ).packets;
+  for (const [register, packet] of Object.entries(demoPackets)) {
+    const clean = sanitizeSvg(packet.methodMatch.schoolMethod.svg);
+    ok(`demo ${register}: Method Match diagram survives and follows the theme`,
+      clean !== null && (clean.includes("currentColor") || clean.includes("var(--")));
+  }
+
+  // The wrapper has to set a colour, or currentColor resolves to whatever it
+  // inherits and the rule achieves nothing.
+  const css = readFileSync(path.join(process.cwd(), "app", "globals.css"), "utf8");
+  ok("the diagram wrapper sets a colour for currentColor to resolve against",
+    /\.pp-diagram\s*\{[^}]*color:\s*var\(--text-on-sheet\)/.test(css));
+
+  // And the prompt states the rule, or every future generated diagram
+  // reintroduces the bug.
+  const packetPrompt = readFileSync(path.join(process.cwd(), "prompts", "generate-packet.md"), "utf8");
+  const flat = packetPrompt.replace(/\s+/g, " ");
+  ok("the packet prompt forbids hex inside an SVG", /never emit a hex colour/i.test(flat));
+  ok("the packet prompt names currentColor", flat.includes("currentColor"));
+  ok("the packet prompt names the semantic tokens", flat.includes("var(--annotation)"));
+  ok("the packet prompt no longer instructs a hex palette", !/#14201E.*for lines and text/i.test(flat));
+}
+
+// ---------------------------------------------------------------------------
+
+section("The problem screen is one question, not an essay");
+
+{
+  const screen = readFileSync(path.join(process.cwd(), "components", "PacketScreen.tsx"), "utf8");
+  const disclosure = readFileSync(path.join(process.cwd(), "components", "Disclosure.tsx"), "utf8");
+
+  // Everything that used to open the screen is now behind a closed control.
+  for (const key of ["discloseWhy", "discloseMethods", "discloseTeaching", "discloseScripts", "discloseAnswer"] as const) {
+    ok(`${key} is rendered as a disclosure`, screen.includes(`copy.packet.${key}`));
+  }
+
+  // Closed by default, and never opened by an attribute.
+  ok("disclosures are built on <details> and are closed by default",
+    disclosure.includes("<details") && !/\bopen\b\s*[=>]/.test(disclosure));
+
+  // The answer is the escape hatch, so it is the last thing on the screen.
+  const order = ["discloseWhy", "discloseMethods", "discloseTeaching", "discloseScripts", "discloseAnswer"]
+    .map((k) => screen.indexOf(`copy.packet.${k}`));
+  ok("the answer disclosure is last, furthest from the thumb",
+    order.every((pos, i) => i === 0 || pos > (order[i - 1] ?? -1)));
+
+  // One primary action. "Still stuck" continues the flow and is filled;
+  // "She answered it" is the quiet end of the task.
+  ok("Still stuck is the primary action", screen.includes("copy.packet.stillStuck"));
+  ok("She answered it is present but secondary", screen.includes("copy.packet.answeredIt"));
+  ok("the ladder advances one rung at a time, never as a list",
+    screen.includes("Math.min(n + 1, rungs.length - 1)"));
+
+  // The primer no longer opens the screen, and is truncated by default.
+  ok("the primer is cut to its opening sentences by default",
+    screen.includes("primerOpening") && screen.includes("copy.packet.primerMore"));
+
+  // Isomorphs belong to the solved state, where their own copy says they do.
+  const solvedAt = screen.indexOf("copy.packet.solvedHeading");
+  const isomorphAt = screen.indexOf("packet.isomorphs");
+  ok("the isomorphs sit on the solved path, not the stuck path",
+    solvedAt !== -1 && isomorphAt > solvedAt);
+
+  // The component the ladder replaced is gone rather than orphaned.
+  ok("the old list-style hint ladder component is removed",
+    !existsSync(path.join(process.cwd(), "components", "HintLadder.tsx")));
+}
+
+// ---------------------------------------------------------------------------
+
+section("The third voice: actions and annotations are different colours");
+
+{
+  const css = readFileSync(path.join(process.cwd(), "app", "globals.css"), "utf8");
+  const componentFiles = listFiles("components", /\.tsx$/).concat(listFiles("app", /\.tsx$/));
+  const components = componentFiles.map((f) => readFileSync(f, "utf8")).join("\n");
+
+  ok("an action colour exists, separate from the pen", css.includes("--action:"));
+  ok("it has its own label colour", css.includes("--action-label:"));
+
+  /* Emerald is the pen: the marks a teacher makes on a page. Round two said
+     explicitly that it is not a button fill everywhere, and Part D had
+     regressed to filling the primary button with it, so one colour meant both
+     "this is the error" and "press this". */
+  const penAsFill = [
+    /background:\s*"var\(--emerald\)"/,
+    /background:\s*"var\(--annotation\)"/,
+    /background:\s*[^,;]*\?\s*"var\(--emerald\)"/,
+    /background:\s*[^,;]*\?\s*"var\(--annotation\)"/,
+  ];
+  for (const pattern of penAsFill) {
+    const hit = components.match(pattern);
+    ok(`the pen is never a button fill${hit ? `  (found ${JSON.stringify(hit[0])})` : ""}`, hit === null);
+  }
+
+  ok("the primary button uses the action colour", components.includes('background: "var(--action)"'));
+  // The pen still marks things: the hero ring, the error label, the doctor.
+  ok("the pen still marks the page", components.includes("var(--annotation)"));
+}
+
+// ---------------------------------------------------------------------------
+
+section("Accounts are parent accounts, and the session is not a bearer id");
+
+{
+  const auth = readFileSync(path.join(process.cwd(), "lib", "auth.ts"), "utf8");
+  const session = readFileSync(path.join(process.cwd(), "lib", "session.ts"), "utf8");
+  const email = readFileSync(path.join(process.cwd(), "lib", "email.ts"), "utf8");
+
+  /* The no-child-account invariant, at the one place it could plausibly be
+     broken. The auth module reads and writes Parent and nothing else; there is
+     no Child table access in it at all, so there is no code path that could
+     mint a credential for a child. */
+  ok("the auth module never touches the Child table",
+    !/prisma\.child\b/i.test(auth));
+  ok("the auth module has no notion of a child at all",
+    !/\bchild\b/i.test(auth.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ")));
+
+  // The cookie used to hold a bare Parent.id. A cuid embeds a timestamp and a
+  // counter rather than being random, so once an id carries an identity an
+  // unsigned cookie is account takeover for anyone who can guess one.
+  ok("the session cookie is signed", auth.includes("createHmac") && auth.includes("sealSession"));
+  ok("the signature is compared in constant time", auth.includes("timingSafeEqual"));
+  ok("the session module seals what it writes", session.includes("sealSession("));
+  ok("the session module verifies what it reads", session.includes("openSession("));
+  ok("a bare parent id is never written to the cookie",
+    !/store\.set\(COOKIE,\s*parent\.id/.test(session));
+
+  // A leaked database should hand over hashes, not live sign-in links.
+  ok("the link token is hashed before storage", auth.includes("createHash") && auth.includes("tokenHash"));
+  ok("the raw token is generated from a CSPRNG", auth.includes("randomBytes"));
+  ok("links expire", auth.includes("expiresAt"));
+  ok("links are single use", auth.includes("usedAt"));
+  ok("asking again retires the previous link", auth.includes("updateMany"));
+
+  // A sign-in link rendered in a page would let a visitor sign in as any
+  // address they can type.
+  ok("an undeliverable link goes to the server log, never to the browser",
+    email.includes("console.warn") && !/return[^;]*\burl\b/.test(email));
+}
+
+// ---------------------------------------------------------------------------
+
+section("Audio primer, Studio panel and citations");
+
+{
+  const provider = readFileSync(path.join(process.cwd(), "lib", "ai", "provider.ts"), "utf8");
+  const route = readFileSync(path.join(process.cwd(), "app", "api", "audio", "route.ts"), "utf8");
+  const studio = readFileSync(path.join(process.cwd(), "components", "StudioPanel.tsx"), "utf8");
+  const citation = readFileSync(path.join(process.cwd(), "components", "Citation.tsx"), "utf8");
+
+  ok("the voice is nova", provider.includes('DEFAULT_TTS_VOICE = "nova"'));
+  ok("speech goes through the provider like every other model call",
+    provider.includes("export async function speakPrimer"));
+  ok("and increments the spend ledger", /speakPrimer[\s\S]{0,900}recordSpend/.test(provider));
+  ok("the route never calls the SDK itself", !/new OpenAI|openai\.audio/.test(route));
+
+  // Cached on the packet key, so a primer is spoken once per standard,
+  // register and language rather than once per listen.
+  ok("audio is cached on the packet cache key", route.includes("packetCacheKey("));
+  ok("the cache is consulted before generating",
+    route.indexOf("audioPrimer.findUnique") < route.indexOf("speakPrimer("));
+  ok("the spend ceiling is honoured", route.includes("spendCeilingReached"));
+  ok("requests are rate limited", route.includes("consume("));
+
+  /* The Studio panel lists what a session can produce. It stops where the
+     product stops: a flashcard or a quiz is an artifact for a learner to study
+     from, and this product does not address the learner. */
+  for (const refused of ["flashcard", "quiz", "mind map", "slide", "video overview"]) {
+    const pattern = new RegExp(refused.replace(" ", "\\s*"), "i");
+    const inCode = studio.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+    // The panel may name them in the copy that explains their absence, but it
+    // must never offer one.
+    const offered = new RegExp(`(onClick|href)[^\n]*${refused.split(" ")[0]}`, "i").test(inCode);
+    ok(`the Studio panel does not offer ${refused}s`, !offered && pattern.test(studio) === pattern.test(studio));
+  }
+  ok("the Studio panel offers the teacher note, the share link and the audio primer",
+    studio.includes("copy.studio.teacherNote") &&
+      studio.includes("copy.studio.shareLink") &&
+      studio.includes("copy.studio.audioPrimer"));
+
+  ok("citations expand in place rather than navigating away",
+    citation.includes("useState") && !citation.includes("<a "));
 }
 
 // ---------------------------------------------------------------------------
@@ -588,14 +922,23 @@ section("Design system, scanned over source with comments stripped");
   ];
   const source = files.map((f) => stripComments(readFileSync(f, "utf8"))).join("\n");
 
+  /* The revised ban list. Radius, elevation, bento grids, pastels, coloured
+     left stripes and skeleton loaders came off it in round three; harshness
+     is now a matter of judgement rather than of regex, so what remains here
+     is only what a pattern can honestly detect.
+
+     The status line is kept over a skeleton loader by choice, not by ban: it
+     is a product decision from the original brief, and a skeleton implies the
+     shape of the result is known when a 20 second model call means it is not. */
   const forbidden: [string, RegExp][] = [
-    ["gradients", /linear-gradient|radial-gradient|conic-gradient/],
-    ["icon libraries", /lucide|react-icons|@heroicons|font-awesome/i],
+    ["radial orbs", /radial-gradient|conic-gradient/],
+    ["dot grids", /repeating-(linear|radial)-gradient/],
+    ["icon libraries", /lucide|react-icons|@heroicons|phosphor|font-awesome/i],
     ["the forbidden typefaces", /["'\s](Inter|Geist|Space Grotesk)["',]/],
     ["glassmorphism", /backdrop-?[Ff]ilter/],
-    ["skeleton loaders", /[Ss]keleton/],
-    ["a non-zero border radius", /border-?[Rr]adius:\s*["']?[1-9]|borderRadius:\s*[1-9]/],
     ["springy easing", /cubic-bezier\([^)]*\b1\.[1-9]/],
+    ["streak counters", /streak/i],
+    ["confetti", /confetti/i],
   ];
 
   for (const [name, pattern] of forbidden) {
@@ -604,8 +947,21 @@ section("Design system, scanned over source with comments stripped");
   }
 
   const css = readFileSync(path.join(process.cwd(), "app", "globals.css"), "utf8");
-  ok("every radius token collapses to zero", /--radius-[\w]+:\s*0px;/.test(css));
-  ok("a global rule forces square corners", /\*\s*\{[^}]*border-radius:\s*0\s*!important/.test(css));
+  /* A small radius is allowed now, but only as a signal that something can be
+     pressed. The sledgehammer is gone, the scale is capped so nothing can
+     reach a pill, and paper opts back out. */
+  ok("the global border-radius sledgehammer is gone",
+    !/\*\s*\{[^}]*border-radius:\s*0\s*!important/.test(css));
+
+  const radii = [...css.matchAll(/--radius-[\w-]+:\s*(\d+)px;/g)].map((m) => Number(m[1]));
+  ok(`no radius token exceeds 4px, so nothing can become a pill  (max ${Math.max(...radii, 0)}px)`,
+    radii.length > 0 && radii.every((r) => r <= 4));
+  ok("interactive elements carry the control radius",
+    /button,\s*\n\s*input,\s*\n\s*select,\s*\n\s*textarea\s*\{[^}]*border-radius:\s*var\(--radius-control\)/.test(css));
+  ok("paper opts back out, because paper has square corners",
+    /\.pp-sheet-page[\s\S]{0,160}border-radius:\s*0;/.test(css));
+  ok("the focus ring follows the radius it sits on rather than being forced square",
+    /:focus-visible\s*\{[^}]*border-radius:\s*inherit/.test(css));
   ok("body type is at least 17px", /font-size:\s*17px/.test(css));
   ok("body line height is 1.6", /line-height:\s*1\.6/.test(css));
   ok("reduced motion is honoured", css.includes("prefers-reduced-motion: reduce"));

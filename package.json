@@ -14,7 +14,8 @@
     "seed": "tsx scripts/seed.ts",
     "postinstall": "prisma generate",
     "check": "tsx scripts/check.ts",
-    "check:db": "tsx scripts/check-db.ts"
+    "check:db": "tsx scripts/check-db.ts",
+    "check:ui": "tsx scripts/check-ui.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",
@@ -30,6 +31,7 @@
     "@types/node": "^22.10.7",
     "@types/react": "^19.0.7",
     "@types/react-dom": "^19.0.3",
+    "playwright": "^1.56.0",
     "prisma": "^6.2.1",
     "tailwindcss": "^4.0.0",
     "tsx": "^4.19.2",

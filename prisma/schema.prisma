@@ -19,13 +19,31 @@ datasource db {
 }
 
 model Parent {
-  id          String   @id @default(cuid())
-  email       String?  @unique
-  register    Register @default(STANDARD)
-  anxietyBand Int      @default(2) // 1 loved it .. 4 miserable
-  language    String   @default("en")
-  createdAt   DateTime @default(now())
-  children    Child[]
+  id              String    @id @default(cuid())
+  email           String?   @unique
+  emailVerifiedAt DateTime?
+  register        Register  @default(STANDARD)
+  anxietyBand     Int       @default(2) // 1 loved it .. 4 miserable
+  language        String    @default("en")
+  createdAt       DateTime  @default(now())
+  children        Child[]
+}
+
+/// A single-use sign-in link.
+///
+/// The raw token is emailed and never stored: only its SHA-256 hash is kept,
+/// so a leaked database does not hand over live sign-in links. Rows are
+/// single-use (`usedAt`) and short-lived (`expiresAt`).
+model MagicLink {
+  id        String    @id @default(cuid())
+  email     String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email])
+  @@index([expiresAt])
 }
 
 model Child {
@@ -44,13 +62,13 @@ model Child {
 }
 
 model Assignment {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   childId    String
   source     Source // PHOTO | PDF | VOICE | TEXT
-  capturedAt DateTime @default(now())
+  capturedAt DateTime  @default(now())
   pageUrls   String[]
   problems   Problem[]
-  child      Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  child      Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
 
   @@index([childId])
 }
@@ -102,9 +120,17 @@ model Session {
   autonomyScore  Float?
   moveCountsJson Json?
   parked         Boolean   @default(false)
-  moves          Move[]
-  cards          Card[]
-  child          Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  /// Read-only share link for a teacher. Random, revocable by setting it back
+  /// to null, and expiring. What the link renders is derived from `moves`,
+  /// which hold a label and a timestamp and no words, so there is no path from
+  /// a share token to anything that was said.
+  shareToken     String?   @unique
+  shareExpiresAt DateTime?
+
+  moves Move[]
+  cards Card[]
+  child Child  @relation(fields: [childId], references: [id], onDelete: Cascade)
 
   @@index([childId])
 }
@@ -166,6 +192,22 @@ model RateBucket {
   count    Int      @default(0)
 
   @@unique([key, windowAt])
+}
+
+/// Cached text-to-speech of a packet primer.
+///
+/// Keyed by the same cache key as the packet it reads, so a primer is spoken
+/// once per standard, register and language rather than once per listen. The
+/// bytes live here rather than in object storage because the product has no
+/// bucket and a two minute primer is a few hundred kilobytes.
+model AudioPrimer {
+  id        String   @id @default(cuid())
+  cacheKey  String   @unique
+  voice     String
+  mimeType  String   @default("audio/mpeg")
+  bytes     Bytes
+  seconds   Int      @default(0)
+  createdAt DateTime @default(now())
 }
 
 model SpendLog {

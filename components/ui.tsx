@@ -8,19 +8,35 @@ import type { CSSProperties, ReactNode } from "react";
  * pieces plus plain elements.
  */
 
-/** Single-column editorial column, measure capped, thumb-safe bottom padding. */
-export function Page({ children, style }: { children: ReactNode; style?: CSSProperties }) {
+/**
+ * A content screen: a sheet of paper lying on the desk.
+ *
+ * `surface="desk"` opts out for Live Mode, which is not a document and should
+ * not be a lit rectangle in a dim room.
+ */
+export function Page({
+  children,
+  style,
+  surface = "sheet",
+}: {
+  children: ReactNode;
+  style?: CSSProperties;
+  surface?: "sheet" | "desk";
+}) {
+  if (surface === "desk") {
+    return (
+      <main className="pp-desk-page" style={style}>
+        {children}
+      </main>
+    );
+  }
+
   return (
-    <main
-      style={{
-        maxWidth: 720,
-        margin: "0 auto",
-        padding: "0 20px 120px",
-        ...style,
-      }}
-    >
-      {children}
-    </main>
+    <div className="pp-desk">
+      <main className="pp-sheet-page" style={style}>
+        {children}
+      </main>
+    </div>
   );
 }
 
@@ -54,10 +70,11 @@ export function Hairline() {
 type ButtonVariant = "primary" | "secondary" | "quiet" | "alert";
 
 const VARIANTS: Record<ButtonVariant, CSSProperties> = {
-  primary: { background: "var(--emerald)", color: "var(--paper)", border: "1px solid var(--emerald)" },
-  secondary: { background: "transparent", color: "var(--teal)", border: "1px solid var(--teal)" },
-  quiet: { background: "transparent", color: "var(--muted)", border: "1px solid var(--rule)" },
-  alert: { background: "var(--alert)", color: "var(--paper)", border: "1px solid var(--alert)" },
+  // Actions are teal. Emerald is the pen, not a button fill.
+  primary: { background: "var(--action)", color: "var(--action-label)", border: "1px solid var(--action)" },
+  secondary: { background: "transparent", color: "var(--action)", border: "1px solid var(--action)" },
+  quiet: { background: "transparent", color: "var(--muted)", border: "1px solid var(--border-interactive)" },
+  alert: { background: "var(--alert)", color: "var(--action-label)", border: "1px solid var(--alert)" },
 };
 
 export function buttonStyle(variant: ButtonVariant = "primary", full = false): CSSProperties {
@@ -134,7 +151,7 @@ export function Label({ children }: { children: ReactNode }) {
 export const inputStyle: CSSProperties = {
   width: "100%",
   padding: "13px 14px",
-  border: "1px solid var(--rule)",
+  border: "1px solid var(--border-interactive)",
   background: "var(--paper)",
   color: "var(--ink)",
   fontSize: 17,

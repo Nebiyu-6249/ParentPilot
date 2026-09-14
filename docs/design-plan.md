@@ -227,3 +227,218 @@ defaults that had crept in.
 | Draft accented "not to your child" in emerald inside the headline | Removed, banned addition. Headline is one weight, one colour |
 | Dark mode was going to reuse `--alert` unchanged at **2.52** | Lifted to `#E08770`, 5.68 |
 | Dark rules were going darker than the surface | Lighter than the surface, per brief |
+
+---
+
+# Round three, Part B: dark mode redone
+
+## What was wrong
+
+The first dark mode made the sheet `#132A25` and the desk `#0A1614`: two dark
+greens close in value, so paper stopped reading as paper. The child's working
+in cream on dark green read as chalk on a blackboard, which inverts the
+meaning of the hero. A blackboard is the teacher's authoritative surface; that
+worksheet is the child's fallible attempt.
+
+## The answer
+
+**The room is dim. There is a lamp on the desk. The paper stays paper.**
+
+Dark mode keeps the unlit frame and lights the sheet. It is not an inversion
+and not a darkened copy; it is the same scene at night.
+
+| Token | Light | Dark | Note |
+|---|---|---|---|
+| `--surface-frame` | `#0B4F4A` | `#0A1614` | the desk, teal by day and unlit at night |
+| `--surface-sheet` | `#F5F1E8` | `#DED8C9` | paper, dimmed to 78% of its daytime luminance |
+| `--text-on-sheet` | `#14201E` | `#14201E` | ink on paper, identical in both |
+| `--annotation` | `#006646` | `#006646` | one pen colour, both modes |
+| `--pencil` | `#5A5247` | `#5A5247` | graphite, both modes |
+| `--alert-fg` | `#A8422F` | `#943826` | lifted only where the paper is dimmer |
+| `--text-on-frame` | `#EDE7DA` | `#EDE7DA` | warm off-white on the desk |
+
+Because the sheet stays paper, ink, pencil and pen are now the **same values in
+both modes**. Half the dark palette stops existing, which is the point: a
+designed variant needs fewer overrides than a darkened copy, not more.
+
+## Structural change this forces
+
+The body was `--surface-sheet`, so the whole viewport was paper and the desk
+only appeared inside the landing hero. With a lit sheet that would make dark
+mode a mostly-bright page, which is not "a lamp on the desk", it is light mode
+with a dark header.
+
+So the body becomes the desk in both modes, and content screens render an
+explicit sheet on it. `Page` gains a `surface` prop: `sheet` by default, and
+`desk` for Live Mode, which is the one screen that is not a document and
+should not be a lit rectangle at eight in the evening.
+
+## Deviation from the brief, measured
+
+The brief specifies `--annotation: #00704F` unchanged in both modes. On the
+dimmed paper that measures **4.31**, which fails AA for the 13px "What went
+wrong" label that uses it. `#006646` is 6.23 on daytime paper and 4.94 on
+dimmed paper, and a paper-coloured label on top of it clears 4.5 both ways.
+
+It is still one value across both modes, which was the actual intent, and the
+shift is small enough to be invisible side by side. `--alert-fg` needed the
+same treatment but only on the dimmed sheet, so it keeps `#A8422F` by day.
+
+## Review pass
+
+| Caught | Changed to |
+|---|---|
+| Body as sheet would make dark mode a bright page | Body is the desk; content sits on an explicit sheet |
+| Live Mode would render a lit rectangle at night | `Page surface="desk"` for that one screen |
+| `--annotation` at `#00704F` fails on dimmed paper | One value, `#006646`, passing on both |
+| Half the dark block was redundant once the sheet is paper | Overrides reduced to the frame, the dimmed sheet, and alert |
+
+---
+
+# Round three, Part D: the UX inversion
+
+## What was wrong
+
+The problem screen opened with a seven-line primer, then a paragraph on the
+error, then a diagram, then Method Match as two five-step columns, and only
+then the questions. A parent mid-session had to read an essay before reaching
+the one thing they needed. If the product feels like homework itself, they stop
+opening it.
+
+## The screen is one question
+
+Above the fold, four things and nothing else:
+
+1. the problem, small
+2. the child's working, small
+3. **the question to ask right now, as the largest text on the screen**
+4. one primary button
+
+Everything else is a closed disclosure.
+
+## Resolving "a single button"
+
+The brief lists `"She answered it" / "Still stuck"` as a single button, and also
+says a screen with more than one primary action has none. Both outcomes need a
+home, so only one of them is primary:
+
+- **Still stuck** is the primary, filled and full width. It advances the ladder
+  one rung, replacing the large line. It is the path that continues.
+- **She answered it** is quiet and secondary. It is the end of the task, and a
+  parent whose child just answered does not need a button to celebrate it; they
+  need the session recorded and their phone put down.
+
+## Disclosures, ordered by when a parent reaches for them
+
+1. Why she got it wrong
+2. Show me both methods
+3. What is this teaching?
+4. What to say, and what to skip
+5. Just tell me the answer
+
+The answer is last on purpose. It is the escape hatch and it should be the
+furthest thing from the thumb.
+
+## Two things that moved
+
+**The primer** defaults to its first two sentences with the rest behind an
+expand, and sits at position three. It is the most valuable content for a
+parent who wants to understand and the wrongest thing to open with at 8pm.
+
+**The isomorphs** leave the stuck path entirely. Their own copy says "use these
+once the first one has clicked", so they belong in the solved state, not in a
+sixth disclosure competing for attention while the child is still stuck.
+
+## The register control
+
+Sits immediately below the fold, quiet. It is not primary, but a parent who
+cannot parse the large question needs "Simpler" within one thumb-reach, not
+buried in a disclosure.
+
+## How "above the fold" is verified
+
+Not by eye. The check measures, in a real browser at 390x844 and 360x640, that
+the primary button's bottom edge is above the viewport fold with the page
+unscrolled. A design rule that is not measured is a preference.
+
+## Review pass
+
+| Caught | Changed to |
+|---|---|
+| Two equally weighted buttons would have meant no primary action | Still stuck is primary; She answered it is quiet |
+| Isomorphs were heading for a sixth disclosure on the stuck path | Moved to the solved state, where their own copy says they belong |
+| Disclosure order put the answer in the middle, within easy reach | Answer last, furthest from the thumb |
+| "Above the fold" was going to be an assertion by eye | Measured in a browser at two phone sizes |
+
+---
+
+# Round three, Part C: restrictions lifted, with judgement
+
+Four things are now allowed. Each is taken only where it does work.
+
+## 1. A small radius on interactive elements
+
+`* { border-radius: 0 !important }` is gone. It was a sledgehammer: it applied
+to every element including ones that were never going to be round, and because
+`outline` follows `border-radius`, it forced hard-cornered focus rings on
+controls the browser would otherwise have drawn correctly.
+
+Replaced with **one token, `--radius-control: 3px`, applied to interactive
+elements only**. Buttons, inputs, selects and the segmented control get 3px.
+
+**Surfaces stay square.** The sheet, the worksheet, the coaching card and every
+diagram keep zero radius, because they are paper, and paper does not have
+rounded corners. The radius is a signal that something can be pressed, which is
+worth more than the radius being decorative everywhere.
+
+The Tailwind radius scale caps at 4px, so nothing in the system can reach for a
+pill or a blob. Asserted.
+
+## 2. Soft elevation, on one thing
+
+The Live Mode card is the only element in the product that genuinely floats: it
+slides up over a live session and is dismissed. It gets a soft shadow.
+
+The sheet keeps its **hard flat offset**, because it is paper lying on a desk
+rather than a card hovering above one. Those are different physical claims and
+they should not use the same shadow.
+
+## 3. The third voice: an action colour
+
+This one is a real need, not an indulgence, and it fixes a regression I
+introduced in Part D.
+
+The round-two direction made emerald the annotation colour, the marks a teacher
+makes on a page, and said explicitly: not a button fill everywhere. Part D then
+filled the primary button with `var(--annotation)`. Emerald ended up meaning
+both "this is the error" and "press this", which are unrelated ideas wearing
+the same colour.
+
+So `--action` is split out and **emerald returns to being only the pen**.
+
+`--action` is the deep brand teal rather than a new hue. The palette already
+has a third voice; inventing a fourth to sit beside teal, emerald and the
+earthy alert would be decoration. Filled teal with a paper label measures 8.35
+on daytime paper and 6.62 on the dimmed night sheet.
+
+| Colour | Means |
+|---|---|
+| emerald `--annotation` | a mark on the page: the ring, the error label, Checked |
+| teal `--action` | press this |
+| `--alert-fg` | stop, or unverified |
+
+## 4. Icons where they aid scanning
+
+The five disclosures carry a category icon on the left and the chevron on the
+right. A parent scanning for "the answer" or "why she got it wrong" finds the
+shape before the word. Nothing else gains an icon: an icon still labels an
+action or a category, never decorates prose.
+
+## Review pass
+
+| Caught | Changed to |
+|---|---|
+| Allowing radius everywhere would round the paper | 3px on interactive elements only; surfaces stay square |
+| Elevation was going onto the sheet as well | Soft shadow on the Live Mode card only; the sheet keeps its hard offset |
+| A genuinely new fourth hue was tempting for `--action` | Deep teal, already in the brand; a fourth hue would be decoration |
+| The relaxed ban list would have quietly permitted skeleton loaders | The status line stays; it is a product decision from the original brief, not a ban-list artefact |

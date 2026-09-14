@@ -111,9 +111,9 @@ export default function SetupFlow({
                 marginBottom: 12,
                 fontSize: 17,
                 lineHeight: 1.55,
-                background: register === sample.value ? "var(--emerald)" : "transparent",
-                color: register === sample.value ? "var(--paper)" : "var(--ink)",
-                border: `1px solid ${register === sample.value ? "var(--emerald)" : "var(--rule)"}`,
+                background: register === sample.value ? "var(--action)" : "transparent",
+                color: register === sample.value ? "var(--action-label)" : "var(--ink)",
+                border: `1px solid ${register === sample.value ? "var(--action)" : "var(--border-interactive)"}`,
                 transition: "background 200ms ease-out, color 200ms ease-out",
               }}
             >
@@ -138,9 +138,9 @@ export default function SetupFlow({
                 padding: "17px 20px",
                 marginBottom: 12,
                 fontSize: 17,
-                background: anxietyBand === option.band ? "var(--emerald)" : "transparent",
-                color: anxietyBand === option.band ? "var(--paper)" : "var(--ink)",
-                border: `1px solid ${anxietyBand === option.band ? "var(--emerald)" : "var(--rule)"}`,
+                background: anxietyBand === option.band ? "var(--action)" : "transparent",
+                color: anxietyBand === option.band ? "var(--action-label)" : "var(--ink)",
+                border: `1px solid ${anxietyBand === option.band ? "var(--action)" : "var(--border-interactive)"}`,
                 transition: "background 200ms ease-out, color 200ms ease-out",
               }}
             >
@@ -201,9 +201,9 @@ export default function SetupFlow({
                     style={{
                       padding: "9px 14px",
                       fontSize: 15,
-                      background: on ? "var(--emerald)" : "transparent",
-                      color: on ? "var(--paper)" : "var(--muted)",
-                      border: `1px solid ${on ? "var(--emerald)" : "var(--rule)"}`,
+                      background: on ? "var(--action)" : "transparent",
+                      color: on ? "var(--action-label)" : "var(--muted)",
+                      border: `1px solid ${on ? "var(--action)" : "var(--border-interactive)"}`,
                     }}
                   >
                     {subject}

@@ -25,27 +25,23 @@
   --font-display: "Fraunces", Georgia, "Times New Roman", serif;
   --font-sans: "Public Sans", system-ui, -apple-system, sans-serif;
 
-  /* Every radius token collapses to zero. Anything that reaches for a
-     rounded utility still lands square. */
-  --radius-xs: 0px;
-  --radius-sm: 0px;
-  --radius-md: 0px;
-  --radius-lg: 0px;
-  --radius-xl: 0px;
-  --radius-2xl: 0px;
-  --radius-3xl: 0px;
-  --radius-4xl: 0px;
+  /* A bounded radius scale. The cap is 4px, so nothing in the system can
+     reach for a pill or a blob, and surfaces still default to square. */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 4px;
+  --radius-2xl: 4px;
+  --radius-3xl: 4px;
+  --radius-4xl: 4px;
 }
 
 :root {
-  /* Raw brand values. Unchanged from round one. */
-  --paper: #f5f1e8;
-  --ink: #14201e;
-  --emerald: #00a878;
-  --teal: #0b4f4a;
-  --rule: #d9d2c4;
-  --muted: #6e665a;
-  --alert: #a8422f;
+  /* Brand constants. The logo is the logo in any mode, so these are literal
+     values, used by the mark and the favicon and nothing else. */
+  --brand-emerald: #00a878;
+  --brand-teal: #0b4f4a;
 
   /* ---- Semantic layer, light ---------------------------------------- */
 
@@ -74,14 +70,43 @@
 
      On the teal desk the brand emerald stays, at 3.08. That passes for a mark
      and NOT for text, so emerald is never used as text on the desk. */
-  --annotation: #00704f;
+  --annotation: #006646;
   --annotation-on-frame: #00a878;
+
+  /* The strong accent on paper: headings and badges. */
+  --accent-on-sheet: #0b4f4a;
+
+  /* The third voice.
+
+     Emerald is the pen: the marks a teacher makes on a page. It was also
+     filling primary buttons, which made one colour mean both "this is the
+     error" and "press this". Actions get their own value, and emerald goes
+     back to being only the pen.
+
+     Deep brand teal rather than a new hue: the palette already has a third
+     voice, and a fourth beside teal, emerald and the earthy alert would be
+     decoration. */
+  --action: #0b4f4a;
+  --action-label: #f5f1e8;
+
+  /* A radius is a signal that something can be pressed. Interactive elements
+     only: paper does not have rounded corners. */
+  --radius-control: 3px;
 
   /* The child's handwriting. */
   --pencil: #5a5247;
 
+  /* Dividers. Deliberately faint: a hairline between sections is decorative
+     and carries no meaning. */
   --rule-on-sheet: #d9d2c4;
   --rule-on-frame: #1a6b64;
+
+  /* Boundaries of interactive things: input outlines, button edges, the
+     segmented control. WCAG 1.4.11 wants 3 to 1 for these, and the divider
+     colour is 1.33 to 1 on paper, so they cannot share a token. */
+  --border-interactive: #8e8474;
+  --border-interactive-frame: #78a9a1;
+
   --alert-fg: #a8422f;
 
   /* ---- Type scale ---------------------------------------------------- */
@@ -94,6 +119,25 @@
 
   --measure: 62ch;
   --page-max: 1200px;
+
+  /* ---- Compatibility aliases ------------------------------------------
+
+     Most of the app was written before the semantic layer existed and still
+     asks for --ink, --muted, --rule, --paper, --teal, --emerald and --alert.
+     Those were literal light-mode values that the dark blocks never
+     redefined, so in dark mode body text rendered at 1.10 to 1 and headings
+     at 1.61 to 1. Every screen except the landing page was unreadable.
+
+     Defining them as references rather than as values fixes all of it at
+     once, and means a later change to the semantic layer carries through
+     automatically instead of needing a second edit here. */
+  --paper: var(--surface-sheet);
+  --ink: var(--text-on-sheet);
+  --muted: var(--text-on-sheet-muted);
+  --rule: var(--rule-on-sheet);
+  --teal: var(--accent-on-sheet);
+  --emerald: var(--annotation);
+  --alert: var(--alert-fg);
 
   color-scheme: light;
 }
@@ -113,21 +157,31 @@
     --surface-frame-deep: #060e0d;
     --surface-frame-raised: #102420;
 
-    --surface-sheet: #132a25;
-    --surface-sheet-sunk: #0f221e;
+    /* The lamp. Paper stays paper, dimmed to 78% of its daytime
+       luminance rather than inverted into a blackboard. */
+    --surface-sheet: #ded8c9;
+    --surface-sheet-sunk: #d3ccba;
 
     --text-on-frame: #ede7da;
     --text-on-frame-muted: #9fb3ae;
-    --text-on-sheet: #ede7da;
-    --text-on-sheet-muted: #9fb3ae;
+    /* Ink, pencil and pen are unchanged from light mode: the surface they
+       sit on is still paper, so they have nothing to react to. */
+    --text-on-sheet: #14201e;
+    --text-on-sheet-muted: #5c5547;
 
-    --annotation: #00a878;
+    --annotation: #006646;
     --annotation-on-frame: #00a878;
-    --pencil: #b9a98f;
+    --accent-on-sheet: #0b4f4a;
+    --action: #0b4f4a;
+    --action-label: #ded8c9;
+    --pencil: #5a5247;
 
-    --rule-on-sheet: #2a443d;
-    --rule-on-frame: #24403a;
-    --alert-fg: #e08770;
+    --rule-on-sheet: #c3bcaa;
+    --rule-on-frame: #2f4a43;
+    --border-interactive: #7f7666;
+    --border-interactive-frame: #6b8579;
+    /* Only the alert needs lifting, and only because the paper is dimmer. */
+    --alert-fg: #943826;
 
     color-scheme: dark;
   }
@@ -138,37 +192,47 @@
   --surface-frame-deep: #060e0d;
   --surface-frame-raised: #102420;
 
-  --surface-sheet: #132a25;
-  --surface-sheet-sunk: #0f221e;
+  /* The lamp. Paper stays paper, dimmed to 78% of its daytime
+     luminance rather than inverted into a blackboard. */
+  --surface-sheet: #ded8c9;
+  --surface-sheet-sunk: #d3ccba;
 
   --text-on-frame: #ede7da;
   --text-on-frame-muted: #9fb3ae;
-  --text-on-sheet: #ede7da;
-  --text-on-sheet-muted: #9fb3ae;
+  /* Ink, pencil and pen are unchanged from light mode: the surface they
+     sit on is still paper, so they have nothing to react to. */
+  --text-on-sheet: #14201e;
+  --text-on-sheet-muted: #5c5547;
 
-  --annotation: #00a878;
+  --annotation: #006646;
   --annotation-on-frame: #00a878;
-  --pencil: #b9a98f;
+  --accent-on-sheet: #0b4f4a;
+  --action: #0b4f4a;
+  --action-label: #ded8c9;
+  --pencil: #5a5247;
 
-  --rule-on-sheet: #2a443d;
-  --rule-on-frame: #24403a;
-  --alert-fg: #e08770;
+  --rule-on-sheet: #c3bcaa;
+  --rule-on-frame: #2f4a43;
+  --border-interactive: #7f7666;
+  --border-interactive-frame: #6b8579;
+  /* Only the alert needs lifting, and only because the paper is dimmer. */
+  --alert-fg: #943826;
 
   color-scheme: dark;
 }
 
-* {
-  border-radius: 0 !important;
-}
-
+/* The body is the desk in both modes. Content screens put an explicit sheet
+   on it. Before this, the body was the sheet, so the whole viewport was paper
+   and dark mode became a bright page with a dark header rather than a dim room
+   with a lit page on the desk. */
 html {
-  background: var(--surface-sheet);
+  background: var(--surface-frame);
   -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--surface-sheet);
-  color: var(--text-on-sheet);
+  background: var(--surface-frame);
+  color: var(--text-on-frame);
   font-family: var(--font-sans);
   font-size: 17px;
   line-height: 1.6;
@@ -229,6 +293,18 @@ select,
 textarea {
   font: inherit;
   color: inherit;
+  border-radius: var(--radius-control);
+}
+
+/* Paper has square corners. The sheet, the worksheet, the coaching card and
+   every diagram opt back out of the control radius. */
+.pp-sheet,
+.pp-sheet-page,
+.pp-worksheet,
+.pp-coach-card,
+.pp-diagram,
+.pp-diagram * {
+  border-radius: 0;
 }
 
 button {
@@ -341,8 +417,11 @@ hr {
 }
 
 :focus-visible {
-  outline: 2px solid var(--annotation);
+  outline: 2px solid var(--action);
   outline-offset: 2px;
+  /* Follows whatever radius the element has. The old global
+     `border-radius: 0 !important` forced hard corners on every focus ring. */
+  border-radius: inherit;
 }
 
 ::selection {
@@ -449,7 +528,15 @@ hr {
   }
 }
 
-/* Generated and hand-drawn diagrams size to their column, never overflow. */
+/* Generated and hand-drawn diagrams size to their column, never overflow.
+
+   The wrapper sets `color`, because every diagram draws its lines and text in
+   `currentColor` rather than in a literal hex. That is what makes a diagram
+   legible in both themes from one piece of markup. */
+.pp-diagram {
+  color: var(--text-on-sheet);
+}
+
 .pp-diagram svg {
   display: block;
   width: 100%;
@@ -457,7 +544,12 @@ hr {
   max-width: 460px;
 }
 
-/* Live Mode cards rise from the bottom of the viewport. */
+/* Live Mode cards rise from the bottom of the viewport.
+
+   The one element in the product that genuinely floats: it appears over a
+   live session and is dismissed. It gets a soft shadow. The sheet keeps its
+   hard flat offset instead, because paper lying on a desk and a card hovering
+   above one are different physical claims. */
 .pp-live-card {
   position: fixed;
   left: 0;
@@ -465,8 +557,10 @@ hr {
   bottom: 0;
   z-index: 40;
   background: var(--surface-sheet);
-  border-top: 1px solid var(--text-on-sheet);
+  color: var(--text-on-sheet);
+  border-top: 1px solid var(--rule-on-sheet);
   padding: 22px 20px 30px;
+  box-shadow: 0 -10px 30px rgb(0 0 0 / 0.28);
 }
 
 /* ---- The hero artifact ----------------------------------------------
@@ -550,9 +644,58 @@ hr {
   white-space: nowrap;
 }
 
+/* On a phone the header was costing about 230px of an 844px viewport, which
+   is a quarter of the screen spent on chrome before the parent sees anything.
+   Tightened so every screen keeps its primary action above the fold with real
+   headroom rather than 20px of it. */
 @media (max-width: 560px) {
   .pp-nav {
-    gap: 14px;
+    gap: 13px;
     font-size: 0.875rem;
+  }
+  .pp-header-bar {
+    padding-block: 8px !important;
+    gap: 6px !important;
+  }
+}
+
+/* ---- The desk and the sheet ------------------------------------------
+
+   A content screen is a sheet of paper lying on the desk. On a phone the
+   sheet goes edge to edge, because a strip of desk either side of a 390px
+   viewport is wasted width, not atmosphere. */
+
+.pp-desk {
+  padding: 28px 20px 72px;
+}
+
+.pp-sheet-page {
+  max-width: 760px;
+  margin: 0 auto;
+  background: var(--surface-sheet);
+  color: var(--text-on-sheet);
+  padding: 30px 34px 96px;
+  /* A hard flat offset, not a blurred shadow: this is paper on a surface, not
+     a floating UI card. */
+  box-shadow: 8px 8px 0 var(--surface-frame-deep);
+}
+
+/* Live Mode is the one screen that is not a document. It stays on the desk,
+   because a lit rectangle is the wrong thing to hand someone at eight in the
+   evening when the point of the screen is that it is nearly empty. */
+.pp-desk-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 30px 20px 96px;
+  color: var(--text-on-frame);
+}
+
+@media (max-width: 760px) {
+  .pp-desk {
+    padding: 0 0 48px;
+  }
+  .pp-sheet-page {
+    padding: 26px 20px 96px;
+    box-shadow: none;
   }
 }
