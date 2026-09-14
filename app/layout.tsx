@@ -70,7 +70,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         >
           <div
-            className="pp-page"
+            className="pp-page pp-header-bar"
             style={{
               display: "flex",
               alignItems: "center",
