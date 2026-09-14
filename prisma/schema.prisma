@@ -27,6 +27,7 @@ model Parent {
   language        String    @default("en")
   createdAt       DateTime  @default(now())
   children        Child[]
+  threads         Thread[]
 }
 
 /// A single-use sign-in link.
@@ -46,6 +47,44 @@ model MagicLink {
   @@index([expiresAt])
 }
 
+/// A continuous conversation about one child's homework.
+///
+/// The thread is the product surface now. A parent photographs problem one,
+/// works through it, then photographs problem two in the same thread, and the
+/// child, register and language carry across without being re-asked.
+model Thread {
+  id        String    @id @default(cuid())
+  parentId  String
+  childId   String?
+  title     String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  parent    Parent    @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  child     Child?    @relation(fields: [childId], references: [id], onDelete: SetNull)
+  messages  Message[]
+
+  @@index([parentId, updatedAt])
+}
+
+/// One turn in a thread.
+///
+/// An ASSISTANT turn is a card rather than prose, and a card that concerns a
+/// problem points at it by id. The packet is never duplicated here: `problemId`
+/// is the join, so a re-generated packet is reflected everywhere at once.
+model Message {
+  id        String      @id @default(cuid())
+  threadId  String
+  role      MessageRole
+  kind      MessageKind
+  body      String?
+  payload   Json?
+  problemId String?
+  createdAt DateTime    @default(now())
+  thread    Thread      @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
+}
+
 model Child {
   id         String   @id @default(cuid())
   parentId   String
@@ -57,6 +96,7 @@ model Child {
 
   assignments Assignment[]
   sessions    Session[]
+  threads     Thread[]
 
   @@index([parentId])
 }
@@ -179,8 +219,13 @@ model Standard {
   plainLanguage   String
   expectedMethods String[]
   parentMethod    String
-  // embedding vector(1536) added via raw SQL migration; Prisma has no
-  // native vector type, so it is read and written with $queryRaw.
+
+  /// Declared as Unsupported so `prisma migrate diff` sees it and stops
+  /// proposing to drop it on every new migration. Prisma Client cannot select
+  /// an Unsupported field, which is fine: it is read and written exclusively
+  /// through $queryRaw in lib/standards.ts. The HNSW cosine index is still
+  /// raw SQL, since the operator class has no Prisma syntax.
+  embedding Unsupported("vector(1536)")?
 
   @@index([grade])
 }
@@ -224,6 +269,23 @@ model FailureLog {
   createdAt DateTime @default(now())
 
   @@index([at])
+}
+
+enum MessageRole {
+  PARENT
+  ASSISTANT
+}
+
+enum MessageKind {
+  TEXT
+  WORKSHEET
+  ASK
+  MISCONCEPTION
+  METHOD_MATCH
+  ANSWER
+  TEACHING
+  LIVE_SUMMARY
+  PARK_IT
 }
 
 enum Register {

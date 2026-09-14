@@ -94,8 +94,22 @@ async function main(): Promise<void> {
       SELECT indexdef FROM pg_indexes
       WHERE tablename = 'Standard' AND indexname = 'Standard_embedding_cosine_idx'
     `;
-    ok("a cosine index is present on it",
+    /* This is the assertion the round four brief asks for, and it exists
+       because the failure it catches is invisible: `prisma migrate diff`
+       proposes dropping this column and index on every migration, since the
+       column is Unsupported and the HNSW operator class has no Prisma syntax.
+       Dropping either leaves the product looking healthy while every problem
+       silently falls back to no standard match. */
+    ok("the cosine index is present, and was not dropped by a migration",
       index[0]?.indexdef.includes("vector_cosine_ops") === true);
+    ok("the index is HNSW rather than a sequential scan in disguise",
+      index[0]?.indexdef.includes("hnsw") === true);
+
+    const declared = await prisma.$queryRaw<{ udt_name: string }[]>`
+      SELECT udt_name FROM information_schema.columns
+      WHERE table_name = 'Standard' AND column_name = 'embedding'
+    `;
+    ok("the column is a real vector type", declared[0]?.udt_name === "vector");
 
     // Round trip the literal format and the `<=>` operator used by
     // lib/standards.ts, without touching any product table.
@@ -144,6 +158,7 @@ async function main(): Promise<void> {
   }
 
   await shareChecks();
+  await deleteCascadeChecks();
 
   console.log(
     failures === 0 ? `\n${checks} database checks, all passing.` : `\n${checks} database checks, ${failures} FAILING.`,
@@ -157,6 +172,42 @@ async function main(): Promise<void> {
  * Generation, expiry, revocation and the absence of any transcript in what a
  * shared link renders. Everything created here is torn down at the end.
  */
+/**
+ * Delete everything still means everything, now that threads exist.
+ *
+ * The privacy page promises a delete that removes the lot. A new table that
+ * hangs off Parent without a cascade would quietly break that promise while
+ * every existing assertion still passed.
+ */
+async function deleteCascadeChecks(): Promise<void> {
+  section("Delete cascade reaches the new tables");
+
+  const parent = await prisma.parent.create({ data: {} });
+  const child = await prisma.child.create({
+    data: { parentId: parent.id, grade: 5, curriculum: "CCSS", subjects: [] },
+  });
+  const thread = await prisma.thread.create({
+    data: { parentId: parent.id, childId: child.id, title: "Fractions" },
+  });
+  await prisma.message.createMany({
+    data: [
+      { threadId: thread.id, role: "PARENT", kind: "TEXT", body: "she is stuck" },
+      { threadId: thread.id, role: "ASSISTANT", kind: "ASK", body: "How did you get this?" },
+    ],
+  });
+
+  const before = await prisma.message.count({ where: { threadId: thread.id } });
+  ok(`messages were written  (${before})`, before === 2);
+
+  await prisma.parent.delete({ where: { id: parent.id } });
+
+  ok("deleting the parent removes their threads",
+    (await prisma.thread.count({ where: { id: thread.id } })) === 0);
+  ok("and the messages inside them",
+    (await prisma.message.count({ where: { threadId: thread.id } })) === 0);
+  ok("the standards corpus is untouched", (await prisma.standard.count()) >= 60);
+}
+
 async function shareChecks(): Promise<void> {
   section("Share links");
 
