@@ -12,6 +12,7 @@ import {
   ChevronIcon,
   ColumnsIcon,
   LockIcon,
+  SpeechIcon,
   TypeIcon,
   type IconProps,
 } from "@/components/icons";
@@ -51,6 +52,55 @@ function Shell({
       </button>
       {open && <div className="pp-card-body">{children}</div>}
     </article>
+  );
+}
+
+/** mm:ss, so a nudge says when in the session it was earned. */
+function clock(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+/**
+ * The drafted note for the teacher, with the copy control.
+ *
+ * A parent who has just been told to stop is not going to retype this, and
+ * the whole point of the note is that they send it.
+ */
+function TeacherNote({ note }: { note: string }) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <div style={{ marginTop: 16, borderTop: "1px solid var(--app-line)", paddingTop: 14 }}>
+      <p style={{ fontSize: 13, color: "var(--app-text-dim)", marginBottom: 8 }}>
+        {copy.live.parkNoteHeading}
+      </p>
+      <p style={{ fontSize: 15, lineHeight: 1.6, whiteSpace: "pre-wrap", maxWidth: "58ch" }}>{note}</p>
+      <button
+        type="button"
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(note);
+            setCopied(true);
+          } catch {
+            // No clipboard permission. The note is on screen to select by hand.
+            setCopied(false);
+          }
+        }}
+        style={{
+          marginTop: 12,
+          padding: "9px 15px",
+          borderRadius: "var(--r-control)",
+          border: "1px solid var(--app-border-interactive)",
+          background: "transparent",
+          color: "var(--app-text)",
+          fontSize: 14,
+        }}
+      >
+        {copied ? copy.live.parkCopied : copy.live.parkCopy}
+      </button>
+    </div>
   );
 }
 
@@ -316,25 +366,71 @@ export default function ThreadCard({
         </Shell>
       );
 
+    /* A nudge that arrived while Live Mode was listening. Never collapsed:
+       it is coaching for the next thirty seconds, and a heading to open would
+       make it useless by the time the parent opened it. */
+    case "live_card":
+      return (
+        <article className="pp-card pp-card-live">
+          <div className="pp-card-body" style={{ display: "flex", gap: 11, alignItems: "flex-start" }}>
+            <SpeechIcon size={18} style={{ color: "var(--accent-ink)", flexShrink: 0, marginTop: 2 }} />
+            <div>
+              <p style={{ fontSize: 15.5, lineHeight: 1.6, maxWidth: "58ch" }}>{card.text}</p>
+              <p style={{ marginTop: 8, fontSize: 12.5, color: "var(--app-text-dim)" }}>
+                {copy.live.heardAt} {clock(card.tOffset)}
+              </p>
+            </div>
+          </div>
+        </article>
+      );
+
     case "live_summary":
       return (
-        <Shell title="How that stretch went" icon={CheckIcon} defaultOpen>
+        <Shell title={copy.recap.heading} icon={CheckIcon} defaultOpen>
           <p style={{ fontFamily: "var(--font-display)", fontSize: 34, color: "var(--accent-ink)", lineHeight: 1 }}>
             {card.autonomyScore.toFixed(2)}
           </p>
-          <p style={{ marginTop: 10, fontSize: 15 }}>{card.reading}</p>
+          <p style={{ marginTop: 6, fontSize: 13, color: "var(--app-text-dim)" }}>
+            {copy.recap.ratioLabel}, {copy.live.overMinutes(card.minutes)}
+          </p>
+          <p style={{ marginTop: 12, fontSize: 15, lineHeight: 1.6, maxWidth: "58ch" }}>{card.reading}</p>
+
+          {/* Written from move counts alone. The model that wrote it has never
+              seen a word the child said, and there is no transcript for it to
+              have seen. */}
+          {card.recap && (
+            <p style={{ marginTop: 14, fontSize: 15, lineHeight: 1.6, maxWidth: "58ch" }}>{card.recap}</p>
+          )}
+
+          {card.oneThingToTry && (
+            <>
+              <p style={{ marginTop: 16, fontSize: 13, color: "var(--accent-ink)" }}>
+                {copy.live.oneThingLabel}
+              </p>
+              <p className="pp-ask-question" style={{ marginTop: 6, fontSize: "1.2rem", maxWidth: "30ch" }}>
+                {card.oneThingToTry}
+              </p>
+            </>
+          )}
+
+          {card.sessionId && (
+            <p style={{ marginTop: 16, fontSize: 14 }}>
+              <a href={`/recap/${card.sessionId}`}>{copy.live.fullRecap}</a>
+            </p>
+          )}
         </Shell>
       );
 
     case "park_it":
       return (
-        <article className="pp-card" style={{ borderColor: "var(--alert-fg)", borderLeftWidth: 3 }}>
+        <article className="pp-card pp-card-park">
           <div className="pp-card-body" style={{ paddingTop: 16 }}>
-            <h3 style={{ fontSize: 16, color: "var(--alert-fg)", marginBottom: 8 }}>{copy.live.parkHeading}</h3>
-            <p style={{ fontSize: 15, lineHeight: 1.6 }}>{copy.live.parkBody}</p>
-            {card.teacherNote && (
-              <p style={{ marginTop: 14, fontSize: 15, whiteSpace: "pre-wrap" }}>{card.teacherNote}</p>
-            )}
+            <h3 style={{ fontSize: 16, color: "var(--app-alert-ink)", marginBottom: 8 }}>
+              {copy.live.parkHeading}
+            </h3>
+            <p style={{ fontSize: 15, lineHeight: 1.6, maxWidth: "58ch" }}>{copy.live.parkBody}</p>
+
+            {card.teacherNote && <TeacherNote note={card.teacherNote} />}
           </div>
         </article>
       );

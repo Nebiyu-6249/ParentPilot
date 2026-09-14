@@ -1,5 +1,5 @@
 import { copy } from "@/lib/copy";
-import type { ChatTurn, MethodMatch, RegisterName, Script } from "@/lib/ai/schemas";
+import type { ChatTurn, MethodMatch, MoveLabelName, RegisterName, Script } from "@/lib/ai/schemas";
 import type { PacketBundle } from "@/lib/types";
 
 /**
@@ -19,6 +19,7 @@ export type CardKind =
   | "method_match"
   | "answer"
   | "teaching"
+  | "live_card"
   | "live_summary"
   | "park_it"
   | "text";
@@ -100,12 +101,33 @@ export interface TeachingCard {
   register: RegisterName;
 }
 
+/**
+ * A nudge that arrived while Live Mode was listening.
+ *
+ * Carries the coaching line and the moment it was earned, and nothing else.
+ * There is deliberately no field here that could hold a word anybody said:
+ * the rolling window lives in a ref inside `useLiveTranscript` and is the one
+ * thing in this product that never becomes a card, a message or a row.
+ */
+export interface LiveCardCard {
+  kind: "live_card";
+  text: string;
+  triggerLabel: MoveLabelName;
+  /** Seconds into the session. */
+  tOffset: number;
+}
+
 export interface LiveSummaryCard {
   kind: "live_summary";
   autonomyScore: number;
   reading: string;
   moveCounts: Record<string, number>;
   minutes: number;
+  /** Written from move counts alone, by a model that never saw the words. */
+  recap: string | null;
+  oneThingToTry: string | null;
+  /** Null when there was no database to record the session in. */
+  sessionId: string | null;
 }
 
 export interface ParkItCard {
@@ -128,6 +150,7 @@ export type Card =
   | MethodMatchCard
   | AnswerCard
   | TeachingCard
+  | LiveCardCard
   | LiveSummaryCard
   | ParkItCard
   | TextCard;

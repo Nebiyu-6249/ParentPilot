@@ -938,6 +938,81 @@ hr {
   max-width: 24ch;
 }
 
+/* Live Mode, in the thread.
+
+   The old screen gave listening the whole viewport: a breathing mark, a timer,
+   and nothing else. That restraint was right when listening was the only thing
+   on the page. Here the worksheet is the thing on the page, so listening
+   shrinks to a bar over the composer and the coaching lands in the thread. */
+.pp-live-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 740px;
+  margin: 0 auto 8px;
+  padding: 7px 8px 7px 12px;
+  border: 1px solid var(--accent);
+  border-radius: var(--r-composer);
+  background: color-mix(in srgb, var(--accent) 8%, var(--app-card));
+  color: var(--app-text);
+}
+
+.pp-live-time {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-ink);
+}
+
+.pp-live-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--app-text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp-live-stop {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  padding: 7px 13px;
+  border-radius: var(--r-control);
+  border: 1px solid var(--app-border-interactive);
+  background: var(--app-card);
+  color: var(--app-text);
+  font-size: 13.5px;
+}
+
+/* A link inside the thread. The global rule is `color: inherit`, which on the
+   paper surface is fine because links there sit in prose the reader is already
+   scanning. In a card it made "See the whole session" read as a sentence. */
+.pp-thread a {
+  color: var(--accent-ink);
+  text-decoration: underline;
+}
+
+/* A nudge earned by something that was just said. The accent edge marks it as
+   unprompted: the parent did not ask for this one. */
+.pp-card-live {
+  border-left: 3px solid var(--accent);
+}
+
+.pp-card-park {
+  border-color: var(--app-alert-line);
+  border-left: 3px solid var(--app-alert-ink);
+  background: var(--app-alert-bg);
+}
+
+.pp-mic-error {
+  color: var(--app-alert-ink);
+  max-width: 740px;
+  margin: 0 auto 8px;
+}
+
 /* A reply to something the parent typed. The sentence to say out loud keeps
    the display face, because it is the same act as the ask card's question,
    but a step smaller: the ask card is the question for this rung and this is

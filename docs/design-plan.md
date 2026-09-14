@@ -611,3 +611,60 @@ The check suite exercises all four by calling `cardsForChatTurn` with a reply
 that states the answer in every field, and asserts the string never survives.
 Breaking the containment on purpose fails three assertions, which is how the
 assertions were confirmed to be doing work rather than passing by construction.
+
+## Step five: listening happens in the thread
+
+The microphone in the composer was a link to another screen. It is a toggle
+now, and Live Mode happens where the worksheet is.
+
+Nothing about the listening itself moved house. Same hook, same rolling window
+in the same ref, same five second classify interval, same rule engine with the
+same hard cap of three interruptions and the same ninety second cooldown. What
+moved is where the coaching lands.
+
+On the old screen a nudge was a card sliding over a blank page, dismissed with
+"Got it" and then gone. In the thread it is a turn, with the accent edge that
+marks it as unprompted and the time it was earned. It stays in the log, which
+is better: a parent who missed it at 00:34 can still find it at 04:00, and the
+summary at the end sits under the nudges that led to it rather than on a page
+the parent has to navigate to.
+
+The full-screen treatment was right when listening was the only thing on the
+page. Here the worksheet is the thing on the page, so listening shrinks to a
+bar over the composer: the breathing mark, the clock, and the way out.
+
+`/live` redirects into the thread, `components/LiveMode.tsx` is gone, and the
+Park It screen came with it: the drafted note for the teacher is a card, with
+the copy control it had before, because a parent who has just been told to stop
+is not going to retype it.
+
+## The transcript, finally asserted
+
+Folding Live Mode into a persisted message log is the moment the promise that
+nothing is kept is most likely to break, and until now that promise was true
+only by inspection. Nine assertions now hold it:
+
+- the rolling window is a ref, never React state, never storage
+- it is cleared when listening stops
+- `readWindow()` is called in exactly one place in the shell, and that place is
+  the classify request body
+- no field on a live card could hold it
+- the `Move` row has no column for words
+- the classify route neither persists nor returns it
+- the recap model is given counts, never words
+
+Confirmed the way the answer guard was: leaking the window into a card on
+purpose fails two of them.
+
+The other thing asserted here is the round one bug, which this step could have
+reintroduced. The hook returns a fresh object every render, so an effect
+depending on the object tore down the five second interval before it could
+fire. The clock now lives in `LiveBar` rather than the shell, so the thread
+does not re-render once a second for the length of a session, and the check
+suite reads the effect's dependency list and fails if the hook object appears
+in it.
+
+| Found on screen | Fix |
+|---|---|
+| The clock started when the parent tapped, counting the permission prompt as homework | It starts when listening starts |
+| "See the whole session" read as a sentence, not a link | Thread links take the accent and an underline; the global rule is `color: inherit`, which only works inside prose |

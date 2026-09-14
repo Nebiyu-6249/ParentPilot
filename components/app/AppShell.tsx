@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import ThreadCard from "@/components/app/Cards";
+import LiveBar from "@/components/app/LiveBar";
 import RegisterControl from "@/components/RegisterControl";
 import ThemeToggle from "@/components/ThemeToggle";
 import Logo from "@/components/Logo";
@@ -11,13 +12,18 @@ import {
   CameraIcon,
   CheckIcon,
   MicrophoneIcon,
+  MicrophoneOffIcon,
   PanelIcon,
   SendIcon,
   TypeIcon,
 } from "@/components/icons";
 import { copy } from "@/lib/copy";
+import { initialLiveState, type LiveState } from "@/lib/live/rules";
+import { useLiveTranscript } from "@/lib/live/useLiveTranscript";
 import type { RegisterName } from "@/lib/ai/schemas";
 import type { Card, Turn } from "@/lib/thread";
+import type { ClassifyResponse } from "@/app/api/live/classify/route";
+import type { EndSessionResponse } from "@/app/api/session/[id]/end/route";
 
 const RAIL_KEY = "pp_rail";
 
@@ -25,6 +31,9 @@ const RAIL_KEY = "pp_rail";
    it, so it must start closed whatever the stored preference says. Matches the
    breakpoint in globals.css. */
 const DRAWER_MAX = 860;
+
+/** How often the rolling window is classified. Unchanged from the old screen. */
+const CLASSIFY_INTERVAL_MS = 5000;
 
 interface ThreadSummary {
   id: string;
@@ -41,10 +50,12 @@ interface ThreadSummary {
  */
 export default function AppShell({
   register: initialRegister,
+  language,
   threads,
   signedIn,
 }: {
   register: RegisterName;
+  language: string;
   threads: ThreadSummary[];
   signedIn: boolean;
 }) {
@@ -53,6 +64,29 @@ export default function AppShell({
   const [status, setStatus] = useState<string | null>(null);
   const [register, setRegister] = useState<RegisterName>(initialRegister);
   const [text, setText] = useState("");
+
+  // ---- Live Mode, folded into the thread -------------------------------
+  const transcript = useLiveTranscript(language);
+  /* The hook returns a fresh object every render, so every effect below
+     depends on these stable callbacks rather than on `transcript`. Depending
+     on the object tore down the five second classify interval on each render
+     and it never fired. That bug is why this destructure exists. */
+  const { listening, readWindow, start: startTranscript, stop: stopTranscript } = transcript;
+
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [ending, setEnding] = useState(false);
+  const [cardsSpent, setCardsSpent] = useState(false);
+  const [micError, setMicError] = useState<string | null>(null);
+  /* The ref is what the classify interval reads; the state is what LiveBar
+     renders from. Both are set at the same moment, because a ref alone would
+     not re-render the bar and state alone would make the interval depend on
+     a value that changes mid-session. */
+  const [startedAt, setStartedAt] = useState(0);
+
+  const liveStateRef = useRef<LiveState>(initialLiveState());
+  const startedAtRef = useRef<number>(0);
+  const parkedRef = useRef(false);
+  const parkReasonRef = useRef<"time" | "escalation">("time");
 
   const fileRef = useRef<HTMLInputElement>(null);
   const threadRef = useRef<HTMLDivElement>(null);
@@ -171,6 +205,173 @@ export default function AppShell({
     },
     [scrollToEnd],
   );
+
+  /** Appends an assistant turn made locally, without a round trip. */
+  const appendCards = useCallback(
+    (cards: Card[]): void => {
+      setTurns((current) => [
+        ...current,
+        {
+          id: `a-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          role: "ASSISTANT",
+          body: null,
+          cards,
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+      scrollToEnd();
+    },
+    [scrollToEnd],
+  );
+
+  /**
+   * Ends the session and puts the summary in the thread.
+   *
+   * The old screen navigated to /recap/[id] here. In the thread the summary is
+   * a card, and the recap page stays where it is for looking things up later.
+   */
+  const endLive = useCallback(
+    async (wasParked: boolean): Promise<void> => {
+      setEnding(true);
+      stopTranscript();
+
+      const minutes = Math.max(
+        1,
+        Math.round((Date.now() - startedAtRef.current) / 60000),
+      );
+
+      if (!sessionId) {
+        // No database, so nothing was recorded and there is nothing to total.
+        appendCards([{ kind: "text", body: copy.live.endedUnrecorded }]);
+        setEnding(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/session/${sessionId}/end`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ parked: wasParked }),
+        });
+        const data = (await response.json()) as EndSessionResponse;
+
+        const cards: Card[] = [];
+        if (wasParked) {
+          cards.push({
+            kind: "park_it",
+            reason: parkReasonRef.current,
+            teacherNote: data.teacherNote,
+          });
+        }
+        cards.push({
+          kind: "live_summary",
+          autonomyScore: data.autonomyScore,
+          reading: data.reading,
+          moveCounts: data.moveCounts,
+          minutes,
+          recap: data.recap,
+          oneThingToTry: data.oneThingToTry,
+          sessionId,
+        });
+        appendCards(cards);
+      } catch {
+        // The recap page recomputes from stored moves, so a failed end call
+        // costs the summary card, not the session.
+        appendCards([{ kind: "text", body: copy.live.endedUnrecorded }]);
+      } finally {
+        setSessionId(null);
+        setEnding(false);
+      }
+    },
+    [appendCards, sessionId, stopTranscript],
+  );
+
+  const startLive = useCallback(async (): Promise<void> => {
+    setMicError(null);
+    liveStateRef.current = initialLiveState();
+    parkedRef.current = false;
+    setCardsSpent(false);
+
+    // The clock starts when listening starts, not when the parent taps: the
+    // permission prompt can sit there for several seconds and those are not
+    // seconds of homework.
+    await startTranscript();
+    const now = Date.now();
+    startedAtRef.current = now;
+    setStartedAt(now);
+
+    try {
+      const response = await fetch("/api/session", { method: "POST" });
+      const data = (await response.json()) as { sessionId: string | null };
+      setSessionId(data.sessionId);
+    } catch {
+      // Without a session id the coaching still works, it is just not recorded.
+      setSessionId(null);
+    }
+  }, [startTranscript]);
+
+  // The microphone is denied or missing. Say so in the thread rather than
+  // leaving a button that looks like it did nothing.
+  useEffect(() => {
+    if (transcript.error === "denied") setMicError(copy.live.micDenied);
+  }, [transcript.error]);
+
+  /**
+   * Classify the rolling window every five seconds.
+   *
+   * `readWindow()` is read here and goes straight into the request body. It is
+   * never put in state, never attached to a turn, and never written anywhere.
+   * The response carries a label and a coaching line, never the words back.
+   */
+  useEffect(() => {
+    if (!listening) return;
+
+    const timer = window.setInterval(async () => {
+      if (parkedRef.current) return;
+
+      const tOffset = Math.floor((Date.now() - startedAtRef.current) / 1000);
+
+      try {
+        const response = await fetch("/api/live/classify", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            window: readWindow(),
+            tOffset,
+            sessionId,
+            state: liveStateRef.current,
+          }),
+        });
+        if (!response.ok) return;
+
+        const data = (await response.json()) as ClassifyResponse;
+        liveStateRef.current = data.state;
+
+        if (data.card) {
+          appendCards([
+            {
+              kind: "live_card",
+              text: data.card.text,
+              triggerLabel: data.card.triggerLabel,
+              tOffset: data.card.tOffset,
+            },
+          ]);
+        }
+        if (data.state.cardsShown >= 3) setCardsSpent(true);
+
+        if (data.park) {
+          parkedRef.current = true;
+          parkReasonRef.current = data.park.reason;
+          void endLive(true);
+        }
+      } catch {
+        // A dropped classification is one missed window. The next one is five
+        // seconds away, and interrupting the parent to say so would be worse.
+      }
+    }, CLASSIFY_INTERVAL_MS);
+
+    return () => window.clearInterval(timer);
+  }, [listening, readWindow, sessionId, appendCards, endLive]);
 
   function post(payload: Record<string, unknown>, parentBody: string | null): void {
     void send(
@@ -446,6 +647,17 @@ export default function AppShell({
         </div>
 
         <div className="pp-composer-wrap">
+          {listening && (
+            <LiveBar
+              startedAt={startedAt}
+              onStop={() => void endLive(false)}
+              ending={ending}
+              cardsSpent={cardsSpent}
+            />
+          )}
+
+          {micError && !listening && <p className="pp-composer-note pp-mic-error">{micError}</p>}
+
           <div className="pp-composer">
             <input
               ref={fileRef}
@@ -505,16 +717,24 @@ export default function AppShell({
                 <SendIcon size={18} />
               </button>
             ) : (
+              /* The microphone is a toggle now, not a link to another screen.
+                 Live Mode happens in this thread, so leaving it to go and
+                 listen would mean leaving the worksheet behind. */
               <button
                 type="button"
                 className="pp-composer-btn"
-                aria-label={copy.live.micPrompt}
-                title={copy.live.micPrompt}
-                onClick={() => {
-                  window.location.href = "/live";
-                }}
+                aria-pressed={listening}
+                aria-label={listening ? copy.live.stopInThread : copy.live.startInThread}
+                title={listening ? copy.live.stopInThread : copy.live.startInThread}
+                disabled={ending}
+                onClick={() => (listening ? void endLive(false) : void startLive())}
+                style={
+                  listening
+                    ? { borderColor: "var(--accent)", color: "var(--accent-ink)" }
+                    : undefined
+                }
               >
-                <MicrophoneIcon size={19} />
+                {listening ? <MicrophoneOffIcon size={19} /> : <MicrophoneIcon size={19} />}
               </button>
             )}
           </div>

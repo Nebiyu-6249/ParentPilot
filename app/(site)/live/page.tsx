@@ -1,14 +1,14 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import LiveMode from "@/components/LiveMode";
-import { currentParent } from "@/lib/session";
-
-// Reads the parent's language and anxiety band, so it must never be prerendered.
-export const dynamic = "force-dynamic";
-
-export const metadata: Metadata = { title: "Live Mode" };
-
-export default async function LivePage() {
-  const parent = await currentParent();
-  return <LiveMode language={parent.language} />;
+/**
+ * Live Mode used to be its own screen. It is a toggle in the thread now, so
+ * this route exists only to keep old links and bookmarks working.
+ *
+ * The listening itself did not move house: the same hook, the same rolling
+ * window in the same ref, the same five second classify interval, the same
+ * rule engine. What moved is where the coaching lands, which is now the
+ * thread instead of a card over a blank page.
+ */
+export default function LivePage() {
+  redirect("/app");
 }
