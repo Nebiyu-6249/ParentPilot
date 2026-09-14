@@ -760,6 +760,47 @@ section("The third voice: actions and annotations are different colours");
 
 // ---------------------------------------------------------------------------
 
+section("Accounts are parent accounts, and the session is not a bearer id");
+
+{
+  const auth = readFileSync(path.join(process.cwd(), "lib", "auth.ts"), "utf8");
+  const session = readFileSync(path.join(process.cwd(), "lib", "session.ts"), "utf8");
+  const email = readFileSync(path.join(process.cwd(), "lib", "email.ts"), "utf8");
+
+  /* The no-child-account invariant, at the one place it could plausibly be
+     broken. The auth module reads and writes Parent and nothing else; there is
+     no Child table access in it at all, so there is no code path that could
+     mint a credential for a child. */
+  ok("the auth module never touches the Child table",
+    !/prisma\.child\b/i.test(auth));
+  ok("the auth module has no notion of a child at all",
+    !/\bchild\b/i.test(auth.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ")));
+
+  // The cookie used to hold a bare Parent.id. A cuid embeds a timestamp and a
+  // counter rather than being random, so once an id carries an identity an
+  // unsigned cookie is account takeover for anyone who can guess one.
+  ok("the session cookie is signed", auth.includes("createHmac") && auth.includes("sealSession"));
+  ok("the signature is compared in constant time", auth.includes("timingSafeEqual"));
+  ok("the session module seals what it writes", session.includes("sealSession("));
+  ok("the session module verifies what it reads", session.includes("openSession("));
+  ok("a bare parent id is never written to the cookie",
+    !/store\.set\(COOKIE,\s*parent\.id/.test(session));
+
+  // A leaked database should hand over hashes, not live sign-in links.
+  ok("the link token is hashed before storage", auth.includes("createHash") && auth.includes("tokenHash"));
+  ok("the raw token is generated from a CSPRNG", auth.includes("randomBytes"));
+  ok("links expire", auth.includes("expiresAt"));
+  ok("links are single use", auth.includes("usedAt"));
+  ok("asking again retires the previous link", auth.includes("updateMany"));
+
+  // A sign-in link rendered in a page would let a visitor sign in as any
+  // address they can type.
+  ok("an undeliverable link goes to the server log, never to the browser",
+    email.includes("console.warn") && !/return[^;]*\burl\b/.test(email));
+}
+
+// ---------------------------------------------------------------------------
+
 section("Seed data");
 
 interface StandardSeed { id: string; code: string; grade: number; plainLanguage: string; expectedMethods: string[]; parentMethod: string }
