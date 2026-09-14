@@ -9,7 +9,7 @@ import { nearestStandards, standardByCode } from "@/lib/standards";
 import { verifyAnswer } from "@/lib/verify";
 import { logFailure } from "@/lib/limits";
 import type { PacketPayload, RegisterName } from "@/lib/ai/schemas";
-import type { PacketBundle, ProblemView } from "@/lib/types";
+import type { PacketBundle, PacketSource, ProblemView } from "@/lib/types";
 
 /**
  * Capture to packet, orchestrated.
@@ -165,7 +165,7 @@ export async function buildPacket(args: BuildPacketArgs): Promise<PacketBundle> 
       misconceptionNote: null,
     } as unknown as PacketPayload;
 
-    return assemble(problem, standard, misconception, payload, register, language, null);
+    return assemble(problem, standard, misconception, payload, register, language, null, "cache");
   }
 
   if (!isConfigured()) {
@@ -216,7 +216,7 @@ export async function buildPacket(args: BuildPacketArgs): Promise<PacketBundle> 
       misconceptionNote: null,
     } as unknown as PacketPayload;
 
-    return assemble(problem, standard, misconception, genericPayload, register, language, notice);
+    return assemble(problem, standard, misconception, genericPayload, register, language, notice, "generic");
   }
 
   // Verify the model's answer against our own arithmetic, independently.
@@ -246,7 +246,7 @@ export async function buildPacket(args: BuildPacketArgs): Promise<PacketBundle> 
     })
     .catch(() => undefined);
 
-  return assemble(problem, standard, misconception, payload, register, language, null, checked.status);
+  return assemble(problem, standard, misconception, payload, register, language, null, "live", checked.status);
 }
 
 function assemble(
@@ -257,6 +257,7 @@ function assemble(
   register: RegisterName,
   language: string,
   notice: string | null,
+  source: PacketSource,
   verification?: PacketBundle["verification"],
 ): PacketBundle {
   const status = verification ?? verifyAnswer(problem.printedText, payload.lockedAnswer).status;
@@ -279,6 +280,7 @@ function assemble(
       misconceptionNote: payload.misconceptionNote,
     }),
     notice,
+    source,
     verification: status,
   };
 }

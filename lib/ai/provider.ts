@@ -506,4 +506,65 @@ export async function transcribeChunk(file: File): Promise<string> {
   return typeof response === "string" ? response : "";
 }
 
+export interface ProbeResult {
+  ok: boolean;
+  ms: number;
+  error: string;
+  dimensions?: number;
+}
+
+/**
+ * A one-token completion against the classify model, for /ops/doctor.
+ *
+ * Deliberately the smallest and cheapest model in the routing table, and
+ * capped at one token, so running diagnostics costs a fraction of a cent. The
+ * cost is still recorded, because every model call in this product increments
+ * the ledger and a diagnostics endpoint is not an exception.
+ */
+export async function probeClassifyModel(): Promise<ProbeResult> {
+  const started = Date.now();
+  try {
+    const openai = getClient();
+    const response = await openai.chat.completions.create({
+      model: MODELS.classify,
+      messages: [{ role: "user", content: "Reply with the single character: 1" }],
+      max_tokens: 1,
+      temperature: 0,
+    });
+
+    await recordSpend(
+      estimateUsd(
+        MODELS.classify,
+        response.usage?.prompt_tokens ?? 0,
+        response.usage?.completion_tokens ?? 0,
+      ),
+    );
+
+    return { ok: true, ms: Date.now() - started, error: "" };
+  } catch (error) {
+    // The exact error is the point of the probe, so it is surfaced verbatim
+    // rather than flattened into "failed".
+    return {
+      ok: false,
+      ms: Date.now() - started,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/** One embedding, for /ops/doctor. Confirms the dimension matches the column. */
+export async function probeEmbedding(): Promise<ProbeResult> {
+  const started = Date.now();
+  try {
+    const vector = await embed("ParentPilot diagnostics probe");
+    return { ok: true, ms: Date.now() - started, error: "", dimensions: vector.length };
+  } catch (error) {
+    return {
+      ok: false,
+      ms: Date.now() - started,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 export const modelRouting = MODELS;

@@ -27,10 +27,29 @@ const ALLOWED_ATTRS = new Set([
   "markerwidth", "markerheight",
 ]);
 
-/** Colours the design system permits inside a diagram. */
-const ALLOWED_COLOURS = new Set([
-  "none", "currentcolor", "transparent",
-  "#14201e", "#00a878", "#0b4f4a", "#d9d2c4", "#6e665a", "#a8422f", "#f5f1e8",
+/**
+ * Colours a diagram may use.
+ *
+ * A literal hex is rejected outright, including one from the brand palette.
+ * A hex paints identically in both themes, which is how `#14201E` ended up at
+ * 1.1 to 1 on the dark sheet: invisible. Diagrams inherit `currentColor` from
+ * a wrapper that sets `color: var(--text-on-sheet)`, or name a semantic token,
+ * and then they follow the theme for free.
+ */
+const ALLOWED_KEYWORDS = new Set(["none", "currentcolor", "transparent"]);
+
+/** Semantic tokens a diagram may name. Anything else is dropped. */
+const ALLOWED_TOKENS = new Set([
+  "--annotation",
+  "--annotation-on-frame",
+  "--accent-on-sheet",
+  "--surface-sheet",
+  "--surface-sheet-sunk",
+  "--text-on-sheet",
+  "--text-on-sheet-muted",
+  "--rule-on-sheet",
+  "--pencil",
+  "--alert-fg",
 ]);
 
 const COLOUR_ATTRS = new Set(["fill", "stroke"]);
@@ -40,8 +59,14 @@ const MAX_LENGTH = 24_000;
 
 function isSafeColour(value: string): boolean {
   const v = value.trim().toLowerCase();
-  if (ALLOWED_COLOURS.has(v)) return true;
-  // Any url(), gradient reference or expression is rejected outright.
+  if (ALLOWED_KEYWORDS.has(v)) return true;
+
+  const token = v.match(/^var\(\s*(--[a-z0-9-]+)\s*\)$/);
+  if (token) return ALLOWED_TOKENS.has(token[1] ?? "");
+
+  // A literal hex, an rgb() call, a named colour, a url() reference or any
+  // other expression is rejected. Hex in particular is rejected on purpose:
+  // see the note on ALLOWED_KEYWORDS above.
   return false;
 }
 
@@ -61,6 +86,7 @@ export function sanitizeSvg(input: string | null | undefined): string | null {
   if (/\son\w+\s*=/i.test(raw)) return null;
   if (/(javascript:|data:(?!image\/svg\+xml;base64,)|xlink:href|href\s*=)/i.test(raw)) return null;
   if (/(Gradient|<filter|url\s*\()/i.test(raw)) return null;
+  // `var(--token)` is permitted and is handled per attribute in isSafeColour.
 
   let elementCount = 0;
   let ok = true;

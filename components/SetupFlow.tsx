@@ -113,7 +113,7 @@ export default function SetupFlow({
                 lineHeight: 1.55,
                 background: register === sample.value ? "var(--emerald)" : "transparent",
                 color: register === sample.value ? "var(--paper)" : "var(--ink)",
-                border: `1px solid ${register === sample.value ? "var(--emerald)" : "var(--rule)"}`,
+                border: `1px solid ${register === sample.value ? "var(--emerald)" : "var(--border-interactive)"}`,
                 transition: "background 200ms ease-out, color 200ms ease-out",
               }}
             >
@@ -140,7 +140,7 @@ export default function SetupFlow({
                 fontSize: 17,
                 background: anxietyBand === option.band ? "var(--emerald)" : "transparent",
                 color: anxietyBand === option.band ? "var(--paper)" : "var(--ink)",
-                border: `1px solid ${anxietyBand === option.band ? "var(--emerald)" : "var(--rule)"}`,
+                border: `1px solid ${anxietyBand === option.band ? "var(--emerald)" : "var(--border-interactive)"}`,
                 transition: "background 200ms ease-out, color 200ms ease-out",
               }}
             >
@@ -203,7 +203,7 @@ export default function SetupFlow({
                       fontSize: 15,
                       background: on ? "var(--emerald)" : "transparent",
                       color: on ? "var(--paper)" : "var(--muted)",
-                      border: `1px solid ${on ? "var(--emerald)" : "var(--rule)"}`,
+                      border: `1px solid ${on ? "var(--emerald)" : "var(--border-interactive)"}`,
                     }}
                   >
                     {subject}

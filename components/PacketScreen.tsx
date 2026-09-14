@@ -80,6 +80,24 @@ export default function PacketScreen({ initial }: { initial: PacketBundle }) {
       {bundle.notice && <Banner text={bundle.notice} />}
       {failed && <Banner text={copy.errors.generic} />}
 
+      {/* Provenance. Quiet, but never absent: a packet that was not generated
+          from this worksheet says so, whether or not there is also a banner
+          explaining why. */}
+      {(bundle.source === "fixture" || bundle.source === "generic") && (
+        <p
+          style={{
+            margin: "16px 0 0",
+            paddingLeft: 12,
+            borderLeft: "2px solid var(--rule-on-sheet)",
+            fontSize: "var(--type-small)",
+            color: "var(--text-on-sheet-muted)",
+            maxWidth: "none",
+          }}
+        >
+          {bundle.source === "fixture" ? copy.provenance.fixture : copy.provenance.generic}
+        </p>
+      )}
+
       <div style={{ borderTop: "1px solid var(--rule)", padding: "24px 0" }}>
         <RegisterControl value={register} onChange={changeRegister} busy={busy} />
       </div>

@@ -247,6 +247,6 @@ function onFrameButton(kind: "solid" | "outline"): CSSProperties {
     ...shared,
     background: "transparent",
     color: "var(--text-on-frame)",
-    border: "1px solid var(--rule-on-frame)",
+    border: "1px solid var(--border-interactive-frame)",
   };
 }

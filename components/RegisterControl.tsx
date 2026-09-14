@@ -51,7 +51,7 @@ export default function RegisterControl({
                 fontWeight: active ? 500 : 400,
                 background: active ? "var(--emerald)" : "transparent",
                 color: active ? "var(--paper)" : "var(--muted)",
-                border: "1px solid var(--rule)",
+                border: "1px solid var(--border-interactive)",
                 borderLeftWidth: index === 0 ? 1 : 0,
                 transition: "background 200ms ease-out, color 200ms ease-out",
               }}

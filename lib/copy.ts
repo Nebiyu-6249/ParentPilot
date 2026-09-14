@@ -277,6 +277,15 @@ export const copy = {
     ],
   },
 
+  /* Provenance, shown quietly whenever a packet did not come from a live
+     reading of this parent's worksheet. A degraded response that looks
+     identical to a real one is the worst outcome, because the parent acts on
+     it believing we read the page. */
+  provenance: {
+    fixture: "This is a saved example, not a reading of your worksheet.",
+    generic: "The model did not answer, so this is the saved general explanation for this topic rather than one written for your child's working.",
+  },
+
   limits: {
     banner: "Demo limit reached for today. Showing a saved example.",
     spendBanner: "We have hit today's spending ceiling. Showing a saved example instead of an error.",

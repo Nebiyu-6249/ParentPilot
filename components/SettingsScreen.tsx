@@ -116,7 +116,7 @@ export default function SettingsScreen({
               fontSize: 16,
               background: anxietyBand === option.band ? "var(--emerald)" : "transparent",
               color: anxietyBand === option.band ? "var(--paper)" : "var(--ink)",
-              border: `1px solid ${anxietyBand === option.band ? "var(--emerald)" : "var(--rule)"}`,
+              border: `1px solid ${anxietyBand === option.band ? "var(--emerald)" : "var(--border-interactive)"}`,
             }}
           >
             {option.label}
