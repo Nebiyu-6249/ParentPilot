@@ -369,3 +369,76 @@ unscrolled. A design rule that is not measured is a preference.
 | Isomorphs were heading for a sixth disclosure on the stuck path | Moved to the solved state, where their own copy says they belong |
 | Disclosure order put the answer in the middle, within easy reach | Answer last, furthest from the thumb |
 | "Above the fold" was going to be an assertion by eye | Measured in a browser at two phone sizes |
+
+---
+
+# Round three, Part C: restrictions lifted, with judgement
+
+Four things are now allowed. Each is taken only where it does work.
+
+## 1. A small radius on interactive elements
+
+`* { border-radius: 0 !important }` is gone. It was a sledgehammer: it applied
+to every element including ones that were never going to be round, and because
+`outline` follows `border-radius`, it forced hard-cornered focus rings on
+controls the browser would otherwise have drawn correctly.
+
+Replaced with **one token, `--radius-control: 3px`, applied to interactive
+elements only**. Buttons, inputs, selects and the segmented control get 3px.
+
+**Surfaces stay square.** The sheet, the worksheet, the coaching card and every
+diagram keep zero radius, because they are paper, and paper does not have
+rounded corners. The radius is a signal that something can be pressed, which is
+worth more than the radius being decorative everywhere.
+
+The Tailwind radius scale caps at 4px, so nothing in the system can reach for a
+pill or a blob. Asserted.
+
+## 2. Soft elevation, on one thing
+
+The Live Mode card is the only element in the product that genuinely floats: it
+slides up over a live session and is dismissed. It gets a soft shadow.
+
+The sheet keeps its **hard flat offset**, because it is paper lying on a desk
+rather than a card hovering above one. Those are different physical claims and
+they should not use the same shadow.
+
+## 3. The third voice: an action colour
+
+This one is a real need, not an indulgence, and it fixes a regression I
+introduced in Part D.
+
+The round-two direction made emerald the annotation colour, the marks a teacher
+makes on a page, and said explicitly: not a button fill everywhere. Part D then
+filled the primary button with `var(--annotation)`. Emerald ended up meaning
+both "this is the error" and "press this", which are unrelated ideas wearing
+the same colour.
+
+So `--action` is split out and **emerald returns to being only the pen**.
+
+`--action` is the deep brand teal rather than a new hue. The palette already
+has a third voice; inventing a fourth to sit beside teal, emerald and the
+earthy alert would be decoration. Filled teal with a paper label measures 8.35
+on daytime paper and 6.62 on the dimmed night sheet.
+
+| Colour | Means |
+|---|---|
+| emerald `--annotation` | a mark on the page: the ring, the error label, Checked |
+| teal `--action` | press this |
+| `--alert-fg` | stop, or unverified |
+
+## 4. Icons where they aid scanning
+
+The five disclosures carry a category icon on the left and the chevron on the
+right. A parent scanning for "the answer" or "why she got it wrong" finds the
+shape before the word. Nothing else gains an icon: an icon still labels an
+action or a category, never decorates prose.
+
+## Review pass
+
+| Caught | Changed to |
+|---|---|
+| Allowing radius everywhere would round the paper | 3px on interactive elements only; surfaces stay square |
+| Elevation was going onto the sheet as well | Soft shadow on the Live Mode card only; the sheet keeps its hard offset |
+| A genuinely new fourth hue was tempting for `--action` | Deep teal, already in the brand; a fourth hue would be decoration |
+| The relaxed ban list would have quietly permitted skeleton loaders | The status line stays; it is a product decision from the original brief, not a ban-list artefact |

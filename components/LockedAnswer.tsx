@@ -110,9 +110,9 @@ export default function LockedAnswer({
           position: "relative",
           width: "100%",
           padding: "18px 20px",
-          border: "1px solid var(--teal)",
+          border: "1px solid var(--action)",
           background: "transparent",
-          color: "var(--teal)",
+          color: "var(--action)",
           fontSize: 17,
           fontWeight: 500,
           overflow: "hidden",
@@ -126,7 +126,7 @@ export default function LockedAnswer({
             position: "absolute",
             inset: 0,
             width: `${pct}%`,
-            background: "var(--emerald)",
+            background: "var(--action)",
             opacity: 0.22,
           }}
         />

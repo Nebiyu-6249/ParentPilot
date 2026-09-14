@@ -6,6 +6,7 @@ import Disclosure from "@/components/Disclosure";
 import LockedAnswer from "@/components/LockedAnswer";
 import MethodMatch from "@/components/MethodMatch";
 import RegisterControl from "@/components/RegisterControl";
+import { AlertIcon, BookIcon, ColumnsIcon, LockIcon, SpeechIcon } from "@/components/icons";
 import { Banner, Label, Page } from "@/components/ui";
 import { copy } from "@/lib/copy";
 import { requestPacket } from "@/lib/client/packet";
@@ -179,9 +180,9 @@ export default function PacketScreen({ initial }: { initial: PacketBundle }) {
                 padding: "17px 22px",
                 fontSize: 17,
                 fontWeight: 500,
-                background: "var(--annotation)",
-                color: "var(--surface-sheet)",
-                border: "1px solid var(--annotation)",
+                background: "var(--action)",
+                color: "var(--action-label)",
+                border: "1px solid var(--action)",
               }}
             >
               {copy.packet.stillStuck}
@@ -228,7 +229,7 @@ export default function PacketScreen({ initial }: { initial: PacketBundle }) {
 
       <div style={{ marginTop: 28 }}>
         {misconception && (
-          <Disclosure title={copy.packet.discloseWhy}>
+          <Disclosure title={copy.packet.discloseWhy} icon={AlertIcon}>
             <h2 style={{ fontSize: "var(--type-h3)", marginBottom: 10 }}>{misconception.plainName}</h2>
             {packet.misconceptionNote && <p style={{ fontSize: 17 }}>{packet.misconceptionNote}</p>}
 
@@ -249,11 +250,11 @@ export default function PacketScreen({ initial }: { initial: PacketBundle }) {
           </Disclosure>
         )}
 
-        <Disclosure title={copy.packet.discloseMethods}>
+        <Disclosure title={copy.packet.discloseMethods} icon={ColumnsIcon}>
           <MethodMatch data={packet.methodMatch} />
         </Disclosure>
 
-        <Disclosure title={copy.packet.discloseTeaching}>
+        <Disclosure title={copy.packet.discloseTeaching} icon={BookIcon}>
           <p style={{ fontSize: 17 }}>{primerOpening}</p>
           {primerRest && (
             <details style={{ marginTop: 14 }}>
@@ -271,7 +272,7 @@ export default function PacketScreen({ initial }: { initial: PacketBundle }) {
           )}
         </Disclosure>
 
-        <Disclosure title={copy.packet.discloseScripts}>
+        <Disclosure title={copy.packet.discloseScripts} icon={SpeechIcon}>
           {packet.scripts.map((script) => (
             <div key={script.avoid} style={{ marginBottom: 24 }}>
               <Label>{copy.packet.scriptAvoid}</Label>
@@ -292,7 +293,7 @@ export default function PacketScreen({ initial }: { initial: PacketBundle }) {
           ))}
         </Disclosure>
 
-        <Disclosure title={copy.packet.discloseAnswer} tone="quiet">
+        <Disclosure title={copy.packet.discloseAnswer} icon={LockIcon} tone="quiet">
           <LockedAnswer answer={packet.lockedAnswer} verification={bundle.verification} />
         </Disclosure>
       </div>

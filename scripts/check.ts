@@ -497,6 +497,9 @@ section("Colour contrast, computed from the tokens rather than asserted");
     // fill, which is a primary control and easy to miss when only surfaces
     // are checked.
     ["--paper", "--annotation", 4.5, "label on a selected control"],
+    // The third voice. A filled action with its own label colour.
+    ["--action-label", "--action", 4.5, "label on a primary action"],
+    ["--action", "--surface-sheet", 4.5, "an outlined action on paper"],
   ];
 
   for (const [mode, tokens] of [["light", light], ["dark", dark]] as const) {
@@ -725,6 +728,38 @@ section("The problem screen is one question, not an essay");
 
 // ---------------------------------------------------------------------------
 
+section("The third voice: actions and annotations are different colours");
+
+{
+  const css = readFileSync(path.join(process.cwd(), "app", "globals.css"), "utf8");
+  const componentFiles = listFiles("components", /\.tsx$/).concat(listFiles("app", /\.tsx$/));
+  const components = componentFiles.map((f) => readFileSync(f, "utf8")).join("\n");
+
+  ok("an action colour exists, separate from the pen", css.includes("--action:"));
+  ok("it has its own label colour", css.includes("--action-label:"));
+
+  /* Emerald is the pen: the marks a teacher makes on a page. Round two said
+     explicitly that it is not a button fill everywhere, and Part D had
+     regressed to filling the primary button with it, so one colour meant both
+     "this is the error" and "press this". */
+  const penAsFill = [
+    /background:\s*"var\(--emerald\)"/,
+    /background:\s*"var\(--annotation\)"/,
+    /background:\s*[^,;]*\?\s*"var\(--emerald\)"/,
+    /background:\s*[^,;]*\?\s*"var\(--annotation\)"/,
+  ];
+  for (const pattern of penAsFill) {
+    const hit = components.match(pattern);
+    ok(`the pen is never a button fill${hit ? `  (found ${JSON.stringify(hit[0])})` : ""}`, hit === null);
+  }
+
+  ok("the primary button uses the action colour", components.includes('background: "var(--action)"'));
+  // The pen still marks things: the hero ring, the error label, the doctor.
+  ok("the pen still marks the page", components.includes("var(--annotation)"));
+}
+
+// ---------------------------------------------------------------------------
+
 section("Seed data");
 
 interface StandardSeed { id: string; code: string; grade: number; plainLanguage: string; expectedMethods: string[]; parentMethod: string }
@@ -802,14 +837,23 @@ section("Design system, scanned over source with comments stripped");
   ];
   const source = files.map((f) => stripComments(readFileSync(f, "utf8"))).join("\n");
 
+  /* The revised ban list. Radius, elevation, bento grids, pastels, coloured
+     left stripes and skeleton loaders came off it in round three; harshness
+     is now a matter of judgement rather than of regex, so what remains here
+     is only what a pattern can honestly detect.
+
+     The status line is kept over a skeleton loader by choice, not by ban: it
+     is a product decision from the original brief, and a skeleton implies the
+     shape of the result is known when a 20 second model call means it is not. */
   const forbidden: [string, RegExp][] = [
-    ["gradients", /linear-gradient|radial-gradient|conic-gradient/],
-    ["icon libraries", /lucide|react-icons|@heroicons|font-awesome/i],
+    ["radial orbs", /radial-gradient|conic-gradient/],
+    ["dot grids", /repeating-(linear|radial)-gradient/],
+    ["icon libraries", /lucide|react-icons|@heroicons|phosphor|font-awesome/i],
     ["the forbidden typefaces", /["'\s](Inter|Geist|Space Grotesk)["',]/],
     ["glassmorphism", /backdrop-?[Ff]ilter/],
-    ["skeleton loaders", /[Ss]keleton/],
-    ["a non-zero border radius", /border-?[Rr]adius:\s*["']?[1-9]|borderRadius:\s*[1-9]/],
     ["springy easing", /cubic-bezier\([^)]*\b1\.[1-9]/],
+    ["streak counters", /streak/i],
+    ["confetti", /confetti/i],
   ];
 
   for (const [name, pattern] of forbidden) {
@@ -818,8 +862,21 @@ section("Design system, scanned over source with comments stripped");
   }
 
   const css = readFileSync(path.join(process.cwd(), "app", "globals.css"), "utf8");
-  ok("every radius token collapses to zero", /--radius-[\w]+:\s*0px;/.test(css));
-  ok("a global rule forces square corners", /\*\s*\{[^}]*border-radius:\s*0\s*!important/.test(css));
+  /* A small radius is allowed now, but only as a signal that something can be
+     pressed. The sledgehammer is gone, the scale is capped so nothing can
+     reach a pill, and paper opts back out. */
+  ok("the global border-radius sledgehammer is gone",
+    !/\*\s*\{[^}]*border-radius:\s*0\s*!important/.test(css));
+
+  const radii = [...css.matchAll(/--radius-[\w-]+:\s*(\d+)px;/g)].map((m) => Number(m[1]));
+  ok(`no radius token exceeds 4px, so nothing can become a pill  (max ${Math.max(...radii, 0)}px)`,
+    radii.length > 0 && radii.every((r) => r <= 4));
+  ok("interactive elements carry the control radius",
+    /button,\s*\n\s*input,\s*\n\s*select,\s*\n\s*textarea\s*\{[^}]*border-radius:\s*var\(--radius-control\)/.test(css));
+  ok("paper opts back out, because paper has square corners",
+    /\.pp-sheet-page[\s\S]{0,160}border-radius:\s*0;/.test(css));
+  ok("the focus ring follows the radius it sits on rather than being forced square",
+    /:focus-visible\s*\{[^}]*border-radius:\s*inherit/.test(css));
   ok("body type is at least 17px", /font-size:\s*17px/.test(css));
   ok("body line height is 1.6", /line-height:\s*1\.6/.test(css));
   ok("reduced motion is honoured", css.includes("prefers-reduced-motion: reduce"));
