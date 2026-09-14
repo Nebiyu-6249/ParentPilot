@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 
 import Logo from "@/components/Logo";
 import LogoReveal from "@/components/LogoReveal";
+import ThemeToggle from "@/components/ThemeToggle";
 import { resolveAppUrl } from "@/lib/app-url";
 import { copy } from "@/lib/copy";
 
@@ -30,63 +31,93 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#F5F1E8",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#0B4F4A" },
+    { media: "(prefers-color-scheme: dark)", color: "#0A1614" },
+  ],
   width: "device-width",
   initialScale: 1,
 };
+
+/**
+ * Applied before first paint so a parent who chose dark does not get a frame
+ * of cream. Kept deliberately tiny and dependency-free: it runs ahead of
+ * everything, so a throw here would be a blank page.
+ */
+const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem("pp_theme");if(t==="dark"||t==="light"){document.documentElement.setAttribute("data-theme",t)}}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Public+Sans:wght@400;500;600&display=swap"
           rel="stylesheet"
         />
       </head>
       <body>
         <LogoReveal />
 
+        {/* The frame. Teal is the desk; content sits on paper within it. */}
         <header
           style={{
-            borderBottom: "1px solid var(--rule)",
-            padding: "16px 20px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 16,
-            flexWrap: "wrap",
+            background: "var(--surface-frame-deep)",
+            color: "var(--text-on-frame)",
+            borderBottom: "1px solid var(--rule-on-frame)",
           }}
         >
-          <a href="/" style={{ textDecoration: "none" }} aria-label={copy.brand.name}>
-            <Logo size={26} />
-          </a>
-          <nav style={{ display: "flex", gap: 18, fontSize: 15 }}>
-            <a href="/capture">{copy.nav.capture}</a>
-            <a href="/live">{copy.nav.live}</a>
-            <a href="/settings">{copy.nav.settings}</a>
-          </nav>
+          <div
+            className="pp-page"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 16,
+              flexWrap: "wrap",
+              paddingBlock: 14,
+            }}
+          >
+            <a href="/" style={{ textDecoration: "none" }} aria-label={copy.brand.name}>
+              <Logo size={26} onFrame />
+            </a>
+
+            <nav className="pp-nav">
+              <a href="/capture">{copy.nav.capture}</a>
+              <a href="/live">{copy.nav.live}</a>
+              <a href="/settings">{copy.nav.settings}</a>
+              <ThemeToggle onFrame />
+            </nav>
+          </div>
         </header>
 
         {children}
 
         <footer
           style={{
-            borderTop: "1px solid var(--rule)",
-            padding: "26px 20px 40px",
-            display: "flex",
-            gap: 18,
-            flexWrap: "wrap",
-            fontSize: 15,
-            color: "var(--muted)",
+            background: "var(--surface-frame-deep)",
+            color: "var(--text-on-frame-muted)",
+            borderTop: "1px solid var(--rule-on-frame)",
           }}
         >
-          <a href="/privacy">{copy.nav.privacy}</a>
-          <a href="/check">{copy.nav.check}</a>
-          <a href="/setup">Set up</a>
-          <span style={{ marginLeft: "auto" }}>{copy.landing.noChild}</span>
+          <div
+            className="pp-page"
+            style={{
+              display: "flex",
+              gap: 20,
+              flexWrap: "wrap",
+              alignItems: "center",
+              fontSize: "var(--type-small)",
+              paddingBlock: 28,
+            }}
+          >
+            <a href="/privacy">{copy.nav.privacy}</a>
+            <a href="/check">{copy.nav.check}</a>
+            <a href="/setup">Set up</a>
+            <span style={{ marginLeft: "auto", maxWidth: "46ch" }}>{copy.landing.noChild}</span>
+          </div>
         </footer>
       </body>
     </html>
