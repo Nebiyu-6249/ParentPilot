@@ -13,10 +13,10 @@
  * README.md, which needs a key and a human reading the output.
  */
 
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
-import { sanitize, sanitizeDeep } from "../lib/copy";
+import { copy, sanitize, sanitizeDeep } from "../lib/copy";
 import { autonomyScore, countMoves } from "../lib/autonomy";
 import { detectors } from "../lib/misconception";
 import { evaluateMove, initialLiveState, LIVE_RULES } from "../lib/live/rules";
@@ -28,10 +28,8 @@ import type { MoveLabelName } from "../lib/ai/schemas";
 
 let failures = 0;
 let checks = 0;
-let group = "";
 
 function section(name: string): void {
-  group = name;
   console.log(`\n${name}`);
 }
 
@@ -52,6 +50,20 @@ function eq<T>(name: string, actual: T, expected: T): void {
   } else {
     ok(name, true);
   }
+}
+
+function listFiles(dir: string, match: RegExp): string[] {
+  const root = path.join(process.cwd(), dir);
+  const out: string[] = [];
+  const walk = (at: string): void => {
+    for (const entry of readdirSync(at)) {
+      const full = path.join(at, entry);
+      if (statSync(full).isDirectory()) walk(full);
+      else if (match.test(entry)) out.push(full);
+    }
+  };
+  walk(root);
+  return out;
 }
 
 function readSeed<T>(name: string): T {
@@ -309,6 +321,78 @@ ok("misconception ids are unique", new Set(misconceptions.map((m) => m.id)).size
   }
 }
 
+
+// ---------------------------------------------------------------------------
+
+section("Design system, scanned over source with comments stripped");
+
+{
+  // Comments state the rules ("Nothing bounces or springs", "never a
+  // skeleton"), so scanning raw source produces false positives. Strip them
+  // first and scan only code that ships.
+  const stripComments = (code: string): string =>
+    code.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/[^\n]*/g, "$1 ");
+
+  const files = [
+    ...listFiles("app", /\.(tsx|css)$/),
+    ...listFiles("components", /\.tsx$/),
+  ];
+  const source = files.map((f) => stripComments(readFileSync(f, "utf8"))).join("\n");
+
+  const forbidden: [string, RegExp][] = [
+    ["gradients", /linear-gradient|radial-gradient|conic-gradient/],
+    ["icon libraries", /lucide|react-icons|@heroicons|font-awesome/i],
+    ["the forbidden typefaces", /["'\s](Inter|Geist|Space Grotesk)["',]/],
+    ["glassmorphism", /backdrop-?[Ff]ilter/],
+    ["skeleton loaders", /[Ss]keleton/],
+    ["a non-zero border radius", /border-?[Rr]adius:\s*["']?[1-9]|borderRadius:\s*[1-9]/],
+    ["springy easing", /cubic-bezier\([^)]*\b1\.[1-9]/],
+  ];
+
+  for (const [name, pattern] of forbidden) {
+    const hit = source.match(pattern);
+    ok(`no ${name}${hit ? `  (found ${JSON.stringify(hit[0])})` : ""}`, hit === null);
+  }
+
+  const css = readFileSync(path.join(process.cwd(), "app", "globals.css"), "utf8");
+  ok("every radius token collapses to zero", /--radius-[\w]+:\s*0px;/.test(css));
+  ok("a global rule forces square corners", /\*\s*\{[^}]*border-radius:\s*0\s*!important/.test(css));
+  ok("body type is at least 17px", /font-size:\s*17px/.test(css));
+  ok("body line height is 1.6", /line-height:\s*1\.6/.test(css));
+  ok("reduced motion is honoured", css.includes("prefers-reduced-motion: reduce"));
+}
+
+// ---------------------------------------------------------------------------
+
+section("Promises the product makes in its own copy");
+
+ok("the landing page states the audio promise",
+  copy.landing.audioPromise.includes("never leaves your device") &&
+    copy.landing.audioPromise.includes("never stored"));
+ok("the landing page states there is no child account",
+  copy.landing.noChild.toLowerCase().includes("no child account"));
+ok("GIVES_ANSWER has no card, by design",
+  !Object.prototype.hasOwnProperty.call(copy.cards, "GIVES_ANSWER"));
+ok("every specified card trigger has its exact text",
+  copy.cards.TAKES_OVER === "You've been talking for 40 seconds. Ask something and wait." &&
+    copy.cards.ESCALATION === "Take 20 seconds. Get a glass of water. Nothing is lost." &&
+    copy.cards.PRODUCTIVE_WAIT === "Let her think. This silence is the work.");
+
+// ---------------------------------------------------------------------------
+
+section("Prompt files carry the four standing rules");
+
+for (const name of ["extract-worksheet", "generate-packet", "classify-move", "session-recap", "teacher-note"]) {
+  const text = readFileSync(path.join(process.cwd(), "prompts", `${name}.md`), "utf8");
+  // The files are hard-wrapped, so a rule can straddle a line break.
+  const flat = text.replace(/\s+/g, " ");
+  ok(`${name}: bans the em dash`, /never write an em dash/i.test(flat));
+  ok(`${name}: addresses the parent, never the child`, /never address(es)? the child/i.test(flat));
+  ok(`${name}: carries the register instruction`, flat.includes("REGISTER:") || /\bRegister\b/.test(flat));
+  ok(`${name}: carries the language instruction`, flat.includes("LANGUAGE:") || /\bLanguage\b/.test(flat));
+  ok(`${name}: contains no em dash of its own`, !/—|―/.test(flat));
+}
+
 // ---------------------------------------------------------------------------
 
 console.log(
@@ -317,4 +401,3 @@ console.log(
     : `\n${checks} checks, ${failures} FAILING.`,
 );
 if (failures > 0) process.exitCode = 1;
-void group;

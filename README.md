@@ -29,7 +29,7 @@ npm run dev
 ```
 
 ```bash
-npm run check               # 91 deterministic checks, no network, no key needed
+npm run check               # 132 deterministic checks, no network, no key needed
 npm run typecheck           # tsc --noEmit, strict
 npm run build               # production build
 ```
@@ -128,12 +128,14 @@ has never seen a word their child said.
 
 Phases 1 to 6 are implemented. What is verified and what is not:
 
-**Verified here** (`npm run check`, 91 assertions, plus a production build
+**Verified here** (`npm run check`, 132 assertions, plus a production build
 served and inspected): arithmetic verification and its three states,
 misconception detection, the Live Mode rule engine including the cooldown, the
 three-card cap, the anxiety-band threshold and both Park It triggers, the
 autonomy ratio, the em-dash ban, the SVG sanitiser, EXIF stripping, the cache
-key, seed integrity, all ten routes returning 200, the register control
+key, seed integrity, design system compliance scanned over comment-stripped
+source, the four standing rules present in all five prompt files, all ten
+routes returning 200, the register control
 returning distinct copy for all three registers through the real API, and the
 degraded path returning a usable packet rather than a 429 or an error page.
 

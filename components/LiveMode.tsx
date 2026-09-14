@@ -26,9 +26,14 @@ interface ActiveCard {
  * commentary. The restraint is the design, and it is also the honest
  * representation of what is happening, since nothing is being kept.
  */
-export default function LiveMode({ language, sessionId }: { language: string; sessionId: string | null }) {
+export default function LiveMode({ language }: { language: string }) {
   const router = useRouter();
   const transcript = useLiveTranscript(language);
+  // The hook returns a fresh object every render and the timer below re-renders
+  // once a second, so effects must depend on these stable callbacks rather than
+  // on `transcript`. Depending on the object tore down the 5 second classify
+  // interval every second, and it never fired.
+  const { listening, readWindow, stop: stopTranscript } = transcript;
 
   const [elapsed, setElapsed] = useState(0);
   const [card, setCard] = useState<ActiveCard | null>(null);
@@ -37,6 +42,8 @@ export default function LiveMode({ language, sessionId }: { language: string; se
   const [copied, setCopied] = useState(false);
   const [ending, setEnding] = useState(false);
   const [cardsSpent, setCardsSpent] = useState(false);
+  // Opened when the parent actually starts listening, not on page load.
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   const stateRef = useRef<LiveState>(initialLiveState());
   const startedAtRef = useRef<number>(Date.now());
@@ -44,7 +51,7 @@ export default function LiveMode({ language, sessionId }: { language: string; se
   const endSession = useCallback(
     async (wasParked: boolean) => {
       setEnding(true);
-      transcript.stop();
+      stopTranscript();
 
       if (!sessionId) {
         router.push("/recap/none");
@@ -67,24 +74,37 @@ export default function LiveMode({ language, sessionId }: { language: string; se
       if (!wasParked) router.push(`/recap/${sessionId}`);
       else setEnding(false);
     },
-    [router, sessionId, transcript],
+    [router, sessionId, stopTranscript],
   );
+
+  const beginSession = useCallback(async (): Promise<void> => {
+    await transcript.start();
+    startedAtRef.current = Date.now();
+    try {
+      const response = await fetch("/api/session", { method: "POST" });
+      const data = (await response.json()) as { sessionId: string | null };
+      setSessionId(data.sessionId);
+    } catch {
+      // Without a session id the coaching still works, it just is not recorded.
+      setSessionId(null);
+    }
+  }, [transcript]);
 
   // The timer, and the only thing on screen that moves.
   useEffect(() => {
-    if (!transcript.listening) return;
+    if (!listening) return;
     const timer = window.setInterval(() => {
       setElapsed(Math.floor((Date.now() - startedAtRef.current) / 1000));
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [transcript.listening]);
+  }, [listening]);
 
   // Classify the rolling window every five seconds.
   useEffect(() => {
-    if (!transcript.listening || parked) return;
+    if (!listening || parked) return;
 
     const timer = window.setInterval(async () => {
-      const windowText = transcript.readWindow();
+      const windowText = readWindow();
       const tOffset = Math.floor((Date.now() - startedAtRef.current) / 1000);
 
       try {
@@ -117,7 +137,7 @@ export default function LiveMode({ language, sessionId }: { language: string; se
     }, CLASSIFY_INTERVAL_MS);
 
     return () => window.clearInterval(timer);
-  }, [transcript, transcript.listening, parked, sessionId, endSession]);
+  }, [listening, readWindow, parked, sessionId, endSession]);
 
   const minutes = String(Math.floor(elapsed / 60)).padStart(2, "0");
   const seconds = String(elapsed % 60).padStart(2, "0");
@@ -175,7 +195,7 @@ export default function LiveMode({ language, sessionId }: { language: string; se
     );
   }
 
-  if (!transcript.listening) {
+  if (!listening) {
     return (
       <Page>
         <header style={{ padding: "48px 0 22px" }}>
@@ -186,7 +206,7 @@ export default function LiveMode({ language, sessionId }: { language: string; se
         </header>
 
         <div style={{ borderTop: "1px solid var(--rule)", paddingTop: 26 }}>
-          <button type="button" onClick={() => void transcript.start()} style={buttonStyle("primary", true)}>
+          <button type="button" onClick={beginSession} style={buttonStyle("primary", true)}>
             {copy.live.micPrompt}
           </button>
         </div>

@@ -5,7 +5,7 @@ import { classifyMove, isConfigured } from "@/lib/ai/provider";
 import { clientIp, consume, logFailure } from "@/lib/limits";
 import { prisma, hasDatabase } from "@/lib/db";
 import { currentParent } from "@/lib/session";
-import { evaluateMove, type LiveState } from "@/lib/live/rules";
+import { evaluateMove, shouldLogMove, type LiveState } from "@/lib/live/rules";
 import type { MoveLabelName } from "@/lib/ai/schemas";
 import { MOVE_LABELS } from "@/lib/ai/schemas";
 
@@ -87,7 +87,7 @@ export async function POST(request: Request): Promise<Response> {
 
   if (sessionId && hasDatabase()) {
     try {
-      if (label !== "NEUTRAL") {
+      if (shouldLogMove(label)) {
         await prisma.move.create({ data: { sessionId, tOffset, label, confidence } });
       }
       if (outcome.card) {
