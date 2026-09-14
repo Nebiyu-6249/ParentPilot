@@ -121,9 +121,20 @@ misconception to fill the field.
 
 - A single `<svg>` element with a `viewBox`, no `width` or `height`
   attributes, and `xmlns="http://www.w3.org/2000/svg"`.
-- Colours, and only these: `#14201E` for lines and text, `#00A878` for the
-  highlighted part, `#D9D2C4` for secondary rules, `#F5F1E8` for fills that
-  need to read as empty.
+- **Never emit a hex colour inside the SVG.** Not `#14201E`, not `#00A878`,
+  not any other. A hex paints the same in light mode and in dark mode, and the
+  parent's screen may be either. A diagram drawn in `#14201E` renders at
+  1.1 to 1 on the dark sheet, which is invisible.
+
+  Use these and nothing else:
+  - Lines, strokes and text: `currentColor`. The wrapper sets the right value.
+  - The highlighted or filled region: `var(--annotation)`.
+  - A region that must read as empty: `fill="var(--surface-sheet)"` with
+    `stroke="currentColor"`.
+  - Secondary rules: `var(--rule-on-sheet)`.
+
+  Any other colour value is stripped before the diagram is rendered, so a hex
+  does not produce a wrong colour, it produces a missing shape.
 - No rounded corners. `rx` and `ry` must be `0` or absent.
 - No gradients, no filters, no external images, no `<foreignObject>`, no
   `<script>`, no event handler attributes.

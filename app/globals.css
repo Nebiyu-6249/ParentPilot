@@ -38,14 +38,10 @@
 }
 
 :root {
-  /* Raw brand values. Unchanged from round one. */
-  --paper: #f5f1e8;
-  --ink: #14201e;
-  --emerald: #00a878;
-  --teal: #0b4f4a;
-  --rule: #d9d2c4;
-  --muted: #6e665a;
-  --alert: #a8422f;
+  /* Brand constants. The logo is the logo in any mode, so these are literal
+     values, used by the mark and the favicon and nothing else. */
+  --brand-emerald: #00a878;
+  --brand-teal: #0b4f4a;
 
   /* ---- Semantic layer, light ---------------------------------------- */
 
@@ -77,11 +73,23 @@
   --annotation: #00704f;
   --annotation-on-frame: #00a878;
 
+  /* The strong accent on paper: headings, badges, the answer control. */
+  --accent-on-sheet: #0b4f4a;
+
   /* The child's handwriting. */
   --pencil: #5a5247;
 
+  /* Dividers. Deliberately faint: a hairline between sections is decorative
+     and carries no meaning. */
   --rule-on-sheet: #d9d2c4;
   --rule-on-frame: #1a6b64;
+
+  /* Boundaries of interactive things: input outlines, button edges, the
+     segmented control. WCAG 1.4.11 wants 3 to 1 for these, and the divider
+     colour is 1.33 to 1 on paper, so they cannot share a token. */
+  --border-interactive: #8e8474;
+  --border-interactive-frame: #78a9a1;
+
   --alert-fg: #a8422f;
 
   /* ---- Type scale ---------------------------------------------------- */
@@ -94,6 +102,25 @@
 
   --measure: 62ch;
   --page-max: 1200px;
+
+  /* ---- Compatibility aliases ------------------------------------------
+
+     Most of the app was written before the semantic layer existed and still
+     asks for --ink, --muted, --rule, --paper, --teal, --emerald and --alert.
+     Those were literal light-mode values that the dark blocks never
+     redefined, so in dark mode body text rendered at 1.10 to 1 and headings
+     at 1.61 to 1. Every screen except the landing page was unreadable.
+
+     Defining them as references rather than as values fixes all of it at
+     once, and means a later change to the semantic layer carries through
+     automatically instead of needing a second edit here. */
+  --paper: var(--surface-sheet);
+  --ink: var(--text-on-sheet);
+  --muted: var(--text-on-sheet-muted);
+  --rule: var(--rule-on-sheet);
+  --teal: var(--accent-on-sheet);
+  --emerald: var(--annotation);
+  --alert: var(--alert-fg);
 
   color-scheme: light;
 }
@@ -119,14 +146,17 @@
     --text-on-frame: #ede7da;
     --text-on-frame-muted: #9fb3ae;
     --text-on-sheet: #ede7da;
-    --text-on-sheet-muted: #9fb3ae;
+    --text-on-sheet-muted: #a8bcb6;
 
     --annotation: #00a878;
     --annotation-on-frame: #00a878;
+    --accent-on-sheet: #5fc6b1;
     --pencil: #b9a98f;
 
-    --rule-on-sheet: #2a443d;
-    --rule-on-frame: #24403a;
+    --rule-on-sheet: #5e786d;
+    --rule-on-frame: #5e786d;
+    --border-interactive: #5e786d;
+    --border-interactive-frame: #6b8579;
     --alert-fg: #e08770;
 
     color-scheme: dark;
@@ -144,14 +174,17 @@
   --text-on-frame: #ede7da;
   --text-on-frame-muted: #9fb3ae;
   --text-on-sheet: #ede7da;
-  --text-on-sheet-muted: #9fb3ae;
+  --text-on-sheet-muted: #a8bcb6;
 
   --annotation: #00a878;
   --annotation-on-frame: #00a878;
+  --accent-on-sheet: #5fc6b1;
   --pencil: #b9a98f;
 
-  --rule-on-sheet: #2a443d;
-  --rule-on-frame: #24403a;
+  --rule-on-sheet: #5e786d;
+  --rule-on-frame: #5e786d;
+  --border-interactive: #5e786d;
+  --border-interactive-frame: #6b8579;
   --alert-fg: #e08770;
 
   color-scheme: dark;
@@ -449,7 +482,15 @@ hr {
   }
 }
 
-/* Generated and hand-drawn diagrams size to their column, never overflow. */
+/* Generated and hand-drawn diagrams size to their column, never overflow.
+
+   The wrapper sets `color`, because every diagram draws its lines and text in
+   `currentColor` rather than in a literal hex. That is what makes a diagram
+   legible in both themes from one piece of markup. */
+.pp-diagram {
+  color: var(--text-on-sheet);
+}
+
 .pp-diagram svg {
   display: block;
   width: 100%;

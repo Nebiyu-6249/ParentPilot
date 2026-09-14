@@ -64,7 +64,7 @@ export default function ThemeToggle({ onFrame = false }: { onFrame?: boolean }) 
         width: 38,
         height: 38,
         background: "transparent",
-        border: `1px solid ${onFrame ? "var(--rule-on-frame)" : "var(--rule-on-sheet)"}`,
+        border: `1px solid ${onFrame ? "var(--border-interactive-frame)" : "var(--border-interactive)"}`,
         color: onFrame ? "var(--text-on-frame)" : "var(--text-on-sheet)",
         transition: "border-color 200ms ease-out",
       }}

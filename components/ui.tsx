@@ -56,7 +56,7 @@ type ButtonVariant = "primary" | "secondary" | "quiet" | "alert";
 const VARIANTS: Record<ButtonVariant, CSSProperties> = {
   primary: { background: "var(--emerald)", color: "var(--paper)", border: "1px solid var(--emerald)" },
   secondary: { background: "transparent", color: "var(--teal)", border: "1px solid var(--teal)" },
-  quiet: { background: "transparent", color: "var(--muted)", border: "1px solid var(--rule)" },
+  quiet: { background: "transparent", color: "var(--muted)", border: "1px solid var(--border-interactive)" },
   alert: { background: "var(--alert)", color: "var(--paper)", border: "1px solid var(--alert)" },
 };
 
@@ -134,7 +134,7 @@ export function Label({ children }: { children: ReactNode }) {
 export const inputStyle: CSSProperties = {
   width: "100%",
   padding: "13px 14px",
-  border: "1px solid var(--rule)",
+  border: "1px solid var(--border-interactive)",
   background: "var(--paper)",
   color: "var(--ink)",
   fontSize: 17,

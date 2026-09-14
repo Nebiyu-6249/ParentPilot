@@ -209,11 +209,24 @@ ok("rejects a gradient", sanitizeSvg('<svg viewBox="0 0 10 10"><linearGradient i
 ok("rejects an external image", sanitizeSvg('<svg viewBox="0 0 10 10"><image href="http://x/y.png"/></svg>') === null);
 ok("rejects non-svg input", sanitizeSvg("<div>hi</div>") === null);
 {
-  const rounded = sanitizeSvg('<svg viewBox="0 0 10 10"><rect width="5" height="5" rx="3" fill="#00A878"/></svg>');
+  const rounded = sanitizeSvg('<svg viewBox="0 0 10 10"><rect width="5" height="5" rx="3" fill="currentColor"/></svg>');
   ok("strips a rounded corner", rounded !== null && !rounded.includes("rx="));
-  ok("keeps a palette colour", rounded !== null && rounded.includes('fill="#00A878"'));
+  ok("keeps currentColor", rounded !== null && rounded.includes('fill="currentColor"'));
+
+  const token = sanitizeSvg('<svg viewBox="0 0 10 10"><rect width="5" height="5" fill="var(--annotation)"/></svg>');
+  ok("keeps an allowed semantic token", token !== null && token.includes("var(--annotation)"));
+
+  const unknownToken = sanitizeSvg('<svg viewBox="0 0 10 10"><rect width="5" height="5" fill="var(--not-a-token)"/></svg>');
+  ok("strips an unknown token", unknownToken !== null && !unknownToken.includes("--not-a-token"));
+
+  // A hex paints identically in both themes. #14201E on the dark sheet is
+  // 1.1 to 1, which is invisible, so hex is rejected even from the brand
+  // palette rather than trusted to be the right value.
+  const brandHex = sanitizeSvg('<svg viewBox="0 0 10 10"><rect width="5" height="5" fill="#00A878"/></svg>');
+  ok("strips a brand hex, because a hex cannot follow the theme",
+    brandHex !== null && !brandHex.includes("#00A878"));
   const off = sanitizeSvg('<svg viewBox="0 0 10 10"><rect width="5" height="5" fill="#ff00ff"/></svg>');
-  ok("strips an off-palette colour", off !== null && !off.includes("ff00ff"));
+  ok("strips an off-palette hex", off !== null && !off.includes("ff00ff"));
 }
 
 // ---------------------------------------------------------------------------
@@ -399,15 +412,39 @@ section("Colour contrast, computed from the tokens rather than asserted");
     const close = css.indexOf("}", open);
     const body = css.slice(open + 1, close);
     const out: Record<string, string> = {};
-    for (const m of body.matchAll(/(--[\w-]+)\s*:\s*(#[0-9a-fA-F]{3,8})\s*;/g)) {
+    for (const m of body.matchAll(/(--[\w-]+)\s*:\s*(#[0-9a-fA-F]{3,8}|var\([^)]*\))\s*;/g)) {
       const [, name, value] = m;
-      if (name && value) out[name] = value;
+      if (name && value) out[name] = value.trim();
     }
     return out;
   };
 
-  const light = readTokens(":root {");
-  const dark = { ...light, ...readTokens(':root[data-theme="dark"] {') };
+  /**
+   * Follows `--ink: var(--text-on-sheet)` through to a literal.
+   *
+   * The legacy tokens are aliases now. Reading them without resolving would
+   * silently skip exactly the ones that were broken: --ink rendered at
+   * 1.10 to 1 in dark mode and no assertion noticed, because the parser only
+   * looked at literal hex.
+   */
+  const resolve = (tokens: Record<string, string>): Record<string, string> => {
+    const out: Record<string, string> = {};
+    for (const key of Object.keys(tokens)) {
+      let value = tokens[key] ?? "";
+      for (let hop = 0; hop < 8 && value.startsWith("var("); hop += 1) {
+        const ref = value.match(/^var\(\s*(--[\w-]+)\s*\)$/)?.[1];
+        if (!ref) break;
+        value = tokens[ref] ?? "";
+      }
+      if (value.startsWith("#")) out[key] = value;
+    }
+    return out;
+  };
+
+  const lightRaw = readTokens(":root {");
+  const darkRaw = { ...lightRaw, ...readTokens(':root[data-theme="dark"] {') };
+  const light = resolve(lightRaw);
+  const dark = resolve(darkRaw);
 
   const channel = (v: number): number => {
     const c = v / 255;
@@ -441,6 +478,25 @@ section("Colour contrast, computed from the tokens rather than asserted");
     ["--annotation-on-frame", "--surface-frame", 3.0, "the pen mark on the desk"],
     ["--pencil", "--surface-sheet", 4.5, "the child's handwriting on paper"],
     ["--alert-fg", "--surface-sheet", 4.5, "alert text on paper"],
+
+    // The legacy aliases. Most of the app still asks for these by name, so
+    // they are assertable surface, not internal detail. Before they became
+    // aliases, --ink on the dark sheet was 1.10 to 1.
+    ["--ink", "--paper", 4.5, "legacy --ink on legacy --paper"],
+    ["--muted", "--paper", 4.5, "legacy --muted on legacy --paper"],
+    ["--teal", "--paper", 4.5, "legacy --teal, used for headings and badges"],
+    ["--emerald", "--paper", 3.0, "legacy --emerald, used for marks and fills"],
+    ["--alert", "--paper", 4.5, "legacy --alert"],
+    // A divider hairline is decorative and carries no meaning, so it has no
+    // contrast floor. The boundary of an interactive control does, under WCAG
+    // 1.4.11, and it used to share the divider token at 1.33 to 1 on paper.
+    ["--border-interactive", "--surface-sheet", 3.0, "input and button borders on paper"],
+    ["--border-interactive-frame", "--surface-frame", 3.0, "control borders on the desk"],
+    ["--border-interactive-frame", "--surface-frame-deep", 3.0, "control borders in the header"],
+    // The selected segment of the register control is text on the annotation
+    // fill, which is a primary control and easy to miss when only surfaces
+    // are checked.
+    ["--paper", "--annotation", 4.5, "label on a selected control"],
   ];
 
   for (const [mode, tokens] of [["light", light], ["dark", dark]] as const) {
@@ -507,6 +563,88 @@ section("Redesign direction holds");
   ok(`the compass diamond is used once, in the compass icon only (${diamondUses})`, diamondUses === 1);
   ok("no icon library", !/lucide|heroicons|phosphor|react-icons/i.test(icons));
   ok("icons are a 24px grid at 1.5px", icons.includes('viewBox="0 0 24 24"') && icons.includes("strokeWidth={1.5}"));
+}
+
+// ---------------------------------------------------------------------------
+
+section("No literal colour inside any seeded or generated markup");
+
+{
+  /**
+   * A hex inside an SVG paints identically in both themes. `#14201E` on the
+   * dark sheet is 1.1 to 1, which is invisible, and every diagram in the seed
+   * files carried one. The rule is enforced in three places so it cannot come
+   * back: here, in the sanitiser, and in the packet prompt.
+   */
+  const HEX = /#[0-9a-fA-F]{3,8}\b/;
+  const MARKUP_FIELDS = new Set(["visualSvg", "svg"]);
+
+  const findHex = (node: unknown, at: string, into: string[]): void => {
+    if (typeof node === "string") {
+      if (node.includes("<svg") && HEX.test(node)) {
+        into.push(`${at}: ${node.match(HEX)?.[0] ?? ""}`);
+      }
+      return;
+    }
+    if (Array.isArray(node)) {
+      node.forEach((v, i) => findHex(v, `${at}[${i}]`, into));
+      return;
+    }
+    if (node && typeof node === "object") {
+      for (const [k, v] of Object.entries(node)) {
+        // Markup fields are checked whether or not they announce themselves,
+        // and every other string is checked for embedded markup too.
+        if (MARKUP_FIELDS.has(k) && typeof v === "string" && HEX.test(v)) {
+          into.push(`${at}.${k}: ${v.match(HEX)?.[0] ?? ""}`);
+        } else {
+          findHex(v, `${at}.${k}`, into);
+        }
+      }
+    }
+  };
+
+  for (const file of ["standards.json", "misconceptions.json", "demo-packet.json"]) {
+    const found: string[] = [];
+    findHex(readSeed<unknown>(file), file, found);
+    ok(`${file} contains no literal hex inside markup${found.length ? `  (${found.join(", ")})` : ""}`,
+      found.length === 0);
+  }
+
+  // Every diagram in the seed must still survive the sanitiser, which now
+  // rejects hex. A stripped fill is a missing shape, not a wrong colour.
+  interface WithSvg { id: string; visualSvg: string | null }
+  const misconceptions = readSeed<WithSvg[]>("misconceptions.json");
+  for (const m of misconceptions) {
+    if (!m.visualSvg) continue;
+    const clean = sanitizeSvg(m.visualSvg);
+    ok(`${m.id}: diagram survives the sanitiser`, clean !== null);
+    ok(`${m.id}: diagram inherits colour rather than naming one`,
+      clean !== null && (clean.includes("currentColor") || clean.includes("var(--")));
+  }
+
+  const demoPackets = readSeed<{ packets: Record<string, { methodMatch: { schoolMethod: { svg: string } } }> }>(
+    "demo-packet.json",
+  ).packets;
+  for (const [register, packet] of Object.entries(demoPackets)) {
+    const clean = sanitizeSvg(packet.methodMatch.schoolMethod.svg);
+    ok(`demo ${register}: Method Match diagram survives and follows the theme`,
+      clean !== null && (clean.includes("currentColor") || clean.includes("var(--")));
+  }
+
+  // The wrapper has to set a colour, or currentColor resolves to whatever it
+  // inherits and the rule achieves nothing.
+  const css = readFileSync(path.join(process.cwd(), "app", "globals.css"), "utf8");
+  ok("the diagram wrapper sets a colour for currentColor to resolve against",
+    /\.pp-diagram\s*\{[^}]*color:\s*var\(--text-on-sheet\)/.test(css));
+
+  // And the prompt states the rule, or every future generated diagram
+  // reintroduces the bug.
+  const packetPrompt = readFileSync(path.join(process.cwd(), "prompts", "generate-packet.md"), "utf8");
+  const flat = packetPrompt.replace(/\s+/g, " ");
+  ok("the packet prompt forbids hex inside an SVG", /never emit a hex colour/i.test(flat));
+  ok("the packet prompt names currentColor", flat.includes("currentColor"));
+  ok("the packet prompt names the semantic tokens", flat.includes("var(--annotation)"));
+  ok("the packet prompt no longer instructs a hex palette", !/#14201E.*for lines and text/i.test(flat));
 }
 
 // ---------------------------------------------------------------------------

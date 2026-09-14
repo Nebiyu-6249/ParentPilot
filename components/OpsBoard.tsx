@@ -44,6 +44,12 @@ export default function OpsBoard({
 
       {message && <Banner text={message} />}
 
+      <p style={{ marginBottom: 4 }}>
+        <a href="/ops/doctor" style={{ fontSize: "var(--type-small)" }}>
+          Run diagnostics
+        </a>
+      </p>
+
       <Section title={copy.ops.todayHeading}>
         <p style={{ fontSize: 17, marginBottom: 8 }}>
           Estimated spend: <strong>${spend.toFixed(4)}</strong> of ${ceiling.toFixed(2)} ({pct}%)
