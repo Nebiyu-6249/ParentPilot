@@ -199,11 +199,34 @@ export default function AppShell({
     post({ kind: "solved", problemId }, copy.packet.answeredIt);
   }
 
+  /**
+   * Something the parent typed.
+   *
+   * Sends the problem and rung currently on screen so the reply is about this
+   * page rather than about homework in general, and so the server can offer
+   * the question the parent is already looking at when it declines to give
+   * the answer.
+   */
+  function sendText(value: string): void {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const problemId = lastProblemId(turns);
+    post(
+      {
+        kind: "text",
+        text: trimmed,
+        problemId,
+        rung: problemId === null ? 0 : lastRung(turns, problemId),
+      },
+      trimmed,
+    );
+  }
+
   function submitText(): void {
     const value = text.trim();
     if (!value) return;
     setText("");
-    post({ kind: "text", text: value }, value);
+    sendText(value);
   }
 
   const empty = turns.length === 0;
@@ -379,7 +402,7 @@ export default function AppShell({
                       key={suggestion}
                       type="button"
                       className="pp-chip"
-                      onClick={() => post({ kind: "text", text: suggestion }, suggestion)}
+                      onClick={() => sendText(suggestion)}
                     >
                       {suggestion}
                     </button>
@@ -516,6 +539,19 @@ function title(turns: Turn[]): string {
     }
   }
   return "";
+}
+
+/** The problem the thread is currently on, or null before there is one. */
+function lastProblemId(turns: Turn[]): string | null {
+  for (let i = turns.length - 1; i >= 0; i -= 1) {
+    const turn = turns[i];
+    if (!turn) continue;
+    for (let j = turn.cards.length - 1; j >= 0; j -= 1) {
+      const card = turn.cards[j];
+      if (card && (card.kind === "ask" || card.kind === "worksheet")) return card.problemId;
+    }
+  }
+  return null;
 }
 
 /** The rung currently showing for a problem, so "Still stuck" knows where it is. */

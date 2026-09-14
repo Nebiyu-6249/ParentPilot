@@ -75,6 +75,27 @@ export type PacketPayload = z.infer<typeof packetSchema>;
 export type MethodMatch = z.infer<typeof methodMatchSchema>;
 export type Script = z.infer<typeof scriptSchema>;
 
+/**
+ * A free-text turn in the thread.
+ *
+ * `intent` is the safety-bearing field. `answer_request` and `out_of_scope`
+ * are both answered by fixed product copy rather than by the model's own
+ * prose, so a model that mislabels is contained: the worst case is a parent
+ * being redirected when they did not need to be, never an answer arriving in
+ * a chat bubble.
+ */
+export const CHAT_INTENTS = ["coach", "answer_request", "out_of_scope"] as const;
+export type ChatIntent = (typeof CHAT_INTENTS)[number];
+
+export const chatTurnSchema = z.object({
+  intent: z.enum(CHAT_INTENTS),
+  reply: z.string().min(1),
+  sayThis: z.string().nullable().default(null),
+  watchFor: z.string().nullable().default(null),
+});
+
+export type ChatTurn = z.infer<typeof chatTurnSchema>;
+
 export const classificationSchema = z.object({
   label: z.enum(MOVE_LABELS),
   confidence: z.number().min(0).max(1),

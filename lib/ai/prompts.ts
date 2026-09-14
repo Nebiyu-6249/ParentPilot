@@ -17,6 +17,7 @@ export type PromptName =
   | "extract-worksheet"
   | "generate-packet"
   | "classify-move"
+  | "chat-turn"
   | "session-recap"
   | "teacher-note";
 

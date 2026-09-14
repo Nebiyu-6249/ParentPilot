@@ -86,6 +86,45 @@ export default function ThreadCard({
         </article>
       );
 
+    /* The reply to something the parent typed. Unwrapped: a reply that arrives
+       collapsed behind a heading is not a reply. */
+    case "coach":
+      return (
+        <article className="pp-card pp-card-coach">
+          <div className="pp-card-body">
+            <p style={{ fontSize: 15.5, lineHeight: 1.6, maxWidth: "62ch" }}>{card.reply}</p>
+
+            {/* Label above the sentence, the same order as the ask card. It is
+                the same act in both places and it should read the same way. */}
+            {card.sayThis && (
+              <>
+                <p style={{ marginTop: 16, fontSize: 13, color: "var(--accent-ink)" }}>
+                  {copy.packet.askLabel}
+                </p>
+                <p className="pp-ask-question" style={{ marginTop: 6 }}>
+                  {card.sayThis}
+                </p>
+              </>
+            )}
+
+            {card.watchFor && (
+              <p
+                style={{
+                  marginTop: 14,
+                  paddingTop: 12,
+                  borderTop: "1px solid var(--app-line)",
+                  fontSize: 13.5,
+                  color: "var(--app-text-dim)",
+                  maxWidth: "62ch",
+                }}
+              >
+                {copy.chat.watchForLabel} {card.watchFor}
+              </p>
+            )}
+          </div>
+        </article>
+      );
+
     case "text":
       return <p style={{ fontSize: 15, lineHeight: 1.6, maxWidth: "68ch" }}>{card.body}</p>;
 

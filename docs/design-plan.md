@@ -558,3 +558,56 @@ both themes. One was a real failure: `--app-line` at 1.2:1 was drawing the
 composer and the outline buttons, and WCAG 1.4.11 wants 3:1 for a control
 identified by its border. `--app-border-interactive` splits the hairline from
 the boundary, the same split the paper surface already makes.
+
+## Step four: what a typed message gets back
+
+The composer stops swallowing what a parent types. A free-text turn goes to
+`prompts/chat-turn.md` and comes back as one `coach` card: two to four
+sentences of reply, optionally one sentence to say out loud, optionally one
+clause naming what to listen for.
+
+`sayThis` gets the display face, the same treatment as the `ask` card's
+question, one step smaller. Both are words to say to a child at a kitchen
+table; one idea should look like one idea wherever it turns up. The reply
+itself is the only prose on the surface, because a reply to a sentence is a
+sentence.
+
+## Two layers between a typed question and the answer
+
+The brief's rule is that the answer lives behind the press and hold and
+nowhere else. A chat composer is the obvious place for that to fail, so it is
+held by two independent mechanisms.
+
+**The first is an absence.** `chatTurn` is the only task in `lib/ai/provider.ts`
+that is not given the verified answer. Every other one that knows it is told
+it; this one gets the problem, the child's working, the misconception and the
+rung on screen, and nothing else. There is no answer in the context to repeat.
+`scripts/check.ts` reads the call and fails if one appears.
+
+**The second is a scan.** `lib/answer-guard.ts` checks the reply against the
+verified answer in case the model worked it out for itself. It knows the
+answer as digits, spaced around a slash, and spoken: `11/12`, `11 / 12`,
+`11 over 12`, `eleven twelfths`. It does not know every equivalent form or
+every paraphrase, which is why it is the backstop and not the guarantee. Its
+bias is toward false positives: redirecting a parent who did not need it costs
+one tap, and the other error costs them the thing they came here to avoid.
+
+Both containments land in the same place. `answer_request` and a fired guard
+produce the identical card, because from where the parent sits, being told the
+answer is behind the hold is the same event whether they asked for it or the
+model volunteered it. Neither path ever renders the model's own words, so a
+parent who phrases the request more cleverly gets the same sentence as one who
+asks plainly. Asking with no worksheet open is a third thing again: there is no
+answer card to point at, so it is out of scope rather than withheld.
+
+| Intent | What the parent sees |
+|---|---|
+| `coach` | The model's reply, the sentence to say, what to listen for |
+| `answer_request` | Where the answer lives, plus the question already on screen |
+| `out_of_scope` | One fixed sentence naming what this is for |
+| guard fired on a `coach` reply | Exactly what `answer_request` produces |
+
+The check suite exercises all four by calling `cardsForChatTurn` with a reply
+that states the answer in every field, and asserts the string never survives.
+Breaking the containment on purpose fails three assertions, which is how the
+assertions were confirmed to be doing work rather than passing by construction.

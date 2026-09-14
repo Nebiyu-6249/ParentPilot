@@ -938,6 +938,15 @@ hr {
   max-width: 24ch;
 }
 
+/* A reply to something the parent typed. The sentence to say out loud keeps
+   the display face, because it is the same act as the ask card's question,
+   but a step smaller: the ask card is the question for this rung and this is
+   a suggestion in a reply. Two sizes, one idea. */
+.pp-card-coach .pp-ask-question {
+  font-size: clamp(1.15rem, 2.6vw, 1.45rem);
+  max-width: 28ch;
+}
+
 /* The composer. Sticky, rounded, camera first. */
 .pp-composer-wrap {
   padding: 8px 16px 14px;
