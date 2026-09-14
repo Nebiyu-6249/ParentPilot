@@ -43,6 +43,7 @@ const demoPacketSchema = z.object({
   misconception: z.object({
     id: z.string(),
     topic: z.string(),
+    signature: z.string(),
     plainName: z.string(),
     repairQuestion: z.string(),
     visualSvg: z.string().nullable(),

@@ -29,6 +29,8 @@ export interface StandardView {
 export interface MisconceptionView {
   id: string;
   topic: string;
+  /** What the wrong working looks like. Fed to the packet prompt as context. */
+  signature: string;
   plainName: string;
   repairQuestion: string;
   visualSvg: string | null;

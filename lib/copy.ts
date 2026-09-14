@@ -267,6 +267,14 @@ export const copy = {
   limits: {
     banner: "Demo limit reached for today. Showing a saved example.",
     spendBanner: "We have hit today's spending ceiling. Showing a saved example instead of an error.",
+    // Used when there was no limit and no failure, there is simply nothing to
+    // look up. Saying "limit reached" here would be a small lie, and this is a
+    // product whose whole pitch is that its claims are true.
+    demoBanner: "Showing a saved example.",
+    // No model configured in this environment. Distinct from a limit, and
+    // distinct from a failure, so it gets its own honest sentence.
+    unconfiguredBanner:
+      "This deployment is not set up to read new worksheets yet, so this is a saved example.",
   },
 
   errors: {

@@ -17,7 +17,7 @@ import { create, all, type MathJsInstance, type Fraction } from "mathjs";
  * than `0.9166666666666666`, and what makes `0.1 + 0.2` come back as
  * `3/10` rather than `0.30000000000000004`.
  */
-const math: MathJsInstance = create(all, { number: "Fraction" });
+const math: MathJsInstance = create(all ?? {}, { number: "Fraction" });
 
 export type VerificationStatus = "checked" | "unverified" | "not-applicable";
 

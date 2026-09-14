@@ -12,17 +12,8 @@ import { prisma, hasDatabase } from "@/lib/db";
  * in this file returns 429 or throws on exhaustion.
  */
 
-export const LIMITS = {
-  /** Packets per IP per hour. */
-  packetsPerHour: 40,
-  /** Packets per IP per day. */
-  packetsPerDay: 200,
-  /** Seconds of fallback Whisper transcription per IP per day. The Web Speech
-   *  API is free and unmetered, so this only bites on unsupported browsers. */
-  transcribeSecondsPerDay: 30 * 60,
-  /** Bytes. One file per request, images only. */
-  maxUploadBytes: 6 * 1024 * 1024,
-} as const;
+export { LIMITS } from "@/lib/limits.client";
+import { LIMITS } from "@/lib/limits.client";
 
 export type LimitScope = "packet" | "transcribe" | "extract" | "check";
 
