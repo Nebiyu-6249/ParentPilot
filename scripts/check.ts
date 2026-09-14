@@ -500,6 +500,24 @@ section("Colour contrast, computed from the tokens rather than asserted");
     // The third voice. A filled action with its own label colour.
     ["--action-label", "--action", 4.5, "label on a primary action"],
     ["--action", "--surface-sheet", 4.5, "an outlined action on paper"],
+
+    /* The /app layer. It is a separate palette on a separate surface, so
+       nothing above covers it: every one of these was unasserted when the
+       chat shell was first written. */
+    ["--app-text", "--app-bg", 4.5, "thread text"],
+    ["--app-text-dim", "--app-bg", 4.5, "dim thread text"],
+    ["--app-text", "--app-card", 4.5, "text on a card"],
+    ["--app-text-dim", "--app-card", 4.5, "dim text on a card"],
+    ["--app-text", "--app-rail", 4.5, "text in the sidebar"],
+    ["--app-text-dim", "--app-rail", 4.5, "dim text in the sidebar"],
+    ["--app-text", "--app-bubble", 4.5, "the parent's own words"],
+    ["--accent-ink", "--app-card", 4.5, "the accent as text on a card"],
+    ["--accent-ink", "--app-bg", 4.5, "the accent as text in the thread"],
+    ["--app-alert-ink", "--app-alert-bg", 4.5, "the degradation notice"],
+    // 1.4.11: a control identified by its border needs 3:1, and the app
+    // hairline is 1.2:1. The composer and the outline buttons use this one.
+    ["--app-border-interactive", "--app-bg", 3.0, "app control borders"],
+    ["--app-border-interactive", "--app-card", 3.0, "app control borders on a card"],
   ];
 
   for (const [mode, tokens] of [["light", light], ["dark", dark]] as const) {
@@ -566,7 +584,7 @@ section("Redesign direction holds");
 
 {
   const css = readFileSync(path.join(process.cwd(), "app", "globals.css"), "utf8");
-  const landing = readFileSync(path.join(process.cwd(), "app", "page.tsx"), "utf8");
+  const landing = readFileSync(path.join(process.cwd(), "app", "(site)", "page.tsx"), "utf8");
   const layout = readFileSync(path.join(process.cwd(), "app", "layout.tsx"), "utf8");
   const icons = readFileSync(path.join(process.cwd(), "components", "icons.tsx"), "utf8");
 
@@ -780,6 +798,11 @@ section("Accounts are parent accounts, and the session is not a bearer id");
   // counter rather than being random, so once an id carries an identity an
   // unsigned cookie is account takeover for anyone who can guess one.
   ok("the session cookie is signed", auth.includes("createHmac") && auth.includes("sealSession"));
+  /* A production deployment signing with a value published in this repository
+     has forgeable cookies for anyone who has read the source. Failing closed
+     turns a silent vulnerability into a visible outage. */
+  ok("a missing AUTH_SECRET fails closed in production rather than falling back",
+    /NODE_ENV === "production"[\s\S]{0,200}throw new Error/.test(auth));
   ok("the signature is compared in constant time", auth.includes("timingSafeEqual"));
   ok("the session module seals what it writes", session.includes("sealSession("));
   ok("the session module verifies what it reads", session.includes("openSession("));
@@ -907,6 +930,62 @@ ok("misconception ids are unique", new Set(misconceptions.map((m) => m.id)).size
 
 // ---------------------------------------------------------------------------
 
+section("The chat surface keeps the promises the old screens made");
+
+{
+  const thread = readFileSync(path.join(process.cwd(), "lib", "thread.ts"), "utf8");
+  const cards = readFileSync(path.join(process.cwd(), "components", "app", "Cards.tsx"), "utf8");
+  const shell = readFileSync(path.join(process.cwd(), "components", "app", "AppShell.tsx"), "utf8");
+  const route = readFileSync(
+    path.join(process.cwd(), "app", "api", "thread", "turn", "route.ts"), "utf8");
+
+  /* Round three made degradation visible. Rebuilding the surface is exactly
+     when that kind of promise gets dropped, so it is asserted here rather
+     than trusted: a saved example that renders like a real reading is the
+     failure that actually costs a parent something. */
+  ok("a packet that did not read this page emits a notice card",
+    /if \(bundle\.notice\)[\s\S]{0,80}kind: "notice"/.test(thread));
+  ok("the notice card renders", /case "notice":/.test(cards));
+  ok("the notice is never collapsed behind a disclosure",
+    !/case "notice":[\s\S]{0,400}<Shell/.test(cards));
+
+  // The answer stays behind the press and hold on this surface too.
+  ok("the answer card still uses the locked control", /LockedAnswer/.test(cards));
+  /* The answer may reach LockedAnswer as a prop and reach nothing else. As a
+     JSX child it would render straight into the thread, which is the one
+     place the answer must never appear. */
+  const answerCase = cards.slice(cards.indexOf('case "answer":'), cards.indexOf('case "live_summary":'));
+  const answerUses = [...answerCase.matchAll(/\{card\.answer\}/g)].length;
+  const asProp = [...answerCase.matchAll(/answer=\{card\.answer\}/g)].length;
+  ok(`the answer is passed to the locked control and nowhere else  (${asProp} of ${answerUses})`,
+    answerUses > 0 && answerUses === asProp);
+  ok("the answer is never a bare child node",
+    !/>\s*\{card\.answer\}/.test(answerCase) && !/\{card\.answer\}\s*</.test(answerCase));
+
+  // The one thing this product does not do.
+  ok("the thread never addresses the child",
+    !/\byou(r)? child\b(?![^\n]*never)/i.test(cards) || /talks to you, never/.test(cards));
+
+  /* The shell imitates a convention, and the convention is sentence case.
+     Tracked-out capitals were the round-two tell and they crept back in via
+     the register control and the ask card. */
+  for (const [name, source] of [["the cards", cards], ["the shell", shell]] as const) {
+    ok(`no all-caps label on ${name}`, !/textTransform:\s*"uppercase"/.test(source));
+  }
+
+  // A phone opens the thread, not the drawer over it.
+  ok("the sidebar starts closed at drawer widths", /innerWidth\s*<=\s*DRAWER_MAX/.test(shell));
+  ok("an open drawer can be dismissed by tapping the thread", /pp-scrim/.test(shell));
+
+  // Advancing the ladder is a lookup, not a generation: the rungs already
+  // exist, and a model call here would be spend with nothing bought.
+  const advance = route.slice(route.indexOf('case "advance"'));
+  ok("Still stuck makes no model call",
+    advance.length > 0 && !/generatePacket|complete\(|openai/i.test(advance.slice(0, 900)));
+}
+
+// ---------------------------------------------------------------------------
+
 section("Design system, scanned over source with comments stripped");
 
 {
@@ -934,7 +1013,11 @@ section("Design system, scanned over source with comments stripped");
     ["radial orbs", /radial-gradient|conic-gradient/],
     ["dot grids", /repeating-(linear|radial)-gradient/],
     ["icon libraries", /lucide|react-icons|@heroicons|phosphor|font-awesome/i],
-    ["the forbidden typefaces", /["'\s](Inter|Geist|Space Grotesk)["',]/],
+    /* Round four lifted the ban on Inter, which is now the UI face of /app:
+       the chat surface is meant to read as a chat surface, and Inter is what
+       that convention is set in. Geist and Space Grotesk stay banned; neither
+       was asked for, and both are tells rather than choices. */
+    ["the forbidden typefaces", /["'\s](Geist|Space Grotesk)["',]/],
     ["glassmorphism", /backdrop-?[Ff]ilter/],
     ["springy easing", /cubic-bezier\([^)]*\b1\.[1-9]/],
     ["streak counters", /streak/i],
@@ -965,6 +1048,17 @@ section("Design system, scanned over source with comments stripped");
   ok("body type is at least 17px", /font-size:\s*17px/.test(css));
   ok("body line height is 1.6", /line-height:\s*1\.6/.test(css));
   ok("reduced motion is honoured", css.includes("prefers-reduced-motion: reduce"));
+
+  /* The radius cap above governs the site surface only. /app has its own
+     scale, because a chat composer with a 4px radius does not read as a chat
+     composer. Keeping the two scales in separate token families is what stops
+     the mainstream radii leaking back onto the paper. */
+  const appRadii = [...css.matchAll(/--r-[\w-]+:\s*(\d+)px;/g)].map((m) => Number(m[1]));
+  ok(`the app surface has its own radius scale  (${appRadii.length} tokens)`, appRadii.length >= 4);
+  ok("the composer is the roundest thing on the app surface",
+    /--r-composer:\s*24px/.test(css) && /--r-control:\s*8px/.test(css));
+  ok("paper never borrows an app radius",
+    !/\.pp-sheet[\w-]*\s*\{[^}]*var\(--r-(control|card|bubble|composer)\)/.test(css));
 }
 
 // ---------------------------------------------------------------------------
