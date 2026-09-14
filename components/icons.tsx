@@ -265,6 +265,38 @@ export function MoonIcon(props: IconProps) {
   );
 }
 
+/** Two methods side by side. Used by the Method Match disclosure. */
+export function ColumnsIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 5h7v14H4z" />
+      <path d="M13 5h7v14h-7z" />
+      <path d="M6.5 9h2M15.5 9h2" />
+    </Icon>
+  );
+}
+
+/** An open page. Used by the "what is this teaching" disclosure. */
+export function BookIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 6.5v13" />
+      <path d="M12 6.5C10.5 5 8.2 4.5 4 4.8v12.6c4.2-.3 6.5.2 8 1.6" />
+      <path d="M12 6.5c1.5-1.5 3.8-2 8-1.7v12.6c-4.2-.3-6.5.2-8 1.6" />
+    </Icon>
+  );
+}
+
+/** Something said out loud. Used by the scripts disclosure. */
+export function SpeechIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 5h16v11H9l-5 4z" />
+      <path d="M8 10.5h8" />
+    </Icon>
+  );
+}
+
 export function AccountIcon(props: IconProps) {
   return (
     <Icon {...props}>

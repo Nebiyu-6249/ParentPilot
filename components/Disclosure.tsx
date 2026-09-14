@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 
-import { ChevronIcon } from "@/components/icons";
+import { ChevronIcon, type IconProps } from "@/components/icons";
 
 /**
  * A closed-by-default section.
@@ -14,10 +14,13 @@ import { ChevronIcon } from "@/components/icons";
  */
 export default function Disclosure({
   title,
+  icon: CategoryIcon,
   children,
   tone = "default",
 }: {
   title: string;
+  /** Category icon. A parent scanning for "the answer" finds the shape first. */
+  icon?: (props: IconProps) => React.JSX.Element;
   children: ReactNode;
   /** `quiet` is used for the answer, which should not invite a tap. */
   tone?: "default" | "quiet";
@@ -41,8 +44,14 @@ export default function Disclosure({
           color: tone === "quiet" ? "var(--text-on-sheet-muted)" : "var(--text-on-sheet)",
         }}
       >
-        <ChevronIcon size={18} direction="right" style={{ flexShrink: 0, opacity: 0.7 }} />
-        {title}
+        {CategoryIcon && (
+          <CategoryIcon
+            size={20}
+            style={{ flexShrink: 0, color: tone === "quiet" ? "inherit" : "var(--action)" }}
+          />
+        )}
+        <span style={{ flex: 1 }}>{title}</span>
+        <ChevronIcon size={18} direction="right" style={{ flexShrink: 0, opacity: 0.55 }} />
       </summary>
 
       <div style={{ padding: "2px 2px 28px" }}>{children}</div>

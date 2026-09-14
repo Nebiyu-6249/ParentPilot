@@ -70,10 +70,11 @@ export function Hairline() {
 type ButtonVariant = "primary" | "secondary" | "quiet" | "alert";
 
 const VARIANTS: Record<ButtonVariant, CSSProperties> = {
-  primary: { background: "var(--emerald)", color: "var(--paper)", border: "1px solid var(--emerald)" },
-  secondary: { background: "transparent", color: "var(--teal)", border: "1px solid var(--teal)" },
+  // Actions are teal. Emerald is the pen, not a button fill.
+  primary: { background: "var(--action)", color: "var(--action-label)", border: "1px solid var(--action)" },
+  secondary: { background: "transparent", color: "var(--action)", border: "1px solid var(--action)" },
   quiet: { background: "transparent", color: "var(--muted)", border: "1px solid var(--border-interactive)" },
-  alert: { background: "var(--alert)", color: "var(--paper)", border: "1px solid var(--alert)" },
+  alert: { background: "var(--alert)", color: "var(--action-label)", border: "1px solid var(--alert)" },
 };
 
 export function buttonStyle(variant: ButtonVariant = "primary", full = false): CSSProperties {

@@ -25,16 +25,16 @@
   --font-display: "Fraunces", Georgia, "Times New Roman", serif;
   --font-sans: "Public Sans", system-ui, -apple-system, sans-serif;
 
-  /* Every radius token collapses to zero. Anything that reaches for a
-     rounded utility still lands square. */
-  --radius-xs: 0px;
-  --radius-sm: 0px;
-  --radius-md: 0px;
-  --radius-lg: 0px;
-  --radius-xl: 0px;
-  --radius-2xl: 0px;
-  --radius-3xl: 0px;
-  --radius-4xl: 0px;
+  /* A bounded radius scale. The cap is 4px, so nothing in the system can
+     reach for a pill or a blob, and surfaces still default to square. */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 4px;
+  --radius-2xl: 4px;
+  --radius-3xl: 4px;
+  --radius-4xl: 4px;
 }
 
 :root {
@@ -73,8 +73,25 @@
   --annotation: #006646;
   --annotation-on-frame: #00a878;
 
-  /* The strong accent on paper: headings, badges, the answer control. */
+  /* The strong accent on paper: headings and badges. */
   --accent-on-sheet: #0b4f4a;
+
+  /* The third voice.
+
+     Emerald is the pen: the marks a teacher makes on a page. It was also
+     filling primary buttons, which made one colour mean both "this is the
+     error" and "press this". Actions get their own value, and emerald goes
+     back to being only the pen.
+
+     Deep brand teal rather than a new hue: the palette already has a third
+     voice, and a fourth beside teal, emerald and the earthy alert would be
+     decoration. */
+  --action: #0b4f4a;
+  --action-label: #f5f1e8;
+
+  /* A radius is a signal that something can be pressed. Interactive elements
+     only: paper does not have rounded corners. */
+  --radius-control: 3px;
 
   /* The child's handwriting. */
   --pencil: #5a5247;
@@ -155,6 +172,8 @@
     --annotation: #006646;
     --annotation-on-frame: #00a878;
     --accent-on-sheet: #0b4f4a;
+    --action: #0b4f4a;
+    --action-label: #ded8c9;
     --pencil: #5a5247;
 
     --rule-on-sheet: #c3bcaa;
@@ -188,6 +207,8 @@
   --annotation: #006646;
   --annotation-on-frame: #00a878;
   --accent-on-sheet: #0b4f4a;
+  --action: #0b4f4a;
+  --action-label: #ded8c9;
   --pencil: #5a5247;
 
   --rule-on-sheet: #c3bcaa;
@@ -198,10 +219,6 @@
   --alert-fg: #943826;
 
   color-scheme: dark;
-}
-
-* {
-  border-radius: 0 !important;
 }
 
 /* The body is the desk in both modes. Content screens put an explicit sheet
@@ -276,6 +293,18 @@ select,
 textarea {
   font: inherit;
   color: inherit;
+  border-radius: var(--radius-control);
+}
+
+/* Paper has square corners. The sheet, the worksheet, the coaching card and
+   every diagram opt back out of the control radius. */
+.pp-sheet,
+.pp-sheet-page,
+.pp-worksheet,
+.pp-coach-card,
+.pp-diagram,
+.pp-diagram * {
+  border-radius: 0;
 }
 
 button {
@@ -388,8 +417,11 @@ hr {
 }
 
 :focus-visible {
-  outline: 2px solid var(--annotation);
+  outline: 2px solid var(--action);
   outline-offset: 2px;
+  /* Follows whatever radius the element has. The old global
+     `border-radius: 0 !important` forced hard corners on every focus ring. */
+  border-radius: inherit;
 }
 
 ::selection {
@@ -512,7 +544,12 @@ hr {
   max-width: 460px;
 }
 
-/* Live Mode cards rise from the bottom of the viewport. */
+/* Live Mode cards rise from the bottom of the viewport.
+
+   The one element in the product that genuinely floats: it appears over a
+   live session and is dismissed. It gets a soft shadow. The sheet keeps its
+   hard flat offset instead, because paper lying on a desk and a card hovering
+   above one are different physical claims. */
 .pp-live-card {
   position: fixed;
   left: 0;
@@ -520,8 +557,10 @@ hr {
   bottom: 0;
   z-index: 40;
   background: var(--surface-sheet);
-  border-top: 1px solid var(--text-on-sheet);
+  color: var(--text-on-sheet);
+  border-top: 1px solid var(--rule-on-sheet);
   padding: 22px 20px 30px;
+  box-shadow: 0 -10px 30px rgb(0 0 0 / 0.28);
 }
 
 /* ---- The hero artifact ----------------------------------------------
