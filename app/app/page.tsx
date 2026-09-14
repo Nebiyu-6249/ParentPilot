@@ -44,6 +44,7 @@ export default async function AppPage() {
   return (
     <AppShell
       register={parent.register}
+      language={parent.language}
       signedIn={signedIn}
       threads={threads.map((thread) => ({
         id: thread.id,

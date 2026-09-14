@@ -36,6 +36,18 @@ function section(name: string): void {
   console.log(`\n${name}`);
 }
 
+/**
+ * Strips comments so an assertion reads the code and not the prose about it.
+ *
+ * Worth a shared helper: the Move model's comment is literally "no transcript
+ * column", and a check for the word "transcript" in that model found it.
+ */
+function codeOnly(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/(^|[^:])\/\/[^\n]*/g, "$1 ");
+}
+
 function ok(name: string, condition: boolean): void {
   checks += 1;
   if (!condition) {
@@ -984,6 +996,106 @@ section("The chat surface keeps the promises the old screens made");
   const advance = route.slice(route.indexOf('case "advance"'));
   ok("Still stuck makes no model call",
     advance.length > 0 && !/generatePacket|complete\(|openai/i.test(advance.slice(0, 900)));
+}
+
+// ---------------------------------------------------------------------------
+
+section("Nothing anybody says is ever kept");
+
+{
+  /* Folding Live Mode into the thread is the moment this promise is most
+     likely to break, because the thread is a persisted message log and the
+     rolling window is now two files away from it. None of this was asserted
+     before; all of it was only true by inspection. */
+  const hook = readFileSync(path.join(process.cwd(), "lib", "live", "useLiveTranscript.ts"), "utf8");
+  const shell = readFileSync(path.join(process.cwd(), "components", "app", "AppShell.tsx"), "utf8");
+  const thread = readFileSync(path.join(process.cwd(), "lib", "thread.ts"), "utf8");
+  const classify = readFileSync(
+    path.join(process.cwd(), "app", "api", "live", "classify", "route.ts"), "utf8");
+  const schema = readFileSync(path.join(process.cwd(), "prisma", "schema.prisma"), "utf8");
+
+  // The window lives in a ref. React state can be serialised into a payload
+  // by accident; a ref cannot leave the component without being read.
+  ok("the rolling window is held in a ref", /utterancesRef\s*=\s*useRef/.test(hook));
+  ok("and never in React state", !/useState[^\n]*utterance/i.test(hook));
+  ok("it is cleared when listening stops",
+    /stop = useCallback[\s\S]{0,900}utterancesRef\.current = \[\]/.test(hook));
+  ok("it is never written to storage",
+    !/localStorage|sessionStorage|indexedDB/i.test(hook));
+
+  /* The one legitimate exit: into the classify request body. If readWindow()
+     is ever read anywhere else, this count changes and this fails. */
+  const reads = [...codeOnly(shell).matchAll(/readWindow\(\)/g)].length;
+  ok(`the window is read in exactly one place in the shell  (${reads})`, reads === 1);
+  ok("and that place is the classify request body",
+    /window: readWindow\(\),/.test(shell));
+  ok("the window never reaches a card",
+    !/kind: "live_card"[\s\S]{0,240}readWindow/.test(shell));
+
+  // There is nowhere to put the words even if something tried.
+  const liveCard = thread.slice(
+    thread.indexOf("export interface LiveCardCard"),
+    thread.indexOf("export interface LiveSummaryCard"),
+  );
+  ok("no live card field could hold a transcript",
+    !/window|transcript|utterance|said|speech/i.test(codeOnly(liveCard)));
+
+  const move = codeOnly(
+    schema.slice(schema.indexOf("model Move {"), schema.indexOf("}", schema.indexOf("model Move {"))),
+  );
+  ok("the Move row has no column for words",
+    !/text|transcript|window|utterance/i.test(move));
+
+  // The classify route discards the window when it returns.
+  ok("the classify route never persists the window",
+    !/data:\s*\{[^}]*window/.test(classify));
+  ok("and never returns it",
+    !/window,?\s*\}\s*satisfies ClassifyResponse/.test(classify) &&
+    !/window: window/.test(classify));
+
+  // The recap is written from counts, by a model that never saw the words.
+  const provider = readFileSync(path.join(process.cwd(), "lib", "ai", "provider.ts"), "utf8");
+  const recapArgs = codeOnly(provider.slice(
+    provider.indexOf("export interface RecapArgs"),
+    provider.indexOf("}", provider.indexOf("export interface RecapArgs")),
+  ));
+  ok("the recap model is given counts, never words",
+    !/window|transcript|utterance|text/i.test(recapArgs));
+}
+
+// ---------------------------------------------------------------------------
+
+section("Live Mode happens in the thread");
+
+{
+  const shell = readFileSync(path.join(process.cwd(), "components", "app", "AppShell.tsx"), "utf8");
+  const cards = readFileSync(path.join(process.cwd(), "components", "app", "Cards.tsx"), "utf8");
+  const live = readFileSync(path.join(process.cwd(), "app", "(site)", "live", "page.tsx"), "utf8");
+
+  ok("the old full-screen Live Mode is gone",
+    !existsSync(path.join(process.cwd(), "components", "LiveMode.tsx")));
+  ok("/live redirects into the thread", /redirect\("\/app"\)/.test(live));
+  ok("the microphone is a toggle, not a link to another screen",
+    /aria-pressed=\{listening\}/.test(shell) && !/location\.href = "\/live"/.test(shell));
+
+  /* The round one bug: the hook returns a fresh object each render and the
+     timer re-rendered once a second, so an effect depending on the object
+     tore the interval down before it could fire. The timer now lives in
+     LiveBar, and the effect depends on the destructured callbacks. */
+  const effect = shell.slice(shell.indexOf("CLASSIFY_INTERVAL_MS)"), shell.length);
+  const deps = effect.slice(0, 200).match(/\}, \[([^\]]*)\]\)/)?.[1] ?? "";
+  ok(`the classify effect depends on stable callbacks, not the hook object  (${deps.trim()})`,
+    deps.includes("readWindow") && !/\btranscript\b/.test(deps));
+  ok("the timer is not in the shell, so the thread does not re-render every second",
+    !/setElapsed/.test(shell));
+
+  // Coaching lands in the thread as turns.
+  for (const kind of ["live_card", "live_summary", "park_it"]) {
+    ok(`${kind} renders in the thread`, cards.includes(`case "${kind}":`));
+  }
+  ok("a nudge is never collapsed behind a heading",
+    !/case "live_card":[\s\S]{0,400}<Shell/.test(cards));
+  ok("the drafted teacher note keeps its copy control", /clipboard\.writeText\(note\)/.test(cards));
 }
 
 // ---------------------------------------------------------------------------

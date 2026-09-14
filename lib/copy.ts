@@ -249,6 +249,18 @@ export const copy = {
     parkCopy: "Copy the note",
     parkCopied: "Copied",
     cardsSpent: "That is all the interrupting I will do this session.",
+    /* Shown when listening ends with nothing recorded: no database, or the
+       end call failed. Saying the session was not counted is better than a
+       summary card full of zeros, which would read as a bad session. */
+    endedUnrecorded: "Listening has stopped. Nothing was recorded, so there is no summary for this stretch.",
+    /* The microphone in the composer, which is a toggle rather than a link
+       now that Live Mode happens in the thread. */
+    startInThread: "Listen while we work",
+    stopInThread: "Stop listening",
+    heardAt: "Heard at",
+    oneThingLabel: "One thing to try next time",
+    fullRecap: "See the whole session",
+    overMinutes: (minutes: number) => `over ${minutes} minute${minutes === 1 ? "" : "s"}`,
   },
 
   cards: {

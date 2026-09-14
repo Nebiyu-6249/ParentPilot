@@ -39,8 +39,10 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
           </a>
 
           <nav className="pp-nav">
+            {/* One product link. Photographing a worksheet and listening are
+                both things that happen in the thread now, so the nav does not
+                pretend they are separate destinations. */}
             <a href="/app">{copy.nav.capture}</a>
-            <a href="/live">{copy.nav.live}</a>
             <a href="/settings">{copy.nav.settings}</a>
             <ThemeToggle onFrame />
           </nav>

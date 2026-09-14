@@ -35,7 +35,6 @@ const SCREENS: [string, string][] = [
   ["/app", "button:has-text('Take a photo of the page')"],
   ["/setup", "button:has-text('Next')"],
   ["/check", "button:has-text('Look at this')"],
-  ["/live", "button:has-text('Start listening')"],
 ];
 
 /** Two real phone sizes. The small one is the constraint that matters. */
@@ -127,7 +126,10 @@ async function run(browser: Browser): Promise<void> {
  */
 async function runAppSurface(browser: Browser): Promise<void> {
   section("The thread at 390x844");
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    permissions: ["microphone"],
+  });
   const page = await context.newPage();
   await page.goto(`${BASE}/app`, { waitUntil: "networkidle" });
   await page.waitForTimeout(400);
@@ -213,11 +215,44 @@ async function runAppSurface(browser: Browser): Promise<void> {
   ok(`the composer placeholder fits on one line  (${fit?.text ?? 0}px in ${fit?.box ?? 0}px)`,
     fit !== null && fit.text <= fit.box);
 
+  section("The microphone listens in the thread");
+
+  /* Live Mode used to be a screen you left the worksheet for. The toggle has
+     to put the listening bar up without navigating, and take it down again,
+     or the fold-in is only cosmetic. */
+  const url = page.url();
+  await page.locator(".pp-composer button[aria-pressed]").click();
+  const bar = await page
+    .waitForSelector(".pp-live-bar", { timeout: 20000 })
+    .then(() => true)
+    .catch(() => false);
+  ok("tapping the microphone starts listening in place", bar);
+  ok("without leaving the thread", page.url() === url);
+
+  const barBox = await page.locator(".pp-live-bar").boundingBox().catch(() => null);
+  const composerBox = await page.locator(".pp-composer").boundingBox().catch(() => null);
+  ok("the listening bar sits above the composer, not over the thread",
+    barBox !== null && composerBox !== null && barBox.y + barBox.height <= composerBox.y + 2);
+  ok("both stay on screen at phone height",
+    composerBox !== null && composerBox.y + composerBox.height <= 844);
+
+  await page.locator(".pp-live-stop").click();
+  await page.waitForTimeout(1200);
+  ok("ending the session takes the bar down", (await page.locator(".pp-live-bar").count()) === 0);
+  ok("and leaves the thread where it was", page.url() === url);
+
   await context.close();
 }
 
 async function main(): Promise<void> {
-  const browser = await chromium.launch(EXECUTABLE ? { executablePath: EXECUTABLE } : {});
+  /* A fake microphone, so the Live Mode toggle is exercised rather than
+     skipped. Headless Chromium has no SpeechRecognition service, so the hook
+     takes its recorder fallback; either way getUserMedia and the toggle are
+     the product's own. */
+  const browser = await chromium.launch({
+    ...(EXECUTABLE ? { executablePath: EXECUTABLE } : {}),
+    args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"],
+  });
   try {
     await run(browser);
   } finally {
