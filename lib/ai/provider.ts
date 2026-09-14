@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { sanitizeDeep } from "@/lib/copy";
 import { recordSpend } from "@/lib/limits";
-import { loadPrompt, type PromptName } from "@/lib/ai/prompts";
+import { loadPrompt } from "@/lib/ai/prompts";
 import {
   checkResultSchema,
   classificationSchema,
@@ -124,7 +124,9 @@ function parseJson(raw: string): unknown {
 interface CompleteOptions<T> {
   task: TaskName;
   messages: ChatCompletionMessageParam[];
-  schema: z.ZodType<T>;
+  // Input is `unknown` so that schema defaults are applied on the way out
+  // and T binds to the parsed output type, not the raw model JSON.
+  schema: z.ZodType<T, z.ZodTypeDef, unknown>;
   temperature?: number;
   maxTokens?: number;
 }

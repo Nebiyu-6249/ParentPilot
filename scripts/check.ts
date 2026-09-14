@@ -1,0 +1,320 @@
+/**
+ * The deterministic half of ParentPilot, checked without a network call.
+ *
+ *   npm run check
+ *
+ * Everything here runs in-process: arithmetic verification, misconception
+ * detection, the Live Mode rule engine, the SVG sanitiser, EXIF stripping,
+ * the em-dash ban, and the integrity of the three hand-written seed files.
+ *
+ * Deliberately covers the parts of the product that must not depend on a
+ * model being available or being in a good mood. The model-dependent paths
+ * (extraction quality, packet prose) are judged by the evaluation set in
+ * README.md, which needs a key and a human reading the output.
+ */
+
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
+import { sanitize, sanitizeDeep } from "../lib/copy";
+import { autonomyScore, countMoves } from "../lib/autonomy";
+import { detectors } from "../lib/misconception";
+import { evaluateMove, initialLiveState, LIVE_RULES } from "../lib/live/rules";
+import { computeAnswer, verifyAnswer } from "../lib/verify";
+import { sanitizeSvg } from "../lib/svg";
+import { stripMetadata } from "../lib/exif";
+import { packetCacheKey } from "../lib/packet";
+import type { MoveLabelName } from "../lib/ai/schemas";
+
+let failures = 0;
+let checks = 0;
+let group = "";
+
+function section(name: string): void {
+  group = name;
+  console.log(`\n${name}`);
+}
+
+function ok(name: string, condition: boolean): void {
+  checks += 1;
+  if (!condition) {
+    failures += 1;
+    console.log(`  FAIL  ${name}`);
+  } else {
+    console.log(`  ok    ${name}`);
+  }
+}
+
+function eq<T>(name: string, actual: T, expected: T): void {
+  const same = JSON.stringify(actual) === JSON.stringify(expected);
+  if (!same) {
+    ok(`${name}  (got ${JSON.stringify(actual)}, want ${JSON.stringify(expected)})`, false);
+  } else {
+    ok(name, true);
+  }
+}
+
+function readSeed<T>(name: string): T {
+  return JSON.parse(readFileSync(path.join(process.cwd(), "seed", name), "utf8")) as T;
+}
+
+// ---------------------------------------------------------------------------
+
+section("Arithmetic, recomputed in process with exact fractions");
+
+const computeCases: [string, string | null][] = [
+  ["1/4 + 2/3 =", "11/12"],
+  ["3. 2/5 + 1/5 =", "3/5"],
+  ["0.3 + 0.45 =", "0.75"],
+  ["0.1 + 0.2", "0.3"], // exact, not 0.30000000000000004
+  ["124 ÷ 4 =", "31"],
+  ["7 × 8 =", "56"],
+  ["12 x 3", "36"],
+  ["1 1/2 + 2 1/4 =", "15/4"],
+  ["20% of 60 =", "12"],
+  ["3/4 × 2/5", "3/10"],
+  ["Sarah has 12 apples and gives 5 away. How many are left?", null],
+  ["2x + 3 = 11", null],
+];
+for (const [input, expected] of computeCases) eq(`computeAnswer ${JSON.stringify(input)}`, computeAnswer(input), expected);
+
+const verifyCases: [string, string | null, string][] = [
+  ["1/4 + 2/3 =", "11/12", "checked"],
+  ["1/4 + 2/3 =", "The answer is 11/12.", "checked"],
+  ["1/4 + 2/3 =", "11/12, which is just under 1", "checked"],
+  ["1/4 + 2/3 =", "3/7", "unverified"],
+  ["1/4 + 2/3 =", null, "unverified"],
+  ["1/3 + 1/3 =", "0.67", "checked"], // a legitimate rounding
+  ["1/3 + 1/3 =", "0.5", "unverified"],
+  ["Sarah has 12 apples and gives 5 away.", "7 apples", "not-applicable"],
+];
+for (const [problem, claimed, expected] of verifyCases) {
+  eq(`verifyAnswer ${JSON.stringify(problem)} vs ${JSON.stringify(claimed)}`, verifyAnswer(problem, claimed).status, expected);
+}
+
+// ---------------------------------------------------------------------------
+
+section("Misconception detection, in code rather than by a model");
+
+eq("whole number bias on 1/4 + 2/3 = 3/7",
+  detectors.detectWholeNumberBias("1/4 + 2/3 =", "1+2=3, 4+3=7\n3/7"), "whole-number-bias-fraction-addition");
+eq("silent when the working is correct",
+  detectors.detectWholeNumberBias("1/4 + 2/3 =", "11/12"), null);
+eq("fires on the classic 1/2 + 1/2 = 2/4",
+  detectors.detectWholeNumberBias("1/2 + 1/2 =", "2/4"), "whole-number-bias-fraction-addition");
+eq("silent when componentwise coincides with the correct answer",
+  detectors.detectWholeNumberBias("0/3 + 0/4 =", "0/7"), null);
+eq("smaller from larger on 43 - 27 = 24",
+  detectors.detectSmallerFromLarger("43 - 27 =", "24"), "smaller-from-larger-subtraction");
+eq("silent when the subtraction is right",
+  detectors.detectSmallerFromLarger("43 - 27 =", "16"), null);
+eq("left to right on 2 + 3 x 4 = 20",
+  detectors.detectLeftToRight("2 + 3 x 4 =", "5 x 4 = 20"), "left-to-right-order-of-operations");
+eq("silent when precedence was applied",
+  detectors.detectLeftToRight("2 + 3 x 4 =", "14"), null);
+eq("silent when both orders agree",
+  detectors.detectLeftToRight("2 x 3 x 4 =", "24"), null);
+
+// ---------------------------------------------------------------------------
+
+section("Live Mode rule engine");
+
+{
+  let state = initialLiveState();
+  const first = evaluateMove({ label: "ANXIETY_STATEMENT", confidence: 0.9, tOffset: 10, anxietyBand: 2, state });
+  ok("an anxiety statement raises a card", first.card?.triggerLabel === "ANXIETY_STATEMENT");
+  ok("the card text is the specified line", first.card?.text.startsWith("That sentence is the one thing") === true);
+
+  state = first.state;
+  ok("a second card inside the 90s cooldown is suppressed",
+    evaluateMove({ label: "GENERIC_PRAISE", confidence: 0.95, tOffset: 40, anxietyBand: 2, state }).card === null);
+  ok("a card is allowed once the cooldown elapses",
+    evaluateMove({ label: "GENERIC_PRAISE", confidence: 0.95, tOffset: 10 + LIVE_RULES.cooldownSeconds, anxietyBand: 2, state }).card !== null);
+
+  state = initialLiveState();
+  let t = 0;
+  for (let i = 0; i < 5; i += 1) {
+    t += 100;
+    state = evaluateMove({ label: "GENERIC_PRAISE", confidence: 0.95, tOffset: t, anxietyBand: 2, state }).state;
+  }
+  eq("hard cap of three cards per session", state.cardsShown, LIVE_RULES.maxCardsPerSession);
+
+  state = initialLiveState();
+  const given = evaluateMove({ label: "GIVES_ANSWER", confidence: 0.99, tOffset: 30, anxietyBand: 2, state });
+  ok("giving the answer is logged silently, never a card", given.card === null && given.park === null);
+
+  ok("band 2 suppresses a 0.6 confidence label",
+    evaluateMove({ label: "TAKES_OVER", confidence: 0.6, tOffset: 30, anxietyBand: 2, state: initialLiveState() }).card === null);
+  ok("band 4 surfaces the same 0.6 confidence label",
+    evaluateMove({ label: "TAKES_OVER", confidence: 0.6, tOffset: 30, anxietyBand: 4, state: initialLiveState() }).card !== null);
+
+  let park = initialLiveState();
+  park = evaluateMove({ label: "ESCALATION", confidence: 0.9, tOffset: 100, anxietyBand: 2, state: park }).state;
+  ok("two escalations inside three minutes parks the session",
+    evaluateMove({ label: "ESCALATION", confidence: 0.9, tOffset: 200, anxietyBand: 2, state: park }).park?.reason === "escalation");
+
+  let spread = initialLiveState();
+  spread = evaluateMove({ label: "ESCALATION", confidence: 0.9, tOffset: 100, anxietyBand: 2, state: spread }).state;
+  ok("escalations outside the window do not park",
+    evaluateMove({ label: "ESCALATION", confidence: 0.9, tOffset: 400, anxietyBand: 2, state: spread }).park === null);
+
+  ok("twenty minutes on one problem parks the session",
+    evaluateMove({ label: "NEUTRAL", confidence: 0.9, tOffset: LIVE_RULES.parkAfterSeconds, anxietyBand: 2, state: initialLiveState() }).park?.reason === "time");
+}
+
+section("Autonomy ratio");
+{
+  const labels: MoveLabelName[] = [
+    "PROBING_QUESTION", "PROBING_QUESTION", "SPECIFIC_PRAISE", "PRODUCTIVE_WAIT",
+    "GIVES_ANSWER", "GENERIC_PRAISE",
+  ];
+  ok("(2 + 1 + 1) / (1 + 1 + 0 + 0 + 1) = 1.333", Math.abs(autonomyScore(countMoves(labels)) - 4 / 3) < 1e-9);
+  eq("no directive moves still gives a finite number", autonomyScore(countMoves(["PROBING_QUESTION"])), 1);
+  eq("an empty session gives zero", autonomyScore(countMoves([])), 0);
+}
+
+// ---------------------------------------------------------------------------
+
+section("Em-dash ban, enforced in code and not only in the prompts");
+
+eq("spaced em dash becomes a comma", sanitize("this one, tricky — let us try"), "this one, tricky, let us try");
+eq("unspaced em dash becomes a comma", sanitize("a—b"), "a, b");
+eq("trailing em dash becomes a full stop", sanitize("wait for it —"), "wait for it.");
+eq("spaced en dash used as an em dash is caught", sanitize("one – two"), "one, two");
+eq("a numeric range is left alone", sanitize("grades 3-6"), "grades 3-6");
+ok("model output is cleaned recursively",
+  JSON.stringify(sanitizeDeep({ a: "x — y", b: ["p — q"] })) === JSON.stringify({ a: "x, y", b: ["p, q"] }));
+
+// ---------------------------------------------------------------------------
+
+section("SVG sanitiser, because Method Match diagrams are model-written markup");
+
+ok("rejects a script tag", sanitizeSvg('<svg viewBox="0 0 10 10"><script>alert(1)</script></svg>') === null);
+ok("rejects an inline event handler", sanitizeSvg('<svg viewBox="0 0 10 10"><rect onload="x()" width="5" height="5"/></svg>') === null);
+ok("rejects foreignObject", sanitizeSvg('<svg viewBox="0 0 10 10"><foreignObject><b>x</b></foreignObject></svg>') === null);
+ok("rejects a gradient", sanitizeSvg('<svg viewBox="0 0 10 10"><linearGradient id="g"/></svg>') === null);
+ok("rejects an external image", sanitizeSvg('<svg viewBox="0 0 10 10"><image href="http://x/y.png"/></svg>') === null);
+ok("rejects non-svg input", sanitizeSvg("<div>hi</div>") === null);
+{
+  const rounded = sanitizeSvg('<svg viewBox="0 0 10 10"><rect width="5" height="5" rx="3" fill="#00A878"/></svg>');
+  ok("strips a rounded corner", rounded !== null && !rounded.includes("rx="));
+  ok("keeps a palette colour", rounded !== null && rounded.includes('fill="#00A878"'));
+  const off = sanitizeSvg('<svg viewBox="0 0 10 10"><rect width="5" height="5" fill="#ff00ff"/></svg>');
+  ok("strips an off-palette colour", off !== null && !off.includes("ff00ff"));
+}
+
+// ---------------------------------------------------------------------------
+
+section("EXIF stripping, so a worksheet photo does not carry a home address");
+
+{
+  const exif = [...Buffer.from("Exif\0\0GPSLatitude 51.5074 GPSLongitude -0.1278")];
+  const jpeg = Uint8Array.from([
+    0xff, 0xd8,
+    0xff, 0xe1, ((exif.length + 2) >> 8) & 0xff, (exif.length + 2) & 0xff, ...exif,
+    0xff, 0xdb, 0x00, 0x04, 0x00, 0x00,
+    0xff, 0xda, 0x00, 0x04, 0x00, 0x00, 0x11, 0x22, 0x33, 0xff, 0xd9,
+  ]);
+  const stripped = stripMetadata(jpeg);
+  const text = Buffer.from(stripped).toString("latin1");
+  ok("GPS coordinates are removed", !text.includes("GPSLatitude"));
+  ok("the image itself survives", text.includes("\x11\x22\x33") && stripped[0] === 0xff && stripped[1] === 0xd8);
+
+  const chunk = (type: string, data: number[]): number[] => [
+    (data.length >>> 24) & 255, (data.length >>> 16) & 255, (data.length >>> 8) & 255, data.length & 255,
+    ...Buffer.from(type), ...data, 0, 0, 0, 0,
+  ];
+  const png = Uint8Array.from([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+    ...chunk("IHDR", [0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0]),
+    ...chunk("tEXt", [...Buffer.from("Comment\0taken at home")]),
+    ...chunk("IEND", []),
+  ]);
+  const pngText = Buffer.from(stripMetadata(png)).toString("latin1");
+  ok("PNG text chunks are removed", !pngText.includes("taken at home"));
+  ok("PNG image chunks survive", pngText.includes("IHDR") && pngText.includes("IEND"));
+}
+
+// ---------------------------------------------------------------------------
+
+section("Packet cache key");
+{
+  const a = packetCacheKey("CCSS.MATH.5.NF.A.1", "STANDARD", "en", "1/4 + 2/3 =");
+  const b = packetCacheKey("CCSS.MATH.5.NF.A.1", "STANDARD", "en", "1/4  +  2/3  =");
+  const c = packetCacheKey("CCSS.MATH.5.NF.A.1", "STANDARD", "en", "3/8 + 1/2 =");
+  ok("whitespace differences still hit the same cache entry", a === b);
+  ok("a different problem on the same standard does not reuse the answer", a !== c);
+  ok("register is part of the key", a !== packetCacheKey("CCSS.MATH.5.NF.A.1", "PLAIN", "en", "1/4 + 2/3 ="));
+  ok("language is part of the key", a !== packetCacheKey("CCSS.MATH.5.NF.A.1", "STANDARD", "es", "1/4 + 2/3 ="));
+}
+
+// ---------------------------------------------------------------------------
+
+section("Seed data");
+
+interface StandardSeed { id: string; code: string; grade: number; plainLanguage: string; expectedMethods: string[]; parentMethod: string }
+interface MisconceptionSeed { id: string; standardCode: string; signature: string; plainName: string; repairQuestion: string; visualSvg: string | null }
+
+const standards = readSeed<StandardSeed[]>("standards.json");
+const misconceptions = readSeed<MisconceptionSeed[]>("misconceptions.json");
+const demo = readSeed<Record<string, unknown>>("demo-packet.json");
+
+ok(`at least 60 standards (have ${standards.length})`, standards.length >= 60);
+ok("standards cover grades 3 to 6", [3, 4, 5, 6].every((g) => standards.some((s) => s.grade === g)));
+ok("standard codes are unique", new Set(standards.map((s) => s.code)).size === standards.length);
+ok("every standard has at least one expected method", standards.every((s) => s.expectedMethods.length > 0));
+
+eq("exactly the 20 documented misconceptions", misconceptions.length, 20);
+ok("misconception ids are unique", new Set(misconceptions.map((m) => m.id)).size === 20);
+{
+  const codes = new Set(standards.map((s) => s.code));
+  ok("every misconception points at a standard that exists", misconceptions.every((m) => codes.has(m.standardCode)));
+  ok("every misconception diagram survives sanitising",
+    misconceptions.filter((m) => m.visualSvg).every((m) => sanitizeSvg(m.visualSvg) !== null));
+}
+
+{
+  const walk = (node: unknown, at: string): string[] => {
+    if (typeof node === "string") return /—|―/.test(node) ? [at] : [];
+    if (Array.isArray(node)) return node.flatMap((v, i) => walk(v, `${at}[${i}]`));
+    if (node && typeof node === "object") {
+      return Object.entries(node).flatMap(([k, v]) => walk(v, `${at}.${k}`));
+    }
+    return [];
+  };
+  const leaks = [
+    ...walk(standards, "standards"),
+    ...walk(misconceptions, "misconceptions"),
+    ...walk(demo, "demo"),
+  ];
+  ok(`no em dash anywhere in the seed data${leaks.length ? ` (found at ${leaks.join(", ")})` : ""}`, leaks.length === 0);
+}
+
+{
+  const packets = (demo as { packets: Record<string, Record<string, unknown>> }).packets;
+  ok("demo fixture carries all three registers, so the landing demo is free",
+    ["PLAIN", "STANDARD", "TECHNICAL"].every((r) => Boolean(packets[r])));
+
+  for (const [register, packet] of Object.entries(packets)) {
+    const rungs = packet.hintLadder as string[];
+    eq(`${register}: exactly five hint rungs`, rungs.length, 5);
+    ok(`${register}: every rung is a question`, rungs.every((r) => r.trim().endsWith("?")));
+    eq(`${register}: exactly three isomorphs`, (packet.isomorphs as string[]).length, 3);
+
+    // The answer renders behind a press and hold. Every other field renders
+    // above it, so a mention anywhere else defeats the lock.
+    const rest = Object.fromEntries(Object.entries(packet).filter(([k]) => k !== "lockedAnswer"));
+    ok(`${register}: the answer appears nowhere but lockedAnswer`, !JSON.stringify(rest).includes("11/12"));
+    ok(`${register}: lockedAnswer actually carries the answer`, String(packet.lockedAnswer).includes("11/12"));
+  }
+}
+
+// ---------------------------------------------------------------------------
+
+console.log(
+  failures === 0
+    ? `\n${checks} checks, all passing.`
+    : `\n${checks} checks, ${failures} FAILING.`,
+);
+if (failures > 0) process.exitCode = 1;
+void group;

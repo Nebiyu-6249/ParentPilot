@@ -35,14 +35,6 @@ function parseFractionPair(text: string): { a: Frac; b: Frac; op: "+" | "-" } | 
   };
 }
 
-function parseSingleFraction(text: string): Frac | null {
-  const match = text.match(/(-?\d+)\s*\/\s*(\d+)/);
-  if (!match) return null;
-  const [, n, d] = match;
-  if (!n || !d) return null;
-  return { n: Number(n), d: Number(d) };
-}
-
 /**
  * Adding numerators and denominators, so 1/4 + 2/3 is written as 3/7.
  *
@@ -276,6 +268,7 @@ export async function misconceptionById(id: string | null): Promise<Misconceptio
       ? {
           id: row.id,
           topic: row.topic,
+          signature: row.signature,
           plainName: row.plainName,
           repairQuestion: row.repairQuestion,
           visualSvg: row.visualSvg,

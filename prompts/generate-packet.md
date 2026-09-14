@@ -90,6 +90,12 @@ actually be said out loud, not as advice about speaking.
 
 ### lockedAnswer
 
+**The answer appears in this field and in no other field.** Everything else
+you write renders above a press-and-hold lock on the parent's screen, so an
+answer mentioned in the primer, in `whySchoolWay`, in a method step, in a hint
+rung or in `misconceptionNote` defeats the lock entirely. Say "both methods
+reach the same value", never "both reach 11/12".
+
 The final answer, written plainly, with a one-line statement of how it is
 reached. If `VERIFIED_ANSWER` is supplied and is not the string `null`,
 your answer must agree with it. If it does not, return `VERIFIED_ANSWER`

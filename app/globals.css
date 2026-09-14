@@ -212,3 +212,59 @@ hr {
   background: var(--emerald);
   color: var(--paper);
 }
+
+/* Method Match: the two methods sit side by side, always. The columns get
+   narrower on a phone rather than stacking, because seeing them next to each
+   other is the entire point of the feature. The diagram drops below both. */
+.pp-method-grid {
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+  gap: 0 20px;
+  align-items: start;
+}
+
+.pp-method-rule {
+  background: var(--rule);
+  align-self: stretch;
+  width: 1px;
+}
+
+.pp-method-steps {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 16px;
+}
+
+.pp-method-steps li {
+  margin-bottom: 8px;
+}
+
+@media (max-width: 420px) {
+  .pp-method-grid {
+    gap: 0 12px;
+  }
+  .pp-method-steps {
+    font-size: 15px;
+    padding-left: 17px;
+  }
+}
+
+/* Generated and hand-drawn diagrams size to their column, never overflow. */
+.pp-diagram svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 460px;
+}
+
+/* Live Mode cards rise from the bottom of the viewport. */
+.pp-live-card {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  background: var(--paper);
+  border-top: 1px solid var(--ink);
+  padding: 22px 20px 30px;
+}
