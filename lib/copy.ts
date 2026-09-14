@@ -310,6 +310,37 @@ export const copy = {
     generic: "The model did not answer, so this is the saved general explanation for this topic rather than one written for your child's working.",
   },
 
+  chat: {
+    emptyIntent: "Show me the worksheet and I will tell you what to ask.",
+    emptyPhoto: "Take a photo of the page",
+    emptyDemo: "Or watch it run on a saved worksheet",
+    /* What the child wrote on the saved page, so the card shows what is about
+       to be worked on rather than only promising that something will be. */
+    emptyDemoWork: "She added the denominators and wrote 3/7.",
+    emptyDemoNote: "No photo, no account, no cost.",
+    /* The parent's own turn in the thread. The button label is an offer; this
+       is what the parent just did, which is what a transcript should say. */
+    demoTurn: "Run the saved worksheet.",
+    photoTurn: "Here is the worksheet.",
+    /* One job. The camera sits directly to its left and makes the other
+       offer, and the two-clause version wrapped and clipped on a phone. */
+    placeholder: "Tell me what is happening",
+    note: "ParentPilot talks to you, never to your child.",
+    newThread: "New worksheet",
+    threadsToday: "Today",
+    threadsWeek: "This week",
+    threadsEarlier: "Earlier",
+    /* Free-text turns arrive in step four. Saying so is better than a
+       composer that silently swallows what a parent typed. */
+    notYet:
+      "Answering in your own words is not switched on yet. For now, photograph the page or tap Still stuck for the next question.",
+    suggestions: [
+      "she's getting frustrated",
+      "she got it but I don't think she understands",
+      "what should I not say",
+    ],
+  },
+
   login: {
     heading: "Sign in",
     help: "We email you a link. There is no password to forget, and nothing for your child to sign into.",

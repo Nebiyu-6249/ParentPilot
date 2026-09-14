@@ -139,6 +139,50 @@
   --emerald: var(--annotation);
   --alert: var(--alert-fg);
 
+  /* ---- The /app layer -------------------------------------------------
+
+     A second surface layer beside the first, not a replacement. The marketing
+     site and the unrestyled routes still use --surface-* and are restyled in
+     steps 6 and 7; replacing the layer now would break every one of them at
+     once.
+
+     Teal and emerald stop being surfaces here and become accent and identity
+     only, because the shell is imitating a convention and the convention has
+     neutral chrome. */
+  --app-bg: #ffffff;
+  --app-rail: #f7f6f3;
+  --app-card: #ffffff;
+  --app-bubble: #f2f1ed;
+  --app-line: #e6e4de;
+  /* A hairline is fine for a divider, which carries no meaning. A control
+     identified by its border alone needs 3:1 under WCAG 1.4.11, and
+     --app-line is 1.2:1 here. Same split the paper surface makes. */
+  --app-border-interactive: #8e8c85;
+  --app-text: #1a1a18;
+  --app-text-dim: #6b6862;
+  --accent: #00a878;
+  /* The accent as text has to clear AA, which brand emerald does not on white. */
+  --accent-ink: #00664a;
+  /* Degradation has to be visible without being alarming: this is "we did not
+     read your page", not "something broke". Amber rather than the red the
+     site surface uses for a real error. */
+  --app-alert-bg: #fdf6e7;
+  --app-alert-line: #e4cd94;
+  --app-alert-ink: #6b4d05;
+
+  /* Mainstream radii. Round three capped these at 4px; a 4px composer reads as
+     a form field rather than as a chat composer, which is the convention this
+     shell is imitating. */
+  --r-control: 8px;
+  --r-card: 12px;
+  --r-bubble: 18px;
+  --r-composer: 24px;
+
+  --shadow-card: 0 1px 2px rgb(20 20 18 / 0.05), 0 1px 3px rgb(20 20 18 / 0.06);
+  --shadow-composer: 0 2px 10px rgb(20 20 18 / 0.08), 0 0 0 1px var(--app-border-interactive);
+
+  --font-ui: "Inter", system-ui, -apple-system, sans-serif;
+
   color-scheme: light;
 }
 
@@ -183,6 +227,23 @@
     /* Only the alert needs lifting, and only because the paper is dimmer. */
     --alert-fg: #943826;
 
+    --app-bg: #191918;
+    --app-rail: #141413;
+    --app-card: #212120;
+    --app-bubble: #2b2b28;
+    --app-line: #34332e;
+    --app-border-interactive: #75736c;
+    --app-text: #edede9;
+    --app-text-dim: #a8a49b;
+    --accent: #00a878;
+    --accent-ink: #3fd0a2;
+    --app-alert-bg: #2a2314;
+    --app-alert-line: #57492a;
+    --app-alert-ink: #e8c66b;
+
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-composer: 0 2px 14px rgb(0 0 0 / 0.5), 0 0 0 1px var(--app-border-interactive);
+
     color-scheme: dark;
   }
 }
@@ -217,6 +278,23 @@
   --border-interactive-frame: #6b8579;
   /* Only the alert needs lifting, and only because the paper is dimmer. */
   --alert-fg: #943826;
+
+  --app-bg: #191918;
+  --app-rail: #141413;
+  --app-card: #212120;
+  --app-bubble: #2b2b28;
+  --app-line: #34332e;
+  --app-border-interactive: #75736c;
+  --app-text: #edede9;
+  --app-text-dim: #a8a49b;
+  --accent: #00a878;
+  --accent-ink: #3fd0a2;
+  --app-alert-bg: #2a2314;
+  --app-alert-line: #57492a;
+  --app-alert-ink: #e8c66b;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-composer: 0 2px 14px rgb(0 0 0 / 0.5), 0 0 0 1px var(--app-border-interactive);
 
   color-scheme: dark;
 }
@@ -697,5 +775,318 @@ hr {
   .pp-sheet-page {
     padding: 26px 20px 96px;
     box-shadow: none;
+  }
+}
+
+/* ---- /app: the chat shell -------------------------------------------
+
+   Deliberately conventional. Sidebar left, thread centred, composer sticky at
+   the bottom. Every gram of novelty spent here is a gram of learning charged
+   to a parent at eight in the evening, so the novelty is spent on the cards
+   inside the thread instead. */
+
+.pp-app {
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr);
+  height: 100dvh;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: var(--font-ui);
+}
+
+.pp-app[data-rail="collapsed"] {
+  grid-template-columns: 0 minmax(0, 1fr);
+}
+
+.pp-rail {
+  background: var(--app-rail);
+  border-right: 1px solid var(--app-line);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.pp-rail-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 10px 16px;
+}
+
+.pp-rail-group {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--app-text-dim);
+  padding: 16px 10px 6px;
+  letter-spacing: 0.01em;
+}
+
+.pp-rail-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--app-text);
+  font-size: 14px;
+  border-radius: var(--r-control);
+  text-decoration: none;
+  transition: background 120ms ease-out;
+}
+
+.pp-rail-item:hover {
+  background: color-mix(in srgb, var(--app-text) 6%, transparent);
+}
+
+.pp-rail-item[aria-current="true"] {
+  background: color-mix(in srgb, var(--app-text) 9%, transparent);
+  font-weight: 500;
+}
+
+/* The thread column. */
+.pp-thread-wrap {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100dvh;
+}
+
+.pp-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--app-line);
+  background: var(--app-bg);
+  flex-wrap: wrap;
+}
+
+.pp-thread {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 16px 8px;
+}
+
+.pp-thread-inner {
+  max-width: 740px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* A parent's own turn: right aligned, bubbled, like every chat they know. */
+.pp-turn-parent {
+  align-self: flex-end;
+  max-width: 78%;
+  background: var(--app-bubble);
+  border-radius: var(--r-bubble);
+  padding: 11px 16px;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+/* ParentPilot's turn: left aligned, unbubbled, made of cards. */
+.pp-turn-assistant {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pp-card {
+  background: var(--app-card);
+  border: 1px solid var(--app-line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.pp-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 16px;
+  background: transparent;
+  border: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--app-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pp-card-body {
+  padding: 0 16px 16px;
+}
+
+/* The ask card is the product. It is never collapsed and it is never quiet. */
+.pp-card-ask {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--app-line));
+  box-shadow: var(--shadow-card), 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.pp-ask-question {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(1.4rem, 3.4vw, 1.9rem);
+  line-height: 1.22;
+  letter-spacing: -0.012em;
+  margin: 0;
+  max-width: 24ch;
+}
+
+/* The composer. Sticky, rounded, camera first. */
+.pp-composer-wrap {
+  padding: 8px 16px 14px;
+  background: var(--app-bg);
+}
+
+.pp-composer {
+  max-width: 740px;
+  margin: 0 auto;
+  background: var(--app-card);
+  border-radius: var(--r-composer);
+  box-shadow: var(--shadow-composer);
+  padding: 8px 8px 8px 10px;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.pp-composer textarea {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  resize: none;
+  background: transparent;
+  color: var(--app-text);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.5;
+  padding: 9px 4px;
+  max-height: 180px;
+}
+
+.pp-composer-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid var(--app-border-interactive);
+  background: transparent;
+  color: var(--app-text);
+  flex-shrink: 0;
+  transition: background 120ms ease-out;
+}
+
+.pp-composer-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--app-text) 7%, transparent);
+}
+
+.pp-composer-send {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.pp-composer-note {
+  max-width: 740px;
+  margin: 8px auto 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--app-text-dim);
+}
+
+/* Empty state. A blank composer is the worst thing to show someone who has
+   just arrived, so this does the selling. */
+.pp-empty {
+  max-width: 620px;
+  /* Centred in the space it has rather than pinned to the top, so the camera
+     button lands near the thumb on a phone and near the eye on a desktop. */
+  margin: auto;
+  padding: 24px 0 8px;
+  text-align: center;
+}
+
+.pp-thread-inner:has(> .pp-empty) {
+  display: flex;
+  min-height: 100%;
+}
+
+/* The thread's subject, which is the problem text. One line: it identifies the
+   thread, it is not the content. */
+.pp-topbar-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 14.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Inert at desktop widths, where the rail is a column and there is nothing to
+   dismiss. Only the drawer breakpoint turns it on. */
+.pp-scrim {
+  display: none;
+  border: 0;
+  padding: 0;
+}
+
+.pp-chip {
+  display: inline-block;
+  padding: 9px 14px;
+  margin: 0 6px 8px 0;
+  border: 1px solid var(--app-border-interactive);
+  border-radius: 999px;
+  background: var(--app-card);
+  color: var(--app-text);
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: background 120ms ease-out;
+}
+
+.pp-chip:hover {
+  background: color-mix(in srgb, var(--app-text) 6%, transparent);
+}
+
+@media (max-width: 860px) {
+  /* All three states, not just the bare class. `.pp-app[data-rail="collapsed"]`
+     above is specificity 0,2,0 and beats a lone `.pp-app` even from inside a
+     media query, which left the thread sitting in the 0-width track and the
+     whole surface squeezed into the left edge of a phone. */
+  .pp-app,
+  .pp-app[data-rail="open"],
+  .pp-app[data-rail="collapsed"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pp-rail {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 272px;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 180ms ease-out;
+  }
+  .pp-app[data-rail="open"] .pp-rail {
+    transform: translateX(0);
+  }
+  /* At this width the title truncates to an ellipsis and buys nothing: the
+     worksheet card directly below carries the same text in full. */
+  .pp-topbar-title {
+    display: none;
+  }
+  .pp-app[data-rail="open"] .pp-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: rgb(0 0 0 / 0.38);
+    cursor: pointer;
   }
 }

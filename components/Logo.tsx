@@ -1,9 +1,37 @@
 import { CENTRE_HOLE_PATH, LOGO_VIEWBOX, SQUARE_PATH, STAR_PATH, TAIL_PATH } from "@/lib/logo";
 import { copy } from "@/lib/copy";
 
+/**
+ * Which surface the mark is sitting on.
+ *
+ * "paper" and "frame" are the site's two grounds and use the fixed brand
+ * colours. "app" is the chat shell, whose ground changes with the theme:
+ * brand teal on the dark rail is about 1.6:1, so there the mark takes the
+ * surface's own text colour and the emerald star carries the brand.
+ */
+export type LogoSurface = "paper" | "frame" | "app";
+
+function containerColour(on: LogoSurface): string {
+  if (on === "frame") return "var(--text-on-frame)";
+  if (on === "app") return "var(--app-text)";
+  return "var(--brand-teal)";
+}
+
+function surface(on: LogoSurface | undefined, onFrame: boolean): LogoSurface {
+  return on ?? (onFrame ? "frame" : "paper");
+}
+
 /** The resting mark: square container, filled star, hollow centre, tail. */
-export function LogoMark({ size = 28, onFrame = false }: { size?: number; onFrame?: boolean }) {
-  const container = onFrame ? "var(--text-on-frame)" : "var(--brand-teal)";
+export function LogoMark({
+  size = 28,
+  onFrame = false,
+  on,
+}: {
+  size?: number;
+  onFrame?: boolean;
+  on?: LogoSurface;
+}) {
+  const container = containerColour(surface(on, onFrame));
   return (
     <svg
       viewBox={LOGO_VIEWBOX}
@@ -22,16 +50,25 @@ export function LogoMark({ size = 28, onFrame = false }: { size?: number; onFram
 
 /** Mark plus wordmark. Fraunces SemiBold. One of only two places the display
  *  face appears; the other is the hero headline. */
-export default function Logo({ size = 28, onFrame = false }: { size?: number; onFrame?: boolean }) {
+export default function Logo({
+  size = 28,
+  onFrame = false,
+  on,
+}: {
+  size?: number;
+  onFrame?: boolean;
+  on?: LogoSurface;
+}) {
+  const where = surface(on, onFrame);
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-      <LogoMark size={size} onFrame={onFrame} />
+      <LogoMark size={size} on={where} />
       <span
         style={{
           fontFamily: "var(--font-display)",
           fontWeight: 600,
           fontSize: size * 0.72,
-          color: onFrame ? "var(--text-on-frame)" : "var(--brand-teal)",
+          color: containerColour(where),
           letterSpacing: "-0.015em",
         }}
       >
