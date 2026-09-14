@@ -93,6 +93,7 @@ export async function demoBundle(register: RegisterName, notice: string | null =
     misconception: fixture.misconception,
     packet: { register, language: fixture.language, ...packet },
     notice,
+    source: "fixture",
     verification: "checked",
   };
 }

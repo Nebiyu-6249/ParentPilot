@@ -3,7 +3,7 @@ import { copy } from "@/lib/copy";
 
 /** The resting mark: square container, filled star, hollow centre, tail. */
 export function LogoMark({ size = 28, onFrame = false }: { size?: number; onFrame?: boolean }) {
-  const container = onFrame ? "var(--text-on-frame)" : "var(--teal)";
+  const container = onFrame ? "var(--text-on-frame)" : "var(--brand-teal)";
   return (
     <svg
       viewBox={LOGO_VIEWBOX}
@@ -14,7 +14,7 @@ export function LogoMark({ size = 28, onFrame = false }: { size?: number; onFram
       focusable="false"
     >
       <path d={SQUARE_PATH} fill="none" stroke={container} strokeWidth={5} />
-      <path d={`${STAR_PATH} ${CENTRE_HOLE_PATH}`} fill="var(--emerald)" fillRule="evenodd" />
+      <path d={`${STAR_PATH} ${CENTRE_HOLE_PATH}`} fill="var(--brand-emerald)" fillRule="evenodd" />
       <path d={TAIL_PATH} fill={container} />
     </svg>
   );
@@ -31,7 +31,7 @@ export default function Logo({ size = 28, onFrame = false }: { size?: number; on
           fontFamily: "var(--font-display)",
           fontWeight: 600,
           fontSize: size * 0.72,
-          color: onFrame ? "var(--text-on-frame)" : "var(--teal)",
+          color: onFrame ? "var(--text-on-frame)" : "var(--brand-teal)",
           letterSpacing: "-0.015em",
         }}
       >

@@ -203,6 +203,30 @@ export const copy = {
     isomorphHelp: "Same idea, different numbers. Use these once the first one has clicked.",
     misconceptionHeading: "What went wrong",
     misconceptionRepair: "The question that fixes it",
+
+    /* The screen is one question. Everything below is a closed disclosure,
+       because a parent mid-session needs the thing to say, not an essay. */
+    askLabel: "Ask this, then wait",
+    rungCounter: (n: number, total: number): string => `Question ${n} of ${total}`,
+    stillStuck: "Still stuck",
+    answeredIt: "She answered it",
+    ladderExhausted:
+      "That was the last one. If it is still not landing, the answer is at the bottom of this screen, and stopping here is a perfectly good outcome.",
+
+    solvedHeading: "Good. That one is done.",
+    solvedBody:
+      "She got there by answering a question rather than being told, which is the part that sticks.",
+    solvedAgain: "Back to the questions",
+
+    /* Disclosure titles, in the order a parent reaches for them. The answer is
+       last on purpose: it is the escape hatch, so it sits furthest from the
+       thumb. */
+    discloseWhy: "Why she got it wrong",
+    discloseMethods: "Show me both methods",
+    discloseTeaching: "What is this teaching?",
+    discloseScripts: "What to say, and what to skip",
+    discloseAnswer: "Just tell me the answer",
+    primerMore: "Read the whole thing",
     genericFallback:
       "I could not generate a fresh primer for this one, so this is the saved general explanation for this topic. It is accurate but not tailored to your child's working.",
   },
@@ -275,6 +299,94 @@ export const copy = {
       { value: "STANDARD", label: "Standard" },
       { value: "TECHNICAL", label: "More technical" },
     ],
+  },
+
+  /* Provenance, shown quietly whenever a packet did not come from a live
+     reading of this parent's worksheet. A degraded response that looks
+     identical to a real one is the worst outcome, because the parent acts on
+     it believing we read the page. */
+  provenance: {
+    fixture: "This is a saved example, not a reading of your worksheet.",
+    generic: "The model did not answer, so this is the saved general explanation for this topic rather than one written for your child's working.",
+  },
+
+  login: {
+    heading: "Sign in",
+    help: "We email you a link. There is no password to forget, and nothing for your child to sign into.",
+    emailLabel: "Your email",
+    submit: "Email me a link",
+    sent: "Check your email. The link works once and lasts fifteen minutes.",
+    sentQuiet: "If that address has been used here before, the link will open the same profile.",
+    unconfigured:
+      "This deployment cannot send email yet, so the link was written to the server log instead. An operator can retrieve it.",
+    failed: "We could not send that email. Try again in a minute.",
+    invalid: "That link is not valid. Ask for a new one.",
+    expired: "That link has expired. Ask for a new one.",
+    used: "That link has already been used. Ask for a new one.",
+    anonymousNote:
+      "You do not need an account. The demo and a single worksheet work without one; signing in is what keeps your history.",
+
+    emailSubject: "Your ParentPilot sign-in link",
+    emailBody: "Here is your sign-in link. It works once and lasts fifteen minutes.",
+    emailLinkLabel: "Sign in to ParentPilot",
+    emailFooter: "If you did not ask for this, you can ignore it. Nothing was created.",
+  },
+
+  account: {
+    heading: "Your account",
+    signedInAs: "Signed in as",
+    anonymous: "You are not signed in. Everything still works; nothing is kept beyond this browser.",
+    signIn: "Sign in",
+    signOut: "Sign out",
+    childrenHeading: "Children",
+    noChildren: "No child profile yet. Setup creates one.",
+    childNote: "A profile, not an account. There is nothing here for a child to sign into.",
+    preferencesHeading: "How I write to you",
+  },
+
+  history: {
+    heading: "Past sessions",
+    empty: "No sessions yet. They appear here once you have used Live Mode.",
+    anonymous: "Sign in to keep your history across devices.",
+    ratioLabel: "Autonomy",
+    problemsLabel: "Problems worked",
+    shareLabel: "Share with a teacher",
+    shareCreate: "Create a link",
+    shareCopy: "Copy the link",
+    shareCopied: "Copied",
+    shareRevoke: "Revoke",
+    shareRevoked: "Revoked. The link no longer opens.",
+    shareExpires: "Expires",
+    openRecap: "Open the recap",
+  },
+
+  shared: {
+    heading: "A homework session",
+    explainer:
+      "This is a read-only summary a parent chose to share with you. It shows what was worked on and what kind of things were said, never the words themselves. Nothing here was recorded.",
+    problemsHeading: "What was worked on",
+    errorHeading: "Where it got stuck",
+    ratioHeading: "How the help was balanced",
+    noteHeading: "The note the parent drafted",
+    expired: "This link has expired.",
+    unknown: "This link does not open anything.",
+  },
+
+  studio: {
+    heading: "What you can make from this session",
+    help: "Each of these is built from the session, on request. Nothing is generated until you ask.",
+    teacherNote: "A note for the teacher",
+    audioPrimer: "Listen to the primer",
+    shareLink: "A read-only link",
+  },
+
+  audio: {
+    play: "Listen to this",
+    loading: "Preparing the audio",
+    playing: "Playing",
+    pause: "Pause",
+    unavailable: "Audio is not available in this deployment.",
+    help: "The same explanation, read aloud, for when reading is the hard part.",
   },
 
   limits: {

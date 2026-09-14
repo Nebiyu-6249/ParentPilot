@@ -15,6 +15,8 @@
 
 import { PrismaClient } from "@prisma/client";
 
+import { createShareLink, readSharedSession, revokeShareLink, SHARE_TTL_DAYS } from "../lib/share";
+
 const prisma = new PrismaClient();
 
 let failures = 0;
@@ -141,10 +143,94 @@ async function main(): Promise<void> {
     );
   }
 
+  await shareChecks();
+
   console.log(
     failures === 0 ? `\n${checks} database checks, all passing.` : `\n${checks} database checks, ${failures} FAILING.`,
   );
   if (failures > 0) process.exitCode = 1;
+}
+
+/**
+ * Share tokens, against the live database.
+ *
+ * Generation, expiry, revocation and the absence of any transcript in what a
+ * shared link renders. Everything created here is torn down at the end.
+ */
+async function shareChecks(): Promise<void> {
+  section("Share links");
+
+  const parent = await prisma.parent.create({ data: {} });
+  const child = await prisma.child.create({
+    data: { parentId: parent.id, grade: 5, curriculum: "CCSS", subjects: [] },
+  });
+  const session = await prisma.session.create({ data: { childId: child.id, mode: "LIVE" } });
+  await prisma.move.createMany({
+    data: [
+      { sessionId: session.id, tOffset: 10, label: "PROBING_QUESTION", confidence: 0.9 },
+      { sessionId: session.id, tOffset: 40, label: "GIVES_ANSWER", confidence: 0.9 },
+    ],
+  });
+
+  try {
+    // Generation.
+    const link = await createShareLink(session.id, parent.id);
+    ok("a share link is created for the owner", link !== null);
+    ok("the token is long and random, not an id",
+      (link?.token.length ?? 0) >= 20 && link?.token !== session.id);
+    const days = link ? Math.round((link.expiresAt.getTime() - Date.now()) / 86_400_000) : 0;
+    ok(`it expires in ${SHARE_TTL_DAYS} days  (${days})`, days === SHARE_TTL_DAYS);
+
+    // Someone else's session is not theirs to share.
+    const stranger = await prisma.parent.create({ data: {} });
+    const stolen = await createShareLink(session.id, stranger.id);
+    ok("a stranger cannot create a link for a session they do not own", stolen === null);
+
+    // It resolves, and what it resolves to has no transcript in it.
+    const opened = link ? await readSharedSession(link.token) : { state: "unknown" as const };
+    ok("the token opens the session", opened.state === "ok");
+
+    if (opened.state === "ok") {
+      const payload = JSON.stringify(opened.session);
+      const fields = Object.keys(opened.session);
+      ok(`the shared payload has no transcript field  (${fields.join(", ")})`,
+        !fields.some((f) => /transcript|audio|utterance|words|speech|recording/i.test(f)));
+      ok("nor anything transcript-shaped nested inside it",
+        !/transcript|utterance|recording/i.test(payload));
+      ok("it does carry the derived move counts", Object.keys(opened.session.moveCounts).length > 0);
+    }
+
+    // Expiry.
+    if (link) {
+      await prisma.session.update({
+        where: { id: session.id },
+        data: { shareExpiresAt: new Date(Date.now() - 1000) },
+      });
+      const expired = await readSharedSession(link.token);
+      ok("an expired link reports itself expired rather than opening", expired.state === "expired");
+      await prisma.session.update({
+        where: { id: session.id },
+        data: { shareExpiresAt: new Date(Date.now() + 86_400_000) },
+      });
+    }
+
+    // Revocation.
+    if (link) {
+      const strangerRevoke = await revokeShareLink(session.id, stranger.id);
+      ok("a stranger cannot revoke a link", strangerRevoke === false);
+
+      const revoked = await revokeShareLink(session.id, parent.id);
+      ok("the owner can revoke", revoked === true);
+
+      const afterRevoke = await readSharedSession(link.token);
+      ok("a revoked token stops opening at once", afterRevoke.state === "unknown");
+    }
+
+    await prisma.parent.delete({ where: { id: stranger.id } });
+  } finally {
+    // Cascades take the child, session and moves with it.
+    await prisma.parent.delete({ where: { id: parent.id } }).catch(() => undefined);
+  }
 }
 
 main()
