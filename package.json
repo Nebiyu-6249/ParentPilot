@@ -13,7 +13,8 @@
     "db:migrate": "prisma migrate deploy",
     "seed": "tsx scripts/seed.ts",
     "postinstall": "prisma generate",
-    "check": "tsx scripts/check.ts"
+    "check": "tsx scripts/check.ts",
+    "check:db": "tsx scripts/check-db.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",
