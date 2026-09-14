@@ -144,7 +144,7 @@ export default function LiveMode({ language }: { language: string }) {
 
   if (parked) {
     return (
-      <Page>
+      <Page surface="desk">
         <section
           style={{
             marginTop: 48,
@@ -197,7 +197,7 @@ export default function LiveMode({ language }: { language: string }) {
 
   if (!listening) {
     return (
-      <Page>
+      <Page surface="desk">
         <header style={{ padding: "48px 0 22px" }}>
           <h1 style={{ fontSize: "clamp(1.7rem, 6vw, 2.2rem)" }}>{copy.live.heading}</h1>
           <p style={{ marginTop: 16, fontSize: 17 }}>{copy.live.intro}</p>
@@ -215,7 +215,7 @@ export default function LiveMode({ language }: { language: string }) {
   }
 
   return (
-    <Page>
+    <Page surface="desk">
       <div
         style={{
           minHeight: "58vh",

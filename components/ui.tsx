@@ -8,19 +8,35 @@ import type { CSSProperties, ReactNode } from "react";
  * pieces plus plain elements.
  */
 
-/** Single-column editorial column, measure capped, thumb-safe bottom padding. */
-export function Page({ children, style }: { children: ReactNode; style?: CSSProperties }) {
+/**
+ * A content screen: a sheet of paper lying on the desk.
+ *
+ * `surface="desk"` opts out for Live Mode, which is not a document and should
+ * not be a lit rectangle in a dim room.
+ */
+export function Page({
+  children,
+  style,
+  surface = "sheet",
+}: {
+  children: ReactNode;
+  style?: CSSProperties;
+  surface?: "sheet" | "desk";
+}) {
+  if (surface === "desk") {
+    return (
+      <main className="pp-desk-page" style={style}>
+        {children}
+      </main>
+    );
+  }
+
   return (
-    <main
-      style={{
-        maxWidth: 720,
-        margin: "0 auto",
-        padding: "0 20px 120px",
-        ...style,
-      }}
-    >
-      {children}
-    </main>
+    <div className="pp-desk">
+      <main className="pp-sheet-page" style={style}>
+        {children}
+      </main>
+    </div>
   );
 }
 

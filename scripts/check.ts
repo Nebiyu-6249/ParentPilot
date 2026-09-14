@@ -519,11 +519,42 @@ section("Colour contrast, computed from the tokens rather than asserted");
   // even the non-text threshold, so the on-paper variant must be darker.
   ok("the on-paper pen is darker than brand emerald, because #00A878 on paper is 2.71",
     (light["--annotation"] ?? "").toLowerCase() !== "#00a878");
-  ok("emerald holds in dark mode",
-    (dark["--annotation"] ?? "").toLowerCase() === "#00a878");
-  // "Rules get lighter rather than darker" in dark mode.
-  ok("dark rules are lighter than the surface they sit on",
-    luminance(dark["--rule-on-sheet"] ?? "#000000") > luminance(dark["--surface-sheet"] ?? "#ffffff"));
+
+  /* ---- The Part B invariant -------------------------------------------
+
+     Dark mode is the same scene at night, not an inversion. The room goes
+     unlit and the paper stays paper, dimmed. The first attempt made the sheet
+     #132A25 against a #0A1614 desk: two dark greens close in value, so the
+     paper stopped reading as paper and the child's pencil working read as
+     chalk on a blackboard, which inverts whose surface it is. */
+  const lighter = (a: string | undefined, b: string | undefined): boolean =>
+    luminance(a ?? "#000000") > luminance(b ?? "#ffffff");
+
+  for (const [mode, tokens] of [["light", light], ["dark", dark]] as const) {
+    ok(`${mode}: the sheet is lighter than the desk, so paper reads as paper`,
+      lighter(tokens["--surface-sheet"], tokens["--surface-frame"]));
+    ok(`${mode}: ink is darker than the sheet it is written on`,
+      lighter(tokens["--surface-sheet"], tokens["--text-on-sheet"]));
+    ok(`${mode}: rules on paper are darker than the paper`,
+      lighter(tokens["--surface-sheet"], tokens["--rule-on-sheet"]));
+    ok(`${mode}: rules on the desk are lighter than the desk`,
+      lighter(tokens["--rule-on-frame"], tokens["--surface-frame"]));
+  }
+
+  // The dimmed sheet must genuinely be dimmer, or dark mode emits as much
+  // light as day mode and the setting is cosmetic.
+  const dayPaper = luminance(light["--surface-sheet"] ?? "#ffffff");
+  const nightPaper = luminance(dark["--surface-sheet"] ?? "#ffffff");
+  ok(`the night sheet is dimmed, not merely tinted  (${((nightPaper / dayPaper) * 100).toFixed(0)}% of daytime luminance)`,
+    nightPaper < dayPaper * 0.9);
+
+  /* Because the sheet stays paper, everything written on it is unchanged
+     between modes. That is the economy the design buys: a designed variant
+     needs fewer overrides than a darkened copy, not more. */
+  for (const token of ["--text-on-sheet", "--pencil", "--annotation", "--accent-on-sheet"]) {
+    ok(`${token} is one value in both modes`,
+      (light[token] ?? "L").toLowerCase() === (dark[token] ?? "D").toLowerCase());
+  }
 }
 
 // ---------------------------------------------------------------------------

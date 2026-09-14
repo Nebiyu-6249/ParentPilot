@@ -70,7 +70,7 @@
 
      On the teal desk the brand emerald stays, at 3.08. That passes for a mark
      and NOT for text, so emerald is never used as text on the desk. */
-  --annotation: #00704f;
+  --annotation: #006646;
   --annotation-on-frame: #00a878;
 
   /* The strong accent on paper: headings, badges, the answer control. */
@@ -140,24 +140,29 @@
     --surface-frame-deep: #060e0d;
     --surface-frame-raised: #102420;
 
-    --surface-sheet: #132a25;
-    --surface-sheet-sunk: #0f221e;
+    /* The lamp. Paper stays paper, dimmed to 78% of its daytime
+       luminance rather than inverted into a blackboard. */
+    --surface-sheet: #ded8c9;
+    --surface-sheet-sunk: #d3ccba;
 
     --text-on-frame: #ede7da;
     --text-on-frame-muted: #9fb3ae;
-    --text-on-sheet: #ede7da;
-    --text-on-sheet-muted: #a8bcb6;
+    /* Ink, pencil and pen are unchanged from light mode: the surface they
+       sit on is still paper, so they have nothing to react to. */
+    --text-on-sheet: #14201e;
+    --text-on-sheet-muted: #5c5547;
 
-    --annotation: #00a878;
+    --annotation: #006646;
     --annotation-on-frame: #00a878;
-    --accent-on-sheet: #5fc6b1;
-    --pencil: #b9a98f;
+    --accent-on-sheet: #0b4f4a;
+    --pencil: #5a5247;
 
-    --rule-on-sheet: #5e786d;
-    --rule-on-frame: #5e786d;
-    --border-interactive: #5e786d;
+    --rule-on-sheet: #c3bcaa;
+    --rule-on-frame: #2f4a43;
+    --border-interactive: #7f7666;
     --border-interactive-frame: #6b8579;
-    --alert-fg: #e08770;
+    /* Only the alert needs lifting, and only because the paper is dimmer. */
+    --alert-fg: #943826;
 
     color-scheme: dark;
   }
@@ -168,24 +173,29 @@
   --surface-frame-deep: #060e0d;
   --surface-frame-raised: #102420;
 
-  --surface-sheet: #132a25;
-  --surface-sheet-sunk: #0f221e;
+  /* The lamp. Paper stays paper, dimmed to 78% of its daytime
+     luminance rather than inverted into a blackboard. */
+  --surface-sheet: #ded8c9;
+  --surface-sheet-sunk: #d3ccba;
 
   --text-on-frame: #ede7da;
   --text-on-frame-muted: #9fb3ae;
-  --text-on-sheet: #ede7da;
-  --text-on-sheet-muted: #a8bcb6;
+  /* Ink, pencil and pen are unchanged from light mode: the surface they
+     sit on is still paper, so they have nothing to react to. */
+  --text-on-sheet: #14201e;
+  --text-on-sheet-muted: #5c5547;
 
-  --annotation: #00a878;
+  --annotation: #006646;
   --annotation-on-frame: #00a878;
-  --accent-on-sheet: #5fc6b1;
-  --pencil: #b9a98f;
+  --accent-on-sheet: #0b4f4a;
+  --pencil: #5a5247;
 
-  --rule-on-sheet: #5e786d;
-  --rule-on-frame: #5e786d;
-  --border-interactive: #5e786d;
+  --rule-on-sheet: #c3bcaa;
+  --rule-on-frame: #2f4a43;
+  --border-interactive: #7f7666;
   --border-interactive-frame: #6b8579;
-  --alert-fg: #e08770;
+  /* Only the alert needs lifting, and only because the paper is dimmer. */
+  --alert-fg: #943826;
 
   color-scheme: dark;
 }
@@ -194,14 +204,18 @@
   border-radius: 0 !important;
 }
 
+/* The body is the desk in both modes. Content screens put an explicit sheet
+   on it. Before this, the body was the sheet, so the whole viewport was paper
+   and dark mode became a bright page with a dark header rather than a dim room
+   with a lit page on the desk. */
 html {
-  background: var(--surface-sheet);
+  background: var(--surface-frame);
   -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--surface-sheet);
-  color: var(--text-on-sheet);
+  background: var(--surface-frame);
+  color: var(--text-on-frame);
   font-family: var(--font-sans);
   font-size: 17px;
   line-height: 1.6;
@@ -595,5 +609,46 @@ hr {
   .pp-nav {
     gap: 14px;
     font-size: 0.875rem;
+  }
+}
+
+/* ---- The desk and the sheet ------------------------------------------
+
+   A content screen is a sheet of paper lying on the desk. On a phone the
+   sheet goes edge to edge, because a strip of desk either side of a 390px
+   viewport is wasted width, not atmosphere. */
+
+.pp-desk {
+  padding: 28px 20px 72px;
+}
+
+.pp-sheet-page {
+  max-width: 760px;
+  margin: 0 auto;
+  background: var(--surface-sheet);
+  color: var(--text-on-sheet);
+  padding: 30px 34px 96px;
+  /* A hard flat offset, not a blurred shadow: this is paper on a surface, not
+     a floating UI card. */
+  box-shadow: 8px 8px 0 var(--surface-frame-deep);
+}
+
+/* Live Mode is the one screen that is not a document. It stays on the desk,
+   because a lit rectangle is the wrong thing to hand someone at eight in the
+   evening when the point of the screen is that it is nearly empty. */
+.pp-desk-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 30px 20px 96px;
+  color: var(--text-on-frame);
+}
+
+@media (max-width: 760px) {
+  .pp-desk {
+    padding: 0 0 48px;
+  }
+  .pp-sheet-page {
+    padding: 26px 20px 96px;
+    box-shadow: none;
   }
 }
