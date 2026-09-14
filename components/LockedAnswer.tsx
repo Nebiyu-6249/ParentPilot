@@ -146,8 +146,6 @@ function Badge({ children, tone }: { children: string; tone: "ok" | "alert" }) {
         display: "inline-block",
         padding: "4px 9px",
         fontSize: 12,
-        letterSpacing: "0.08em",
-        textTransform: "uppercase",
         border: `1px solid ${tone === "ok" ? "var(--emerald)" : "var(--alert)"}`,
         color: tone === "ok" ? "var(--emerald)" : "var(--alert)",
       }}

@@ -65,7 +65,7 @@ export type PacketSource =
   /** A saved generic packet for this standard, after the model failed twice. */
   | "generic";
 
-/** Everything `/problem/[id]` needs, in one object. */
+/** Everything a packet turn in the thread needs, in one object. */
 export interface PacketBundle {
   problem: ProblemView;
   standard: StandardView | null;

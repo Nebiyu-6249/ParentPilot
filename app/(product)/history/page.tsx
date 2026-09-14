@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import HistoryList from "@/components/HistoryList";
-import { Page, Section } from "@/components/ui";
+import { buttonStyle, Page } from "@/components/ui";
 import { copy } from "@/lib/copy";
 import { prisma, hasDatabase } from "@/lib/db";
 import { currentParent } from "@/lib/session";
@@ -58,11 +58,17 @@ export default async function HistoryPage() {
       </header>
 
       {parent.id === "anonymous" ? (
-        <Section title={copy.history.anonymous}>
-          <Link href="/login" style={{ fontSize: 17 }}>
+        /* An empty screen is an invitation to act, so it says what history is
+           for and offers the one thing that turns it on. It was a section
+           heading holding a full sentence with a bare link under it. */
+        <section style={{ borderTop: "1px solid var(--rule)", paddingTop: 32 }}>
+          <p style={{ fontSize: 17, lineHeight: 1.6, maxWidth: "46ch", marginBottom: 20 }}>
+            {copy.history.anonymous}
+          </p>
+          <Link href="/login" style={buttonStyle("primary")}>
             {copy.account.signIn}
           </Link>
-        </Section>
+        </section>
       ) : (
         <HistoryList
           sessions={sessions.map((s) => ({

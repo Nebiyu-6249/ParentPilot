@@ -532,6 +532,12 @@ section("Colour contrast, computed from the tokens rather than asserted");
     // hairline is 1.2:1. The composer and the outline buttons use this one.
     ["--app-border-interactive", "--app-bg", 3.0, "app control borders"],
     ["--app-border-interactive", "--app-card", 3.0, "app control borders on a card"],
+    /* The filled primary action on the app surface. This pair was a literal
+       "#ffffff" on var(--accent) until step seven, which is 3.06:1 and below
+       AA. A hard-coded foreground is invisible to a token sweep, which is why
+       the label is a token now. */
+    ["--app-action-label", "--app-action", 4.5, "label on the app's primary action"],
+    ["--app-action", "--app-bg", 3.0, "the app's action against the thread"],
   ];
 
   for (const [mode, tokens] of [["light", light], ["dark", dark]] as const) {
@@ -715,47 +721,64 @@ section("No literal colour inside any seeded or generated markup");
 
 // ---------------------------------------------------------------------------
 
-section("The problem screen is one question, not an essay");
+section("One question at a time, in the one place that renders a packet");
 
 {
-  const screen = readFileSync(path.join(process.cwd(), "components", "PacketScreen.tsx"), "utf8");
-  const disclosure = readFileSync(path.join(process.cwd(), "components", "Disclosure.tsx"), "utf8");
+  /* This used to read PacketScreen.tsx, the screen the thread replaced. Two
+     renderers for the same packet is how the round two all-caps eyebrows
+     survived three steps: they were fixed in the thread and nobody was
+     looking at the other one. The screen and its loader are deleted, and
+     these assertions follow the properties to where they now live. */
+  const cards = readFileSync(path.join(process.cwd(), "components", "app", "Cards.tsx"), "utf8");
+  const thread = readFileSync(path.join(process.cwd(), "lib", "thread.ts"), "utf8");
+  const route = readFileSync(
+    path.join(process.cwd(), "app", "api", "thread", "turn", "route.ts"), "utf8");
 
-  // Everything that used to open the screen is now behind a closed control.
-  for (const key of ["discloseWhy", "discloseMethods", "discloseTeaching", "discloseScripts", "discloseAnswer"] as const) {
-    ok(`${key} is rendered as a disclosure`, screen.includes(`copy.packet.${key}`));
-  }
-
-  // Closed by default, and never opened by an attribute.
-  ok("disclosures are built on <details> and are closed by default",
-    disclosure.includes("<details") && !/\bopen\b\s*[=>]/.test(disclosure));
-
-  // The answer is the escape hatch, so it is the last thing on the screen.
-  const order = ["discloseWhy", "discloseMethods", "discloseTeaching", "discloseScripts", "discloseAnswer"]
-    .map((k) => screen.indexOf(`copy.packet.${k}`));
-  ok("the answer disclosure is last, furthest from the thumb",
-    order.every((pos, i) => i === 0 || pos > (order[i - 1] ?? -1)));
-
-  // One primary action. "Still stuck" continues the flow and is filled;
-  // "She answered it" is the quiet end of the task.
-  ok("Still stuck is the primary action", screen.includes("copy.packet.stillStuck"));
-  ok("She answered it is present but secondary", screen.includes("copy.packet.answeredIt"));
-  ok("the ladder advances one rung at a time, never as a list",
-    screen.includes("Math.min(n + 1, rungs.length - 1)"));
-
-  // The primer no longer opens the screen, and is truncated by default.
-  ok("the primer is cut to its opening sentences by default",
-    screen.includes("primerOpening") && screen.includes("copy.packet.primerMore"));
-
-  // Isomorphs belong to the solved state, where their own copy says they do.
-  const solvedAt = screen.indexOf("copy.packet.solvedHeading");
-  const isomorphAt = screen.indexOf("packet.isomorphs");
-  ok("the isomorphs sit on the solved path, not the stuck path",
-    solvedAt !== -1 && isomorphAt > solvedAt);
-
-  // The component the ladder replaced is gone rather than orphaned.
+  ok("the second packet renderer is gone rather than left to drift",
+    !existsSync(path.join(process.cwd(), "components", "PacketScreen.tsx")) &&
+      !existsSync(path.join(process.cwd(), "components", "PacketLoader.tsx")));
   ok("the old list-style hint ladder component is removed",
     !existsSync(path.join(process.cwd(), "components", "HintLadder.tsx")));
+
+  // Everything but the question is behind a control that starts closed.
+  for (const key of ["discloseWhy", "discloseMethods", "discloseTeaching", "discloseAnswer"] as const) {
+    ok(`${key} is a collapsed card`, cards.includes(`copy.packet.${key}`));
+  }
+  const shells = [...cards.matchAll(/<Shell\s+title/g)].length;
+  // Only the JSX usages. The prop declaration and its useState are not cards.
+  const opened = [...cards.matchAll(/<Shell[^>]*\sdefaultOpen[\s>]/g)].length;
+  ok(`cards are collapsed unless named otherwise  (${opened} of ${shells} open)`,
+    shells >= 4 && opened <= 2);
+
+  // The answer is the escape hatch, so it is the last card in the turn.
+  /* The emission order in cardsForPacket, not the order the interfaces happen
+     to be declared in further up the file. */
+  const emit = thread.slice(thread.indexOf("export function cardsForPacket"));
+  const order = ["misconception", "method_match", "teaching", "answer"]
+    .map((k) => emit.indexOf(`kind: "${k}"`));
+  ok("the answer card is emitted last, furthest from the thumb",
+    order.every((pos, i) => pos !== -1 && (i === 0 || pos > (order[i - 1] ?? -1))));
+
+  // One primary action on the ask card.
+  ok("Still stuck is the primary action", cards.includes("copy.packet.stillStuck"));
+  ok("She answered it is present but secondary", cards.includes("copy.packet.answeredIt"));
+  ok("the ladder advances one rung at a time, never as a list",
+    /Math\.min\(rung, Math\.max\(ladder\.length - 1, 0\)\)/.test(route) ||
+      /const at = Math\.min\(rung, ladder\.length - 1\)/.test(route));
+
+  // The primer is cut to its opening sentences by default.
+  ok("the primer is cut to its opening sentences by default",
+    thread.includes("splitPrimer") && cards.includes("copy.packet.primerMore"));
+
+  /* Round three E5. It lived only on the deleted screen, which meant the
+     surface that replaced it had quietly dropped the most valuable thing in
+     the product for a parent who reads English with difficulty. */
+  ok("the spoken primer is in the thread", cards.includes("<AudioPrimer"));
+
+  // Isomorphs belong to the solved path, where their own copy says they do.
+  const solvedCase = route.slice(route.indexOf('case "solved"'), route.indexOf('case "text"'));
+  ok("the isomorphs sit on the solved path, not the stuck path",
+    solvedCase.includes("isomorphs") && !route.slice(route.indexOf('case "advance"'), route.indexOf('case "solved"')).includes("isomorphs"));
 }
 
 // ---------------------------------------------------------------------------
@@ -980,11 +1003,24 @@ section("The chat surface keeps the promises the old screens made");
   ok("the thread never addresses the child",
     !/\byou(r)? child\b(?![^\n]*never)/i.test(cards) || /talks to you, never/.test(cards));
 
-  /* The shell imitates a convention, and the convention is sentence case.
-     Tracked-out capitals were the round-two tell and they crept back in via
-     the register control and the ask card. */
+  /* Sentence case, everywhere this time. Scoping this to the two chat files
+     in step three left "GRADE 5" and "ASK THIS, THEN WAIT" shouting on the
+     product screens, because every one of them takes its labels from the same
+     shared component and nothing was looking at it. */
+  const everyComponent = listFiles("components", /\.tsx$/).concat(listFiles("app", /\.tsx$/));
+  const shouting = everyComponent.filter((file) =>
+    /textTransform:\s*"uppercase"/.test(codeOnly(readFileSync(file, "utf8"))),
+  );
+  ok(`no all-caps label anywhere  (${shouting.map((f) => path.basename(f)).join(", ") || "none"})`,
+    shouting.length === 0);
+
+  /* The defect above only existed because the foreground was a literal. A
+     colour written as a hex in a component cannot be swept for contrast. */
   for (const [name, source] of [["the cards", cards], ["the shell", shell]] as const) {
-    ok(`no all-caps label on ${name}`, !/textTransform:\s*"uppercase"/.test(source));
+    const fills = [...codeOnly(source).matchAll(/background:\s*"var\(--accent\)"/g)].length;
+    ok(`no raw accent fill behind text on ${name}  (${fills})`, fills === 0);
+    ok(`no hard-coded foreground on ${name}`,
+      !/color:\s*"#[0-9a-fA-F]{3,8}"/.test(codeOnly(source)));
   }
 
   // A phone opens the thread, not the drawer over it.
@@ -1070,10 +1106,16 @@ section("The marketing site says only things that are true");
   /* Rewriting the footer orphaned /setup entirely: nothing linked to it. Every
      page route must be reachable from somewhere, so this walks the links. */
   {
-    const linkable = readdirSync(path.join(process.cwd(), "app", "(site)"), { withFileTypes: true })
-      .filter((e) => e.isDirectory())
-      .map((e) => e.name)
-      .filter((name) => !name.startsWith("(") && !name.startsWith("["));
+    /* Both route groups. Moving the product pages out of (site) in step seven
+       would otherwise have quietly narrowed this walk to the five marketing
+       pages, which is the opposite of what it is for. */
+    const groups = ["(site)", "(product)"];
+    const linkable = groups.flatMap((group) =>
+      readdirSync(path.join(process.cwd(), "app", group), { withFileTypes: true })
+        .filter((e) => e.isDirectory())
+        .map((e) => ({ group, name: e.name }))
+        .filter(({ name }) => !name.startsWith("(") && !name.startsWith("[")),
+    );
 
     const everySource = [
       ...listFiles(path.join("app"), /\.tsx$/),
@@ -1082,11 +1124,11 @@ section("The marketing site says only things that are true");
       .map((f) => readFileSync(f, "utf8"))
       .join("\n");
 
-    for (const route of linkable) {
+    for (const { group, name: route } of linkable) {
       /* A redirect stub exists precisely to be unlinked: it is there for old
          bookmarks after the thing moved into the thread. A dynamic route keeps
          its page one level down, under the [param] segment. */
-      const direct = path.join(process.cwd(), "app", "(site)", route, "page.tsx");
+      const direct = path.join(process.cwd(), "app", group, route, "page.tsx");
       const page = existsSync(direct) ? readFileSync(direct, "utf8") : "";
       if (/redirect\("\/[a-z]/.test(page)) continue;
 
@@ -1097,6 +1139,28 @@ section("The marketing site says only things that are true");
       const templated = [...everySource.matchAll(new RegExp("/" + route + "/\\$\\{", "g"))].length;
       ok(`/${route} is reachable  (${literal + templated})`, literal + templated > 0);
     }
+  }
+
+  /* The route walk above found an orphaned page. This is the same question one
+     level down: a component nothing renders. CaptureFlow survived three steps
+     after /capture became a redirect, still compiling, still passing every
+     check, rendering nowhere. */
+  {
+    const files = listFiles("components", /\.tsx$/);
+    const everySource = files
+      .concat(listFiles("app", /\.tsx$/))
+      .map((f) => codeOnly(readFileSync(f, "utf8")))
+      .join("\n");
+
+    const orphans = files.filter((file) => {
+      const name = path.basename(file, ".tsx");
+      // Its own file naturally names it; anything else importing it counts.
+      const imports = [...everySource.matchAll(new RegExp(`from "@/components/[\\w/]*${name}"`, "g"))];
+      return imports.length === 0;
+    });
+
+    ok(`every component is rendered by something  (${orphans.map((f) => path.basename(f)).join(", ") || "none"})`,
+      orphans.length === 0);
   }
 
   // The teacher note on /for-teachers is an example and is labelled as one.

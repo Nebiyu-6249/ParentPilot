@@ -721,3 +721,60 @@ Four of the checks written across this round failed first time because they
 scanned comments rather than code. The comment on `/for-teachers` says there
 are no testimonials on it, which is exactly the word the ban scans for. There
 is a shared `codeOnly()` helper now, and it is used everywhere a ban list runs.
+
+## Step seven: the product's own pages
+
+There were two surfaces and nine pages that belonged to neither. Settings,
+account, history, setup, recap, the finished-work check: all of them wore the
+teal marketing frame, so tapping "Account" inside the thread dropped a parent
+onto a page advertising the thing they were already using.
+
+So there is a third route group now. `app/(product)` has one line of chrome,
+the way back, and `.pp-product` in globals.css points the sheet tokens those
+nine screens were written against at the app palette. That restyles them
+without rewriting them, and it is an alias layer rather than a second palette:
+every value resolves to an `--app-*` token the contrast suite already checks in
+both themes. Route groups contribute no path segment, so every URL is unchanged.
+
+## The defect this uncovered
+
+Pointing `--action` at the app palette meant computing what the app's action
+colour actually was, which nobody had done. The thread's primary button was
+`#ffffff` on `var(--accent)`: **3.06 to 1**, below AA for text at any size the
+composer uses. It had been there since step three.
+
+It survived the contrast suite because the foreground was a hex literal in a
+component, and a sweep over tokens cannot see one. There are now
+`--app-action` and `--app-action-label`, 7.00 in light and 9.01 in dark, plus
+two rules that stop it recurring: no raw `var(--accent)` fill behind text, and
+no hard-coded `color: "#..."` in either chat file.
+
+## One renderer, not two
+
+`/problem/[id]` rendered a packet, and so does the thread. Two renderers for
+one thing is how the round two all-caps eyebrows survived three steps: they
+were fixed in the thread in step three and nobody was looking at the other
+screen, where "GRADE 5" and "ASK THIS, THEN WAIT" were still shouting.
+
+The eyebrows came from `Label` in `components/ui.tsx`, which every product
+screen uses, so fixing one component fixed about ten places. The assertion that
+had been scoped to the two chat files now reads every component in the repo.
+
+Before deleting the screen, the one thing it had that the thread did not was
+ported: the spoken primer. Round three called it the highest-value thing in the
+product for a parent who reads English with difficulty, and the surface that
+replaced it had quietly dropped it. It is in the teaching card now.
+
+`PacketScreen`, `PacketLoader`, `Disclosure` and `CaptureFlow` are gone.
+CaptureFlow had been orphaned since step three, compiling and passing every
+check, rendering nowhere. There is now a check for that too: a component
+nothing imports fails the build, which is the same question the route walk asks
+one level down.
+
+| Found | Fix |
+|---|---|
+| The thread's primary button was 3.06:1 | `--app-action` and `--app-action-label`, plus two rules against the literals that hid it |
+| "GRADE 5" and "ASK THIS, THEN WAIT" still shouting on the product screens | `Label` is sentence case; the all-caps rule reads every component now |
+| `CaptureFlow` orphaned for three steps | Deleted, and orphaned components now fail the build |
+| Settings said "How I write to you" and then "How I write" underneath | The control takes `heading={false}` where a section heading already names it |
+| History's empty state was a heading holding a sentence and a bare link | A line saying what history is for, and the button that turns it on |

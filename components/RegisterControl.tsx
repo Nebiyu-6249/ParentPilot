@@ -19,11 +19,15 @@ export default function RegisterControl({
   onChange,
   busy = false,
   compact = false,
+  heading,
 }: {
   value: RegisterName;
   onChange: (next: RegisterName) => void;
   busy?: boolean;
   compact?: boolean;
+  /** Defaults to on, except in the top bar. Off where a section heading
+   *  already names the control, which on Settings it does, word for word. */
+  heading?: boolean;
 }) {
   const activeBg = compact ? "var(--accent-ink)" : "var(--action)";
   const activeFg = compact ? "var(--app-card)" : "var(--action-label)";
@@ -36,7 +40,7 @@ export default function RegisterControl({
           register is the task. In the top bar it would be an eyebrow over a
           control that already says what it does, so it stays for screen
           readers only. */}
-      {compact ? null : (
+      {(heading ?? !compact) ? (
         <span
           style={{
             display: "block",
@@ -47,7 +51,7 @@ export default function RegisterControl({
         >
           {copy.register.heading}
         </span>
-      )}
+      ) : null}
 
       <div
         role="radiogroup"

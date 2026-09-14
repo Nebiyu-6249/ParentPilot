@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 
+import AudioPrimer from "@/components/AudioPrimer";
 import Citation from "@/components/Citation";
 import LockedAnswer from "@/components/LockedAnswer";
 import MethodMatch from "@/components/MethodMatch";
@@ -270,9 +271,9 @@ export default function ThreadCard({
                 style={{
                   padding: "11px 18px",
                   borderRadius: "var(--r-control)",
-                  border: "1px solid var(--accent)",
-                  background: "var(--accent)",
-                  color: "#ffffff",
+                  border: "1px solid var(--app-action)",
+                  background: "var(--app-action)",
+                  color: "var(--app-action-label)",
                   fontSize: 14.5,
                   fontWeight: 500,
                 }}
@@ -336,6 +337,15 @@ export default function ThreadCard({
       return (
         <Shell title={copy.packet.discloseTeaching} icon={BookIcon}>
           <p style={{ fontSize: 15, lineHeight: 1.6 }}>{card.opening}</p>
+
+          {/* The same explanation through the ear, for a parent who reads
+              English with difficulty. It existed only on the screen the thread
+              replaced, which meant the chat surface quietly dropped the most
+              valuable thing in the product for the people it helps most. */}
+          <div style={{ marginTop: 12 }}>
+            <AudioPrimer problemId={card.problemId} register={card.register} />
+          </div>
+
           {card.rest && (
             <details style={{ marginTop: 12 }}>
               <summary style={{ cursor: "pointer", fontSize: 13.5, color: "var(--app-text-dim)" }}>

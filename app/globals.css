@@ -166,6 +166,13 @@
   /* Degradation has to be visible without being alarming: this is "we did not
      read your page", not "something broke". Amber rather than the red the
      site surface uses for a real error. */
+  /* A filled action on the app surface. White on brand emerald measures
+     3.06:1, which is below AA for text at any size the composer uses, so the
+     fill is the ink shade and the emerald stays what it always was: a mark,
+     not a background for words. The same split the paper surface makes
+     between --action and --annotation. */
+  --app-action: #00664a;
+  --app-action-label: #ffffff;
   --app-alert-bg: #fdf6e7;
   --app-alert-line: #e4cd94;
   --app-alert-ink: #6b4d05;
@@ -237,6 +244,8 @@
     --app-text-dim: #a8a49b;
     --accent: #00a878;
     --accent-ink: #3fd0a2;
+    --app-action: #3fd0a2;
+    --app-action-label: #191918;
     --app-alert-bg: #2a2314;
     --app-alert-line: #57492a;
     --app-alert-ink: #e8c66b;
@@ -289,6 +298,8 @@
   --app-text-dim: #a8a49b;
   --accent: #00a878;
   --accent-ink: #3fd0a2;
+  --app-action: #3fd0a2;
+  --app-action-label: #191918;
   --app-alert-bg: #2a2314;
   --app-alert-line: #57492a;
   --app-alert-ink: #e8c66b;
@@ -828,6 +839,98 @@ hr {
   .pp-hero-standfirst-cover {
     padding-bottom: 0;
   }
+}
+
+/* ---- The product's own pages ----------------------------------------
+
+   Settings, account, history, setup, recap, check. These were written against
+   the sheet tokens, so rather than rewrite nine screens the tokens are pointed
+   at the app palette inside this scope. Same ground, same face, same accent as
+   the thread they are reached from.
+
+   This is an alias layer, not a second palette: every value below resolves to
+   an --app-* token that the contrast suite already checks in both themes. */
+.pp-product {
+  --surface-sheet: var(--app-bg);
+  --surface-frame: var(--app-bg);
+  --surface-frame-deep: var(--app-rail);
+  --text-on-sheet: var(--app-text);
+  --text-on-sheet-muted: var(--app-text-dim);
+  --text-on-frame: var(--app-text);
+  --text-on-frame-muted: var(--app-text-dim);
+  --rule-on-sheet: var(--app-line);
+  --rule-on-frame: var(--app-line);
+  --border-interactive: var(--app-border-interactive);
+  --border-interactive-frame: var(--app-border-interactive);
+  --action: var(--app-action);
+  --action-label: var(--app-action-label);
+  --annotation: var(--accent-ink);
+  --alert-fg: var(--app-alert-ink);
+
+  /* The legacy aliases the older screens ask for by name. */
+  --paper: var(--app-bg);
+  --ink: var(--app-text);
+  --muted: var(--app-text-dim);
+  --rule: var(--app-line);
+  --teal: var(--accent-ink);
+  --emerald: var(--accent-ink);
+  --alert: var(--app-alert-ink);
+
+  min-height: 100dvh;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: var(--font-ui);
+}
+
+/* Paper is a metaphor for a worksheet, and a settings screen is not one. The
+   hard offset shadow and the cream sheet both go; what is left is a column of
+   content on the same ground as the thread. */
+.pp-product .pp-desk {
+  padding: 0;
+}
+
+.pp-product .pp-sheet-page,
+.pp-product .pp-desk-page {
+  background: transparent;
+  box-shadow: none;
+  padding: 26px 20px 96px;
+}
+
+.pp-product-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--app-line);
+}
+
+.pp-product-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  font-size: 14px;
+  color: var(--app-text-dim);
+  text-decoration: none;
+}
+
+.pp-product-back:hover {
+  color: var(--app-text);
+}
+
+/* Controls on this surface take the app's radius, not the paper cap. */
+.pp-product button,
+.pp-product input,
+.pp-product select,
+.pp-product textarea {
+  border-radius: var(--r-control);
+  font-family: var(--font-ui);
+}
+
+.pp-product a {
+  color: var(--accent-ink);
 }
 
 /* ---- The marketing site ---------------------------------------------

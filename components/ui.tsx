@@ -130,15 +130,21 @@ export function Banner({ text, tone = "quiet" }: { text: string; tone?: "quiet" 
   );
 }
 
-/** Small uppercase label used above fields and columns. */
+/**
+ * A small label above a field or a column.
+ *
+ * Sentence case. It was tracked-out capitals, which is the round two tell, and
+ * because every product screen takes its labels from here it was the tell in
+ * about ten places at once: "GRADE 5" over a worksheet, "ASK THIS, THEN WAIT"
+ * over the question. The thread's own cards stopped shouting in step three and
+ * this is the rest of them.
+ */
 export function Label({ children }: { children: ReactNode }) {
   return (
     <span
       style={{
         display: "block",
         fontSize: 13,
-        letterSpacing: "0.06em",
-        textTransform: "uppercase",
         color: "var(--muted)",
         marginBottom: 8,
       }}

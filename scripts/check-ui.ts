@@ -30,7 +30,6 @@ function section(name: string): void {
 
 /** Every screen, and the selector for its one primary action. */
 const SCREENS: [string, string][] = [
-  ["/problem/demo", "button:has-text('Still stuck')"],
   // /capture is now a redirect into the thread; the camera is its first action.
   ["/app", "button:has-text('Take a photo of the page')"],
   ["/setup", "button:has-text('Next')"],
@@ -97,44 +96,45 @@ async function run(browser: Browser): Promise<void> {
     await narrow.close();
   }
 
-  section("The problem screen is one question");
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
-  const page = await context.newPage();
-  await page.goto(`${BASE}/problem/demo`, { waitUntil: "networkidle" });
-  await page.keyboard.press("Escape");
-  await page.waitForTimeout(500);
+  /* The problem screen is gone: the thread is the only thing that renders a
+     packet now, and runAppSurface below drives exactly these claims against
+     it. Two renderers for one packet is how the round two all-caps eyebrows
+     survived three steps on the screen nobody was checking. */
 
-  const largest = await page.evaluate(() => {
-    const found: { text: string; px: number }[] = [];
-    for (const el of Array.from(document.querySelectorAll("body *"))) {
-      const text = (el.textContent ?? "").trim();
-      if (!text || el.children.length > 0) continue;
-      found.push({ text, px: parseFloat(getComputedStyle(el).fontSize) });
+  section("The product's own pages wear the product's surface");
+
+  {
+    /* The claim of step seven is that a parent who taps Account does not land
+       on a marketing page. That is a claim about computed styles, so it is
+       measured rather than described. */
+    const product = await browser.newContext({ viewport: { width: 1000, height: 900 } });
+    for (const url of ["/settings", "/account", "/setup", "/check", "/history", "/login"]) {
+      const page = await product.newPage();
+      await page.goto(BASE + url, { waitUntil: "networkidle" });
+      await page.waitForTimeout(300);
+
+      const seen = await page.evaluate(() => {
+        const root = document.querySelector(".pp-product");
+        const style = root ? getComputedStyle(root) : null;
+        return {
+          scoped: root !== null,
+          font: style?.fontFamily.split(",")[0]?.replace(/["']/g, "") ?? "",
+          back: document.querySelector(".pp-product-back") !== null,
+          // The marketing chrome must not be here.
+          siteNav: document.querySelector(".pp-nav") !== null,
+          overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+        };
+      });
+
+      ok(`${url}: takes the app surface`, seen.scoped);
+      ok(`${url}: set in the app face  (${seen.font})`, seen.font === "Inter");
+      ok(`${url}: offers the way back to the thread`, seen.back);
+      ok(`${url}: carries no marketing nav`, !seen.siteNav);
+      ok(`${url}: does not overflow`, !seen.overflow);
+      await page.close();
     }
-    return found.sort((a, b) => b.px - a.px)[0] ?? null;
-  });
-
-  ok(`the largest text on the screen is the question to ask  (${largest?.px ?? 0}px)`,
-    largest !== null && largest.text.trim().endsWith("?"));
-
-  const openByDefault = await page.evaluate(() => document.querySelectorAll("details[open]").length);
-  const totalDisclosures = await page.evaluate(() => document.querySelectorAll("details").length);
-  ok(`every disclosure is closed by default  (${totalDisclosures} present)`, openByDefault === 0);
-
-  // The answer must not be in the document before the parent opens it and
-  // holds the control. A collapsed <details> still renders its contents, so
-  // this is a real check rather than a formality.
-  const answerLeak = await page.locator("text=11/12").count();
-  ok("the answer is not in the page before it is asked for", answerLeak === 0);
-
-  // Still stuck advances one rung, and one only.
-  const rungOne = await page.locator("text=/Question 1 of 5/").count();
-  await page.locator("button:has-text('Still stuck')").click();
-  await page.waitForTimeout(300);
-  const rungTwo = await page.locator("text=/Question 2 of 5/").count();
-  ok("Still stuck advances the ladder exactly one rung", rungOne === 1 && rungTwo === 1);
-
-  await context.close();
+    await product.close();
+  }
 
   await runAppSurface(browser);
 }

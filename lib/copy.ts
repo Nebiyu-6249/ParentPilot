@@ -199,6 +199,7 @@ export const copy = {
   },
 
   nav: {
+    backToThread: "Back to the thread",
     howItWorks: "How it works",
     research: "Research",
     forTeachers: "For teachers",
