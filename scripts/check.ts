@@ -801,6 +801,50 @@ section("Accounts are parent accounts, and the session is not a bearer id");
 
 // ---------------------------------------------------------------------------
 
+section("Audio primer, Studio panel and citations");
+
+{
+  const provider = readFileSync(path.join(process.cwd(), "lib", "ai", "provider.ts"), "utf8");
+  const route = readFileSync(path.join(process.cwd(), "app", "api", "audio", "route.ts"), "utf8");
+  const studio = readFileSync(path.join(process.cwd(), "components", "StudioPanel.tsx"), "utf8");
+  const citation = readFileSync(path.join(process.cwd(), "components", "Citation.tsx"), "utf8");
+
+  ok("the voice is nova", provider.includes('DEFAULT_TTS_VOICE = "nova"'));
+  ok("speech goes through the provider like every other model call",
+    provider.includes("export async function speakPrimer"));
+  ok("and increments the spend ledger", /speakPrimer[\s\S]{0,900}recordSpend/.test(provider));
+  ok("the route never calls the SDK itself", !/new OpenAI|openai\.audio/.test(route));
+
+  // Cached on the packet key, so a primer is spoken once per standard,
+  // register and language rather than once per listen.
+  ok("audio is cached on the packet cache key", route.includes("packetCacheKey("));
+  ok("the cache is consulted before generating",
+    route.indexOf("audioPrimer.findUnique") < route.indexOf("speakPrimer("));
+  ok("the spend ceiling is honoured", route.includes("spendCeilingReached"));
+  ok("requests are rate limited", route.includes("consume("));
+
+  /* The Studio panel lists what a session can produce. It stops where the
+     product stops: a flashcard or a quiz is an artifact for a learner to study
+     from, and this product does not address the learner. */
+  for (const refused of ["flashcard", "quiz", "mind map", "slide", "video overview"]) {
+    const pattern = new RegExp(refused.replace(" ", "\\s*"), "i");
+    const inCode = studio.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+    // The panel may name them in the copy that explains their absence, but it
+    // must never offer one.
+    const offered = new RegExp(`(onClick|href)[^\n]*${refused.split(" ")[0]}`, "i").test(inCode);
+    ok(`the Studio panel does not offer ${refused}s`, !offered && pattern.test(studio) === pattern.test(studio));
+  }
+  ok("the Studio panel offers the teacher note, the share link and the audio primer",
+    studio.includes("copy.studio.teacherNote") &&
+      studio.includes("copy.studio.shareLink") &&
+      studio.includes("copy.studio.audioPrimer"));
+
+  ok("citations expand in place rather than navigating away",
+    citation.includes("useState") && !citation.includes("<a "));
+}
+
+// ---------------------------------------------------------------------------
+
 section("Seed data");
 
 interface StandardSeed { id: string; code: string; grade: number; plainLanguage: string; expectedMethods: string[]; parentMethod: string }

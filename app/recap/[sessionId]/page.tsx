@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import StudioPanel from "@/components/StudioPanel";
 import { buttonStyle, Label, Page, Section } from "@/components/ui";
 import { autonomyReading, autonomyScore, countMoves, DIRECTIVE, SUPPORTIVE } from "@/lib/autonomy";
 import { copy } from "@/lib/copy";
@@ -94,6 +95,10 @@ export default async function RecapPage({ params }: { params: Promise<{ sessionI
           words themselves.
         </p>
       </Section>
+
+      {session && (
+        <StudioPanel sessionId={session.id} teacherNote={null} shareToken={session.shareToken} />
+      )}
 
       <div style={{ borderTop: "1px solid var(--rule)", paddingTop: 28 }}>
         <Label>Next</Label>

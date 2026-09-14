@@ -29,8 +29,8 @@ npm run dev
 ```
 
 ```bash
-npm run check               # 263 deterministic checks, no network, no key needed
-npm run check:db            # 16 schema and pgvector checks, needs DATABASE_URL
+npm run check               # 291 deterministic checks, no network, no key needed
+npm run check:db            # 28 schema, pgvector and share-link checks, needs DATABASE_URL
 npm run check:ui            # 14 browser checks, needs the app running
 npm run typecheck           # tsc --noEmit, strict
 npm run build               # production build
@@ -45,6 +45,9 @@ npm run build               # production build
 | `NEXT_PUBLIC_APP_URL` | Absolute URL, used for OG tags. Optional: falls back to `VERCEL_PROJECT_PRODUCTION_URL`, then `VERCEL_URL`, then localhost. See `lib/app-url.ts`. |
 | `OPS_PASSWORD` | Single password gating `/ops`. Unset closes the page. |
 | `DAILY_SPEND_CEILING_USD` | Defaults to 15. |
+| `AUTH_SECRET` | Signs the session cookie. Without it the app falls back to a development value and sessions are forgeable, which `/ops/doctor` says loudly. |
+| `RESEND_API_KEY`, `RESEND_FROM` | Magic-link email. `RESEND_FROM` must be on a domain verified with Resend. Without both, links go to the server log and never to the browser. |
+| `OPENAI_TTS_VOICE` | Voice for the audio primer. Defaults to `nova`. |
 
 Model IDs are overridable per task (`OPENAI_VISION_MODEL`, `OPENAI_PACKET_MODEL`,
 `OPENAI_CLASSIFY_MODEL`, `OPENAI_RECAP_MODEL`, `OPENAI_EMBEDDING_MODEL`) so a
@@ -137,7 +140,7 @@ Phases 1 to 6 are implemented.
 Against a real PostgreSQL 16 with pgvector 0.6.0, plus a production build
 served and inspected:
 
-- **`npm run check`, 263 assertions, no network and no key needed.** Exact
+- **`npm run check`, 291 assertions, no network and no key needed.** Exact
   fraction arithmetic and the three verification states, the three code
   misconception detectors, the Live Mode rule engine (cooldown, three-card cap,
   anxiety-band threshold, both Park It triggers, and that `GIVES_ANSWER` never
@@ -145,7 +148,7 @@ served and inspected:
   stripping, the cache key, seed integrity, design system compliance scanned
   over comment-stripped source, the four standing rules present in all five
   prompt files, and the app URL fallback chain.
-- **`npm run check:db`, 16 assertions.** Migrations apply cleanly; the
+- **`npm run check:db`, 28 assertions.** Migrations apply cleanly; the
   `vector(1536)` column and its HNSW cosine index exist; cosine search returns
   the right row at distance zero; and the two privacy invariants hold against
   the live schema rather than against the Prisma file: `Move` has no column

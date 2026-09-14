@@ -44,6 +44,8 @@ const MODELS = {
   recap: process.env.OPENAI_RECAP_MODEL ?? "gpt-4o-mini",
   /** 1536 dimensions, matching the `vector(1536)` column on Standard. */
   embedding: process.env.OPENAI_EMBEDDING_MODEL ?? "text-embedding-3-small",
+  /** Reads the primer aloud. Once per packet, then cached. */
+  speech: process.env.OPENAI_TTS_MODEL ?? "tts-1",
 } as const;
 
 export type TaskName = keyof typeof MODELS;
@@ -58,6 +60,9 @@ const PRICING: Record<string, { input: number; output: number }> = {
   "gpt-4o-mini": { input: 0.15, output: 0.6 },
   "text-embedding-3-small": { input: 0.02, output: 0 },
 };
+
+/** USD per 1000 characters of synthesised speech, at the list rate. */
+const SPEECH_USD_PER_1K_CHARS = 0.015;
 
 const DEFAULT_PRICE = { input: 3, output: 12 };
 
@@ -488,6 +493,52 @@ export async function embedBatch(texts: string[]): Promise<number[][]> {
     .slice()
     .sort((a, b) => a.index - b.index)
     .map((d) => d.embedding);
+}
+
+/** The voice the primer is read in. */
+export const DEFAULT_TTS_VOICE = "nova";
+
+export function ttsVoice(): string {
+  return process.env.OPENAI_TTS_VOICE ?? DEFAULT_TTS_VOICE;
+}
+
+export interface SpokenPrimer {
+  /** Explicitly ArrayBuffer-backed. Prisma's Bytes and the web Response both
+   *  want `Uint8Array<ArrayBuffer>`, and the bare alias widens to
+   *  `ArrayBufferLike`, which includes SharedArrayBuffer and is rejected. */
+  bytes: Uint8Array<ArrayBuffer>;
+  mimeType: string;
+  characters: number;
+}
+
+/**
+ * Reads a primer aloud.
+ *
+ * The highest-value thing in the product for a parent who cannot read English
+ * comfortably: the same explanation, through their ears, while they cook.
+ *
+ * No prompt file, because this is not a prompt. The text spoken is the primer
+ * the packet already generated, unchanged, so there is nothing for a model to
+ * decide and nothing to instruct it with.
+ */
+export async function speakPrimer(text: string, voice: string): Promise<SpokenPrimer> {
+  const openai = getClient();
+  const model = MODELS.speech;
+
+  const response = await openai.audio.speech.create({
+    model,
+    voice: voice as "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer",
+    input: text,
+    response_format: "mp3",
+  });
+
+  const bytes = new Uint8Array(await response.arrayBuffer());
+
+  // Speech is billed per character rather than per token, so the ledger entry
+  // is computed from the input length.
+  await recordSpend((text.length / 1000) * SPEECH_USD_PER_1K_CHARS);
+
+  return { bytes, mimeType: "audio/mpeg", characters: text.length };
 }
 
 /** Transcribes a short audio chunk. Fallback only, for browsers without SpeechRecognition. */
