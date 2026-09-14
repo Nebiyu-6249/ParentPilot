@@ -13,7 +13,7 @@
  * README.md, which needs a key and a human reading the output.
  */
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
 import { copy, sanitize, sanitizeDeep } from "../lib/copy";
@@ -676,6 +676,51 @@ section("No literal colour inside any seeded or generated markup");
   ok("the packet prompt names currentColor", flat.includes("currentColor"));
   ok("the packet prompt names the semantic tokens", flat.includes("var(--annotation)"));
   ok("the packet prompt no longer instructs a hex palette", !/#14201E.*for lines and text/i.test(flat));
+}
+
+// ---------------------------------------------------------------------------
+
+section("The problem screen is one question, not an essay");
+
+{
+  const screen = readFileSync(path.join(process.cwd(), "components", "PacketScreen.tsx"), "utf8");
+  const disclosure = readFileSync(path.join(process.cwd(), "components", "Disclosure.tsx"), "utf8");
+
+  // Everything that used to open the screen is now behind a closed control.
+  for (const key of ["discloseWhy", "discloseMethods", "discloseTeaching", "discloseScripts", "discloseAnswer"] as const) {
+    ok(`${key} is rendered as a disclosure`, screen.includes(`copy.packet.${key}`));
+  }
+
+  // Closed by default, and never opened by an attribute.
+  ok("disclosures are built on <details> and are closed by default",
+    disclosure.includes("<details") && !/\bopen\b\s*[=>]/.test(disclosure));
+
+  // The answer is the escape hatch, so it is the last thing on the screen.
+  const order = ["discloseWhy", "discloseMethods", "discloseTeaching", "discloseScripts", "discloseAnswer"]
+    .map((k) => screen.indexOf(`copy.packet.${k}`));
+  ok("the answer disclosure is last, furthest from the thumb",
+    order.every((pos, i) => i === 0 || pos > (order[i - 1] ?? -1)));
+
+  // One primary action. "Still stuck" continues the flow and is filled;
+  // "She answered it" is the quiet end of the task.
+  ok("Still stuck is the primary action", screen.includes("copy.packet.stillStuck"));
+  ok("She answered it is present but secondary", screen.includes("copy.packet.answeredIt"));
+  ok("the ladder advances one rung at a time, never as a list",
+    screen.includes("Math.min(n + 1, rungs.length - 1)"));
+
+  // The primer no longer opens the screen, and is truncated by default.
+  ok("the primer is cut to its opening sentences by default",
+    screen.includes("primerOpening") && screen.includes("copy.packet.primerMore"));
+
+  // Isomorphs belong to the solved state, where their own copy says they do.
+  const solvedAt = screen.indexOf("copy.packet.solvedHeading");
+  const isomorphAt = screen.indexOf("packet.isomorphs");
+  ok("the isomorphs sit on the solved path, not the stuck path",
+    solvedAt !== -1 && isomorphAt > solvedAt);
+
+  // The component the ladder replaced is gone rather than orphaned.
+  ok("the old list-style hint ladder component is removed",
+    !existsSync(path.join(process.cwd(), "components", "HintLadder.tsx")));
 }
 
 // ---------------------------------------------------------------------------

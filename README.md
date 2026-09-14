@@ -29,8 +29,9 @@ npm run dev
 ```
 
 ```bash
-npm run check               # 148 deterministic checks, no network, no key needed
+npm run check               # 247 deterministic checks, no network, no key needed
 npm run check:db            # 16 schema and pgvector checks, needs DATABASE_URL
+npm run check:ui            # 14 browser checks, needs the app running
 npm run typecheck           # tsc --noEmit, strict
 npm run build               # production build
 ```
@@ -136,7 +137,7 @@ Phases 1 to 6 are implemented.
 Against a real PostgreSQL 16 with pgvector 0.6.0, plus a production build
 served and inspected:
 
-- **`npm run check`, 148 assertions, no network and no key needed.** Exact
+- **`npm run check`, 247 assertions, no network and no key needed.** Exact
   fraction arithmetic and the three verification states, the three code
   misconception detectors, the Live Mode rule engine (cooldown, three-card cap,
   anxiety-band threshold, both Park It triggers, and that `GIVES_ANSWER` never

@@ -203,6 +203,30 @@ export const copy = {
     isomorphHelp: "Same idea, different numbers. Use these once the first one has clicked.",
     misconceptionHeading: "What went wrong",
     misconceptionRepair: "The question that fixes it",
+
+    /* The screen is one question. Everything below is a closed disclosure,
+       because a parent mid-session needs the thing to say, not an essay. */
+    askLabel: "Ask this, then wait",
+    rungCounter: (n: number, total: number): string => `Question ${n} of ${total}`,
+    stillStuck: "Still stuck",
+    answeredIt: "She answered it",
+    ladderExhausted:
+      "That was the last one. If it is still not landing, the answer is at the bottom of this screen, and stopping here is a perfectly good outcome.",
+
+    solvedHeading: "Good. That one is done.",
+    solvedBody:
+      "She got there by answering a question rather than being told, which is the part that sticks.",
+    solvedAgain: "Back to the questions",
+
+    /* Disclosure titles, in the order a parent reaches for them. The answer is
+       last on purpose: it is the escape hatch, so it sits furthest from the
+       thumb. */
+    discloseWhy: "Why she got it wrong",
+    discloseMethods: "Show me both methods",
+    discloseTeaching: "What is this teaching?",
+    discloseScripts: "What to say, and what to skip",
+    discloseAnswer: "Just tell me the answer",
+    primerMore: "Read the whole thing",
     genericFallback:
       "I could not generate a fresh primer for this one, so this is the saved general explanation for this topic. It is accurate but not tailored to your child's working.",
   },

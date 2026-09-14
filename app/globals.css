@@ -605,10 +605,18 @@ hr {
   white-space: nowrap;
 }
 
+/* On a phone the header was costing about 230px of an 844px viewport, which
+   is a quarter of the screen spent on chrome before the parent sees anything.
+   Tightened so every screen keeps its primary action above the fold with real
+   headroom rather than 20px of it. */
 @media (max-width: 560px) {
   .pp-nav {
-    gap: 14px;
+    gap: 13px;
     font-size: 0.875rem;
+  }
+  .pp-header-bar {
+    padding-block: 8px !important;
+    gap: 6px !important;
   }
 }
 

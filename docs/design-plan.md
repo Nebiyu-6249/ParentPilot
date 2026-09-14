@@ -292,3 +292,80 @@ same treatment but only on the dimmed sheet, so it keeps `#A8422F` by day.
 | Live Mode would render a lit rectangle at night | `Page surface="desk"` for that one screen |
 | `--annotation` at `#00704F` fails on dimmed paper | One value, `#006646`, passing on both |
 | Half the dark block was redundant once the sheet is paper | Overrides reduced to the frame, the dimmed sheet, and alert |
+
+---
+
+# Round three, Part D: the UX inversion
+
+## What was wrong
+
+The problem screen opened with a seven-line primer, then a paragraph on the
+error, then a diagram, then Method Match as two five-step columns, and only
+then the questions. A parent mid-session had to read an essay before reaching
+the one thing they needed. If the product feels like homework itself, they stop
+opening it.
+
+## The screen is one question
+
+Above the fold, four things and nothing else:
+
+1. the problem, small
+2. the child's working, small
+3. **the question to ask right now, as the largest text on the screen**
+4. one primary button
+
+Everything else is a closed disclosure.
+
+## Resolving "a single button"
+
+The brief lists `"She answered it" / "Still stuck"` as a single button, and also
+says a screen with more than one primary action has none. Both outcomes need a
+home, so only one of them is primary:
+
+- **Still stuck** is the primary, filled and full width. It advances the ladder
+  one rung, replacing the large line. It is the path that continues.
+- **She answered it** is quiet and secondary. It is the end of the task, and a
+  parent whose child just answered does not need a button to celebrate it; they
+  need the session recorded and their phone put down.
+
+## Disclosures, ordered by when a parent reaches for them
+
+1. Why she got it wrong
+2. Show me both methods
+3. What is this teaching?
+4. What to say, and what to skip
+5. Just tell me the answer
+
+The answer is last on purpose. It is the escape hatch and it should be the
+furthest thing from the thumb.
+
+## Two things that moved
+
+**The primer** defaults to its first two sentences with the rest behind an
+expand, and sits at position three. It is the most valuable content for a
+parent who wants to understand and the wrongest thing to open with at 8pm.
+
+**The isomorphs** leave the stuck path entirely. Their own copy says "use these
+once the first one has clicked", so they belong in the solved state, not in a
+sixth disclosure competing for attention while the child is still stuck.
+
+## The register control
+
+Sits immediately below the fold, quiet. It is not primary, but a parent who
+cannot parse the large question needs "Simpler" within one thumb-reach, not
+buried in a disclosure.
+
+## How "above the fold" is verified
+
+Not by eye. The check measures, in a real browser at 390x844 and 360x640, that
+the primary button's bottom edge is above the viewport fold with the page
+unscrolled. A design rule that is not measured is a preference.
+
+## Review pass
+
+| Caught | Changed to |
+|---|---|
+| Two equally weighted buttons would have meant no primary action | Still stuck is primary; She answered it is quiet |
+| Isomorphs were heading for a sixth disclosure on the stuck path | Moved to the solved state, where their own copy says they belong |
+| Disclosure order put the answer in the middle, within easy reach | Answer last, furthest from the thumb |
+| "Above the fold" was going to be an assertion by eye | Measured in a browser at two phone sizes |
