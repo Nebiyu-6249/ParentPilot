@@ -1,4 +1,6 @@
+import { authSecretIsDefault } from "@/lib/auth";
 import { prisma, hasDatabase } from "@/lib/db";
+import { emailStatus } from "@/lib/email";
 import { isConfigured, modelRouting, probeClassifyModel, probeEmbedding } from "@/lib/ai/provider";
 import { spendCeilingUsd, spendToday } from "@/lib/limits";
 
@@ -195,6 +197,27 @@ async function recentFailures(): Promise<DoctorFailure[]> {
 export async function runDoctor(): Promise<DoctorReport> {
   const checks: DoctorCheck[] = [keyFingerprint()];
 
+  // A deployment running on the fallback signing secret has forgeable
+  // sessions, which is worth shouting about.
+  checks.push(
+    authSecretIsDefault()
+      ? {
+          name: "AUTH_SECRET",
+          state: "fail",
+          detail: "absent. Sessions are signed with the development fallback and are forgeable.",
+        }
+      : { name: "AUTH_SECRET", state: "ok", detail: "set" },
+  );
+
+  const mail = emailStatus();
+  checks.push({
+    name: "Email (Resend)",
+    state: mail.configured ? "ok" : "warn",
+    detail: mail.configured
+      ? `sending as ${mail.from}, key ${mail.keyTail}`
+      : "not configured. Sign-in links go to the server log instead of an inbox.",
+  });
+
   // Live model calls, but only when there is a key to call with. Probing
   // without one would report a misleading network error rather than the real
   // problem, which is the missing key.
@@ -221,7 +244,11 @@ export async function runDoctor(): Promise<DoctorReport> {
   checks.push(...corpus.checks);
   checks.push(...(await spendCheck()));
 
-  const headline = corpus.retrievalDead
+  const forgeableSessions = authSecretIsDefault();
+
+  const headline = forgeableSessions
+    ? "AUTH_SECRET is not set, so session cookies are signed with the development fallback and anyone who knows it can forge one. Set it before this deployment sees a real parent."
+    : corpus.retrievalDead
     ? "Standard retrieval is dead. The corpus is imported but nothing carries an embedding, so every problem falls back to no standard match. Re-run the seed with OPENAI_API_KEY set: npm run seed"
     : null;
 

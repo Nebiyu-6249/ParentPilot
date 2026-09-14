@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { openSession, sealSession } from "@/lib/auth";
 import { prisma, hasDatabase } from "@/lib/db";
 import type { RegisterName } from "@/lib/ai/schemas";
 
@@ -20,6 +21,8 @@ const MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
 export interface ParentProfile {
   id: string;
+  /** Null for an anonymous profile, which is a first-class state here. */
+  email: string | null;
   register: RegisterName;
   anxietyBand: number;
   language: string;
@@ -29,15 +32,23 @@ export interface ParentProfile {
 
 export const DEFAULT_PROFILE: ParentProfile = {
   id: "anonymous",
+  email: null,
   register: "STANDARD",
   anxietyBand: 2,
   language: "en",
   child: null,
 };
 
+/**
+ * Reads the parent id out of the signed cookie.
+ *
+ * A cookie in the old unsigned format fails the signature check and is
+ * treated as absent, which is correct: that format was a bearer token anyone
+ * could mint, and it is not worth honouring now that ids carry an identity.
+ */
 async function readCookie(): Promise<string | null> {
   const store = await cookies();
-  return store.get(COOKIE)?.value ?? null;
+  return openSession(store.get(COOKIE)?.value);
 }
 
 /** Reads the current parent, without creating one. */
@@ -57,6 +68,7 @@ export async function currentParent(): Promise<ParentProfile> {
     const child = parent.children[0];
     return {
       id: parent.id,
+      email: parent.email,
       register: parent.register,
       anxietyBand: parent.anxietyBand,
       language: parent.language,
@@ -79,14 +91,21 @@ export async function ensureParent(): Promise<ParentProfile> {
   try {
     const parent = await prisma.parent.create({ data: {} });
     const store = await cookies();
-    store.set(COOKIE, parent.id, {
+    store.set(COOKIE, sealSession(parent.id), {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
       path: "/",
       maxAge: MAX_AGE_SECONDS,
     });
-    return { id: parent.id, register: parent.register, anxietyBand: parent.anxietyBand, language: parent.language, child: null };
+    return {
+      id: parent.id,
+      email: parent.email,
+      register: parent.register,
+      anxietyBand: parent.anxietyBand,
+      language: parent.language,
+      child: null,
+    };
   } catch {
     return DEFAULT_PROFILE;
   }
@@ -96,4 +115,21 @@ export async function ensureParent(): Promise<ParentProfile> {
 export async function clearSession(): Promise<void> {
   const store = await cookies();
   store.delete(COOKIE);
+}
+
+/** Signs a parent in by replacing the session cookie. Used after a magic link. */
+export async function startSession(parentId: string): Promise<void> {
+  const store = await cookies();
+  store.set(COOKIE, sealSession(parentId), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: MAX_AGE_SECONDS,
+  });
+}
+
+/** The raw parent id in the cookie, whether or not it has an account yet. */
+export async function currentParentId(): Promise<string | null> {
+  return readCookie();
 }
