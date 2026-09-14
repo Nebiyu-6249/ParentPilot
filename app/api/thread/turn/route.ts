@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { buildPacket, STEP_TEXT, type PacketStep } from "@/lib/packet";
-import { cardsForPacket, type Card } from "@/lib/thread";
+import { cardsForChatTurn, cardsForPacket, type Card } from "@/lib/thread";
 import { clientIp, consume, logFailure, validateUpload } from "@/lib/limits";
+import { chatTurnLeaksAnswer } from "@/lib/answer-guard";
 import { copy } from "@/lib/copy";
 import { demoBundle } from "@/lib/demo";
-import { extractWorksheet, isConfigured, ModelError } from "@/lib/ai/provider";
+import { chatTurn, extractWorksheet, isConfigured, ModelError } from "@/lib/ai/provider";
 import { prisma, hasDatabase } from "@/lib/db";
 import { toDataUrl } from "@/lib/exif";
 import { currentParent, ensureParent } from "@/lib/session";
@@ -22,9 +23,8 @@ export const runtime = "nodejs";
  * the same contract /api/packet already uses. The final line carries the cards
  * the thread should append.
  *
- * Step three of the round four brief covers photo, demo and the ladder. Free
- * text is step four and returns the scoped redirect until then, rather than
- * silently doing nothing.
+ * Four kinds of turn arrive here: a photograph, the tappable demo, a tap on
+ * the ladder, and free text. Only the first and the last reach a model.
  */
 
 const bodySchema = z.object({
@@ -255,14 +255,102 @@ export async function POST(request: Request): Promise<Response> {
         });
       });
 
-    /** Free text is step four. Until then it says so rather than doing nothing. */
-    case "text":
+    /**
+     * Something the parent typed.
+     *
+     * The only turn that reaches a model with free text in it, so it is the
+     * only one that needs the two answer guards. The first is an absence: the
+     * packet's verified answer is loaded here, used to check the reply, and
+     * never passed to `chatTurn`. The second is `chatTurnLeaksAnswer`, for a
+     * model that worked it out for itself.
+     */
+    case "text": {
+      const message = parsed.data.text?.trim() ?? "";
+      if (message === "") return NextResponse.json({ error: "bad request" }, { status: 400 });
+
       return stream(async (send) => {
-        send({
-          type: "cards",
-          cards: [{ kind: "text", body: copy.chat.notYet } satisfies Card],
-        });
+        send({ type: "status", text: copy.status.thinking });
+
+        // The problem the parent is looking at, when there is one. Typing
+        // before photographing anything is legitimate ("she is already in
+        // tears"), and coaching that needs no page still works.
+        const problemId = parsed.data.problemId ?? null;
+        const bundle =
+          problemId === null
+            ? null
+            : problemId === "demo" || !hasDatabase()
+              ? await demoBundle(register)
+              : await buildPacket({
+                  problemId,
+                  register,
+                  language: parent.language,
+                  grade: parent.child?.grade ?? null,
+                }).catch(() => null);
+
+        const ladder = bundle?.packet.hintLadder ?? [];
+        const rung = parsed.data.rung ?? 0;
+        const rungQuestion = ladder[Math.min(rung, Math.max(ladder.length - 1, 0))] ?? null;
+
+        const verdict = await consume(clientIp(request.headers), "packet");
+        if (!verdict.allowed || !isConfigured()) {
+          // Degradation is visible here for the same reason it is on the photo
+          // path: a reply that looks like coaching but is a canned line would
+          // be read as coaching.
+          const notice = !verdict.allowed
+            ? verdict.reason === "spend"
+              ? copy.limits.spendBanner
+              : copy.limits.banner
+            : copy.chat.unavailable;
+          send({
+            type: "cards",
+            cards: [
+              { kind: "notice", body: notice } satisfies Card,
+              ...(rungQuestion
+                ? [
+                    {
+                      kind: "coach",
+                      reply: copy.chat.fallbackAsk,
+                      sayThis: rungQuestion,
+                      watchFor: null,
+                    } satisfies Card,
+                  ]
+                : []),
+            ],
+            notice,
+          });
+          return;
+        }
+
+        try {
+          const turn = await chatTurn({
+            message,
+            printedText: bundle?.problem.printedText ?? null,
+            childWorkText: bundle?.problem.childWorkText ?? null,
+            childAnswer: bundle?.problem.childAnswer ?? null,
+            misconception: bundle?.misconception?.plainName ?? null,
+            rungQuestion,
+            register,
+            language: parent.language,
+            grade: parent.child?.grade ?? bundle?.standard?.grade ?? 4,
+          });
+
+          const leaked = chatTurnLeaksAnswer(turn, bundle?.packet.lockedAnswer);
+          if (leaked) {
+            // Worth a ledger entry: the prompt forbids it and the model was
+            // never shown the value, so this is the model computing it. If it
+            // starts happening often the prompt is the thing to fix.
+            await logFailure("chat-turn-answer-leak", `intent=${turn.intent}`);
+          }
+
+          send({ type: "cards", cards: cardsForChatTurn(turn, { rungQuestion, leaked }) });
+        } catch (error) {
+          const kind = error instanceof ModelError ? error.kind : "upstream";
+          await logFailure("thread-text", error instanceof Error ? error.message : String(error));
+          const notice = kind === "malformed" ? copy.errors.malformed : copy.errors.modelTimeout;
+          send({ type: "cards", cards: [{ kind: "notice", body: notice } satisfies Card], notice });
+        }
       });
+    }
 
     default:
       return NextResponse.json({ error: "bad request" }, { status: 400 });

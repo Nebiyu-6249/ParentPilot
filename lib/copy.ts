@@ -163,6 +163,7 @@ export const copy = {
     matching: "Matching it to what the class is teaching",
     writing: "Writing your primer",
     almost: "Almost there",
+    thinking: "Reading what you wrote",
   },
 
   transcription: {
@@ -330,10 +331,26 @@ export const copy = {
     threadsToday: "Today",
     threadsWeek: "This week",
     threadsEarlier: "Earlier",
-    /* Free-text turns arrive in step four. Saying so is better than a
-       composer that silently swallows what a parent typed. */
-    notYet:
-      "Answering in your own words is not switched on yet. For now, photograph the page or tap Still stuck for the next question.",
+    /* The answer is behind the press and hold on every surface, and a chat
+       reply is not an exception. Shown both when the parent asks outright and
+       when the guard catches a model stating it anyway; from where the parent
+       sits those are the same event. */
+    answerHeld:
+      "I keep the answer behind the hold on the answer card, so opening it is a deliberate tap rather than something you read by accident.",
+    answerHeldNext: "Before you open it, try this one:",
+    /* Scope. Being narrow is the product, so the refusal names what this is
+       for rather than apologising for what it is not. */
+    outOfScope:
+      "I only work on the page in front of you. Photograph the worksheet, or tell me what is happening as your child works on it.",
+    /* No model configured. Distinct from a limit and from a failure, and it
+       says what still works rather than stopping at the bad news. */
+    unavailable:
+      "This deployment is not set up to reply in words yet, so nothing was sent to a model. The questions on the card above still work.",
+    /* Used when we could not reply at all. The parent's eyes are at the
+       composer, and the question they need may have scrolled away, so it comes
+       back down to them rather than being pointed at. */
+    fallbackAsk: "The question on your card above still stands:",
+    watchForLabel: "Listen for:",
     suggestions: [
       "she's getting frustrated",
       "she got it but I don't think she understands",

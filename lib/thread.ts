@@ -1,4 +1,5 @@
-import type { MethodMatch, RegisterName, Script } from "@/lib/ai/schemas";
+import { copy } from "@/lib/copy";
+import type { ChatTurn, MethodMatch, RegisterName, Script } from "@/lib/ai/schemas";
 import type { PacketBundle } from "@/lib/types";
 
 /**
@@ -11,6 +12,7 @@ import type { PacketBundle } from "@/lib/types";
 
 export type CardKind =
   | "notice"
+  | "coach"
   | "worksheet"
   | "ask"
   | "misconception"
@@ -32,6 +34,21 @@ export type CardKind =
 export interface NoticeCard {
   kind: "notice";
   body: string;
+}
+
+/**
+ * The reply to something the parent typed.
+ *
+ * The one card that carries prose, because a reply to a sentence is a
+ * sentence. `sayThis` gets the same treatment as the `ask` card's question:
+ * both are words to say out loud, and one idea should look like one idea
+ * wherever it turns up.
+ */
+export interface CoachCard {
+  kind: "coach";
+  reply: string;
+  sayThis: string | null;
+  watchFor: string | null;
 }
 
 export interface WorksheetCard {
@@ -104,6 +121,7 @@ export interface TextCard {
 
 export type Card =
   | NoticeCard
+  | CoachCard
   | WorksheetCard
   | AskCard
   | MisconceptionCard
@@ -130,6 +148,50 @@ export function splitPrimer(primer: string): { opening: string; rest: string } {
     opening: sentences.slice(0, 2).join(" "),
     rest: sentences.slice(2).join(" "),
   };
+}
+
+/**
+ * The cards for a free-text turn.
+ *
+ * Two of the three intents never reach the model's own prose. "Just tell me
+ * the answer" and an off-topic question are both answered by fixed copy, so
+ * those replies are the same sentence every time and cannot be argued out of
+ * the product by a parent who phrases the request more cleverly. `leaked` is
+ * the answer guard firing on a `coach` reply, and it lands in the same place:
+ * from where the parent sits, being told the answer is behind the hold is the
+ * same event whether they asked for it or the model volunteered it.
+ *
+ * `rungQuestion` is what turns the refusal into a move. Declining to give the
+ * answer and offering nothing in its place is just a wall.
+ */
+export function cardsForChatTurn(
+  turn: ChatTurn,
+  options: { rungQuestion: string | null; leaked: boolean },
+): Card[] {
+  /* Asking for an answer with no worksheet open is asking to be a
+     calculator, which is the out-of-scope case rather than the withheld one:
+     there is no answer card to point at, and pointing at one would be a lie.
+     A leak cannot reach here, because with no problem there is no verified
+     answer for the guard to have matched. */
+  const noWorksheet = options.rungQuestion === null;
+  if (turn.intent === "out_of_scope" || (turn.intent === "answer_request" && noWorksheet)) {
+    return [{ kind: "coach", reply: copy.chat.outOfScope, sayThis: null, watchFor: null }];
+  }
+
+  if (turn.intent === "answer_request" || options.leaked) {
+    return [
+      {
+        kind: "coach",
+        reply: options.rungQuestion
+          ? `${copy.chat.answerHeld} ${copy.chat.answerHeldNext}`
+          : copy.chat.answerHeld,
+        sayThis: options.rungQuestion,
+        watchFor: null,
+      },
+    ];
+  }
+
+  return [{ kind: "coach", reply: turn.reply, sayThis: turn.sayThis, watchFor: turn.watchFor }];
 }
 
 /**

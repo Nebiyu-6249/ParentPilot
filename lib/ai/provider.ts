@@ -6,6 +6,7 @@ import { sanitizeDeep } from "@/lib/copy";
 import { recordSpend } from "@/lib/limits";
 import { loadPrompt } from "@/lib/ai/prompts";
 import {
+  chatTurnSchema,
   checkResultSchema,
   classificationSchema,
   extractionSchema,
@@ -13,6 +14,7 @@ import {
   packetSchema,
   recapSchema,
   teacherNoteSchema,
+  type ChatTurn,
   type CheckResult,
   type Classification,
   type Extraction,
@@ -40,6 +42,9 @@ const MODELS = {
   packet: process.env.OPENAI_PACKET_MODEL ?? "gpt-4o",
   /** Live move classification. Smallest capable model, text only, every 5s. */
   classify: process.env.OPENAI_CLASSIFY_MODEL ?? "gpt-4o-mini",
+  /** A free-text turn in the thread. Short output, but it is read by a parent
+   *  at the worst moment of their evening, so it is not the cheap model. */
+  chat: process.env.OPENAI_CHAT_MODEL ?? "gpt-4o",
   /** Session recap and teacher note. Once per session. */
   recap: process.env.OPENAI_RECAP_MODEL ?? "gpt-4o-mini",
   /** 1536 dimensions, matching the `vector(1536)` column on Standard. */
@@ -292,6 +297,56 @@ export async function classifyMove(args: ClassifyArgs): Promise<Classification> 
     messages: [
       { role: "system", content: system },
       { role: "user", content: `WINDOW:\n${args.window}` },
+    ],
+  });
+}
+
+export interface ChatTurnArgs {
+  /** What the parent typed. Untrusted text; it is a user message, never a
+   *  system instruction, so a parent who types "ignore your rules" is
+   *  arguing with the content of a user turn rather than editing the prompt. */
+  message: string;
+  printedText: string | null;
+  childWorkText: string | null;
+  childAnswer: string | null;
+  misconception: string | null;
+  /** The rung the parent is currently looking at, so the reply can build on
+   *  the question already on screen instead of duplicating it. */
+  rungQuestion: string | null;
+  register: RegisterName;
+  language: string;
+  grade: number;
+}
+
+/**
+ * One free-text turn.
+ *
+ * Note what is deliberately absent from `ChatTurnArgs`: the verified answer.
+ * Every other task in this file that knows the answer is given it, and this
+ * one is not, so the model has nothing to repeat. That is the first of two
+ * layers. The second is in `lib/answer-guard.ts`, which scans what comes back
+ * in case the model computed the answer for itself.
+ */
+export async function chatTurn(args: ChatTurnArgs): Promise<ChatTurn> {
+  const system = await loadPrompt("chat-turn", {
+    REGISTER: args.register,
+    LANGUAGE: args.language,
+    GRADE: args.grade,
+    PRINTED_TEXT: args.printedText,
+    CHILD_WORK: args.childWorkText,
+    CHILD_ANSWER: args.childAnswer,
+    MISCONCEPTION: args.misconception,
+    RUNG_QUESTION: args.rungQuestion,
+  });
+
+  return complete({
+    task: "chat",
+    schema: chatTurnSchema,
+    temperature: 0.5,
+    maxTokens: 500,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: args.message },
     ],
   });
 }

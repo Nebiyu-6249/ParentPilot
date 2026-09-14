@@ -24,6 +24,8 @@ import { computeAnswer, verifyAnswer } from "../lib/verify";
 import { sanitizeSvg } from "../lib/svg";
 import { stripMetadata } from "../lib/exif";
 import { packetCacheKey } from "../lib/packet";
+import { answerForms, chatTurnLeaksAnswer, mentionsAnswer } from "../lib/answer-guard";
+import { cardsForChatTurn } from "../lib/thread";
 import { resolveAppUrl } from "../lib/app-url";
 import type { MoveLabelName } from "../lib/ai/schemas";
 
@@ -986,6 +988,139 @@ section("The chat surface keeps the promises the old screens made");
 
 // ---------------------------------------------------------------------------
 
+section("A free-text turn cannot hand over the answer");
+
+{
+  /* Layer one is an absence. Every other task in the provider that knows the
+     verified answer is given it; this one is not, so there is nothing in the
+     context to repeat. Checked by reading the call rather than by trusting
+     the comment above it. */
+  const provider = readFileSync(path.join(process.cwd(), "lib", "ai", "provider.ts"), "utf8");
+  const call = provider.slice(
+    provider.indexOf("export async function chatTurn"),
+    provider.indexOf("export interface RecapArgs"),
+  );
+  ok("the chat turn call exists", call.length > 0);
+  ok("the model is never told the answer",
+    !/COMPUTED_ANSWER|LOCKED_ANSWER|lockedAnswer|computedAnswer/.test(call));
+  /* The interface body only. The doc comment above the function talks about
+     the answer at length, which is the point of it. */
+  const argsBody = provider.slice(
+    provider.indexOf("export interface ChatTurnArgs"),
+    provider.indexOf("}", provider.indexOf("export interface ChatTurnArgs")),
+  );
+  const argsFields = argsBody
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/childAnswer/g, "childWriting");
+  ok("nor can it be, through the args type", !/answer/i.test(argsFields));
+
+  const prompt = readFileSync(path.join(process.cwd(), "prompts", "chat-turn.md"), "utf8");
+  // Markdown emphasis sits inside these sentences, so strip it before matching.
+  const flat = prompt.replace(/[*_`]/g, "").replace(/\s+/g, " ");
+  ok("the prompt says the answer is withheld and must not be worked out",
+    /not given the correct answer/i.test(flat) && /must not work it out/i.test(flat));
+  ok("the prompt forbids stating the answer under every intent",
+    /never state the final answer/i.test(flat));
+  ok("the prompt defines the three intents",
+    /`coach`/.test(prompt) && /`answer_request`/.test(prompt) && /`out_of_scope`/.test(prompt));
+
+  /* Layer two catches a model that computed the answer for itself. The table
+     is the specification: what it catches, and what it must not flag. */
+  const leaks: [string, string, boolean][] = [
+    ["The answer is 11/12.", "11/12", true],
+    ["It comes to 11 / 12 once the pieces match.", "11/12", true],
+    ["You get eleven twelfths.", "11/12", true],
+    ["It is 11 over 12.", "11/12", true],
+    ["The answer is 12.", "12", true],
+    ["She should write twelve.", "12", true],
+    ["It is one half.", "1/2", true],
+    // And the other error, which costs a parent a redirect they did not need.
+    ["Ask her how she knew the pieces had to be the same size.", "11/12", false],
+    ["She wrote 3/7, which is what adding the denominators gives.", "11/12", false],
+    ["Start from 1/4 + 2/3 and ask what is different about them.", "11/12", false],
+    ["There are 112 counters in the box.", "12", false],
+    ["Count the twelfths out loud together.", "12", false],
+    ["Halve it and see what she says.", "1/2", false],
+  ];
+
+  for (const [text, answer, expected] of leaks) {
+    const got = mentionsAnswer(text, answer);
+    ok(`${expected ? "caught" : "allowed"}: ${JSON.stringify(text.slice(0, 44))}`, got === expected);
+  }
+
+  // An unverified packet blanks lockedAnswer, so the guard is handed "".
+  ok("an empty answer is not a leak", !mentionsAnswer("It is 11/12.", ""));
+  ok("a null answer is not a leak", !mentionsAnswer("It is 11/12.", null));
+  ok("the guard covers every prose field",
+    chatTurnLeaksAnswer({ reply: "ok", sayThis: "It is 11/12.", watchFor: null }, "11/12") &&
+    chatTurnLeaksAnswer({ reply: "ok", sayThis: null, watchFor: "she says 11/12" }, "11/12"));
+  ok("the spoken forms are enumerated",
+    answerForms("11/12").includes("eleven twelfths") && answerForms("11/12").includes("11 over 12"));
+
+  /* The two contained intents, exercised rather than described. A model reply
+     that says the answer outright must not survive either path. */
+  const poisoned = { reply: "It is 11/12.", sayThis: "Tell her it is 11/12.", watchFor: null };
+
+  const offTopic = cardsForChatTurn({ ...poisoned, intent: "out_of_scope" }, {
+    rungQuestion: "How did you get to this one?",
+    leaked: true,
+  });
+  const offTopicText = JSON.stringify(offTopic);
+  ok("an unrelated question returns the redirect", offTopicText.includes(copy.chat.outOfScope));
+  ok("and never the model's own words", !offTopicText.includes("11/12"));
+
+  const asked = cardsForChatTurn({ ...poisoned, intent: "answer_request" }, {
+    rungQuestion: "How did you get to this one?",
+    leaked: false,
+  });
+  const askedText = JSON.stringify(asked);
+  ok("asking for the answer does not produce the answer", !askedText.includes("11/12"));
+  ok("it says where the answer lives", askedText.includes(copy.chat.answerHeld));
+  ok("and hands back the question already on screen",
+    askedText.includes("How did you get to this one?"));
+
+  /* The guard firing on an ordinary coaching reply lands in the same place,
+     which is the property that makes the guard worth having. */
+  const guarded = cardsForChatTurn({ ...poisoned, intent: "coach" }, {
+    rungQuestion: "How did you get to this one?",
+    leaked: true,
+  });
+  ok("a leaking coach reply is replaced, not patched",
+    !JSON.stringify(guarded).includes("11/12"));
+
+  /* Asking for the answer before any worksheet is open is asking for a
+     calculator. There is no answer card to point at, so pointing at one
+     would be a lie. */
+  const calculator = cardsForChatTurn({ ...poisoned, intent: "answer_request" }, {
+    rungQuestion: null,
+    leaked: false,
+  });
+  ok("asking for an answer with no worksheet open is out of scope",
+    JSON.stringify(calculator).includes(copy.chat.outOfScope));
+
+  // And the ordinary path still passes the model's words through.
+  const clean = cardsForChatTurn(
+    { intent: "coach", reply: "Give her a minute.", sayThis: "What did you try first?", watchFor: "a pause" },
+    { rungQuestion: null, leaked: false },
+  );
+  ok("a clean coaching reply reaches the parent",
+    JSON.stringify(clean).includes("Give her a minute."));
+
+  /* The route is the only place these compose. A free-text turn that reached
+     the model without running the guard would pass every check above. */
+  const route = readFileSync(
+    path.join(process.cwd(), "app", "api", "thread", "turn", "route.ts"), "utf8");
+  const textCase = route.slice(route.indexOf('case "text"'));
+  ok("the route runs the guard on every free-text reply",
+    /chatTurnLeaksAnswer\(/.test(textCase));
+  ok("the route meters the call", /consume\(/.test(textCase));
+  ok("the route says so when it cannot reach a model",
+    /kind: "notice"/.test(textCase));
+  ok("a leak is written to the failure log", /chat-turn-answer-leak/.test(textCase));
+}
+
+// ---------------------------------------------------------------------------
+
 section("Design system, scanned over source with comments stripped");
 
 {
@@ -1081,7 +1216,7 @@ ok("every specified card trigger has its exact text",
 
 section("Prompt files carry the four standing rules");
 
-for (const name of ["extract-worksheet", "generate-packet", "classify-move", "session-recap", "teacher-note"]) {
+for (const name of ["extract-worksheet", "generate-packet", "classify-move", "chat-turn", "session-recap", "teacher-note"]) {
   const text = readFileSync(path.join(process.cwd(), "prompts", `${name}.md`), "utf8");
   // The files are hard-wrapped, so a rule can straddle a line break.
   const flat = text.replace(/\s+/g, " ");
