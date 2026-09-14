@@ -1,9 +1,17 @@
 @import "tailwindcss";
 
 /* ParentPilot design system.
-   Square corners, flat fills, editorial rhythm. The forbidden list in the
-   brief is enforced here as much as it can be: there is no radius scale,
-   no gradient utility in use, and no icon font. */
+
+   The surface strategy: teal is the desk, paper is reserved for content, and
+   emerald is the pen. A primer or a Method Match card reads literally as a
+   sheet of paper lying on a desk, which is the vernacular of the world this
+   product lives in.
+
+   Components use the semantic layer (--surface-*, --text-*, --annotation),
+   never the raw brand values, so light and dark are two sets of values rather
+   than two code paths.
+
+   Square corners, flat fills. No gradient, no icon font, no radius scale. */
 
 @theme {
   --color-paper: #f5f1e8;
@@ -15,7 +23,7 @@
   --color-alert: #a8422f;
 
   --font-display: "Fraunces", Georgia, "Times New Roman", serif;
-  --font-sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-sans: "Public Sans", system-ui, -apple-system, sans-serif;
 
   /* Every radius token collapses to zero. Anything that reaches for a
      rounded utility still lands square. */
@@ -30,6 +38,7 @@
 }
 
 :root {
+  /* Raw brand values. Unchanged from round one. */
   --paper: #f5f1e8;
   --ink: #14201e;
   --emerald: #00a878;
@@ -38,7 +47,114 @@
   --muted: #6e665a;
   --alert: #a8422f;
 
-  color-scheme: light; /* No dark mode in v1. */
+  /* ---- Semantic layer, light ---------------------------------------- */
+
+  /* The desk. */
+  --surface-frame: #0b4f4a;
+  --surface-frame-deep: #073a36;
+  --surface-frame-raised: #0e5f59;
+
+  /* The paper. Reserved for real content. */
+  --surface-sheet: #f5f1e8;
+  --surface-sheet-sunk: #ede7d9;
+
+  --text-on-frame: #ede7da;
+  --text-on-frame-muted: #a9bdb8;
+  --text-on-sheet: #14201e;
+  --text-on-sheet-muted: #6e665a;
+
+  /* The pen.
+
+     Brand emerald #00A878 on paper measures 2.71, which fails even the 3:1
+     non-text threshold, so a circle drawn around a wrong digit in it would be
+     an inaccessible mark carrying real meaning. On paper the pen is a deeper
+     emerald, 5.43, which passes AA for text and for marks. A teacher's green
+     pen genuinely is darker than a screen emerald; this is the ink weight of
+     the same colour, not a different one.
+
+     On the teal desk the brand emerald stays, at 3.08. That passes for a mark
+     and NOT for text, so emerald is never used as text on the desk. */
+  --annotation: #00704f;
+  --annotation-on-frame: #00a878;
+
+  /* The child's handwriting. */
+  --pencil: #5a5247;
+
+  --rule-on-sheet: #d9d2c4;
+  --rule-on-frame: #1a6b64;
+  --alert-fg: #a8422f;
+
+  /* ---- Type scale ---------------------------------------------------- */
+  --type-display: clamp(2.75rem, 6.5vw, 4.25rem);
+  --type-h1: clamp(1.75rem, 3.5vw, 2.25rem);
+  --type-h2: 1.375rem;
+  --type-h3: 1.0625rem;
+  --type-small: 0.9375rem;
+  --type-micro: 0.8125rem;
+
+  --measure: 62ch;
+  --page-max: 1200px;
+
+  color-scheme: light;
+}
+
+/* ---- Semantic layer, dark -------------------------------------------
+
+   A designed variant, not a computed inversion. The frame is a deep
+   green-black in the teal hue family; paper becomes a *lit* sheet rather than
+   a cream slab, because a cream page on a dark field at eight in the evening
+   is a flashlight. Rules get lighter than their surface rather than darker.
+   Emerald holds. Alert is lifted, because #A8422F on the dark sheet measures
+   2.52 and fails. */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface-frame: #0a1614;
+    --surface-frame-deep: #060e0d;
+    --surface-frame-raised: #102420;
+
+    --surface-sheet: #132a25;
+    --surface-sheet-sunk: #0f221e;
+
+    --text-on-frame: #ede7da;
+    --text-on-frame-muted: #9fb3ae;
+    --text-on-sheet: #ede7da;
+    --text-on-sheet-muted: #9fb3ae;
+
+    --annotation: #00a878;
+    --annotation-on-frame: #00a878;
+    --pencil: #b9a98f;
+
+    --rule-on-sheet: #2a443d;
+    --rule-on-frame: #24403a;
+    --alert-fg: #e08770;
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --surface-frame: #0a1614;
+  --surface-frame-deep: #060e0d;
+  --surface-frame-raised: #102420;
+
+  --surface-sheet: #132a25;
+  --surface-sheet-sunk: #0f221e;
+
+  --text-on-frame: #ede7da;
+  --text-on-frame-muted: #9fb3ae;
+  --text-on-sheet: #ede7da;
+  --text-on-sheet-muted: #9fb3ae;
+
+  --annotation: #00a878;
+  --annotation-on-frame: #00a878;
+  --pencil: #b9a98f;
+
+  --rule-on-sheet: #2a443d;
+  --rule-on-frame: #24403a;
+  --alert-fg: #e08770;
+
+  color-scheme: dark;
 }
 
 * {
@@ -46,13 +162,13 @@
 }
 
 html {
-  background: var(--paper);
+  background: var(--surface-sheet);
   -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--surface-sheet);
+  color: var(--text-on-sheet);
   font-family: var(--font-sans);
   font-size: 17px;
   line-height: 1.6;
@@ -61,36 +177,48 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Display face is Fraunces, and it appears in two places only: the hero
+   headline and the wordmark. Section headings are the body face at 600. A
+   serif heading on every section is one of the patterns this redesign exists
+   to remove. */
 h1,
 h2,
 h3,
 h4 {
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-weight: 600;
-  color: var(--teal);
-  line-height: 1.2;
-  letter-spacing: -0.01em;
+  color: inherit;
+  line-height: 1.25;
+  letter-spacing: -0.005em;
   margin: 0;
 }
 
 h1 {
-  font-size: clamp(2rem, 7vw, 2.75rem);
+  font-size: var(--type-h1);
 }
 h2 {
-  font-size: clamp(1.4rem, 5vw, 1.75rem);
+  font-size: var(--type-h2);
 }
 h3 {
-  font-size: 1.175rem;
-  font-weight: 500;
+  font-size: var(--type-h3);
+  font-weight: 600;
+}
+
+.pp-display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--type-display);
+  line-height: 1.03;
+  letter-spacing: -0.022em;
 }
 
 p {
   margin: 0;
-  max-width: 68ch;
+  max-width: var(--measure);
 }
 
 a {
-  color: var(--teal);
+  color: inherit;
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
 }
@@ -114,7 +242,7 @@ button:disabled {
 
 hr {
   border: 0;
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid var(--rule-on-sheet);
   margin: 0;
 }
 
@@ -188,6 +316,16 @@ hr {
   transform-origin: center;
 }
 
+/* The pen drawing its mark on the worksheet in the hero. */
+@keyframes pp-ink {
+  from {
+    stroke-dashoffset: var(--pp-ink-dash, 300);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .pp-breathe {
     animation: none;
@@ -202,20 +340,82 @@ hr {
   }
 }
 
-/* Focus is visible and square, like everything else. */
 :focus-visible {
-  outline: 2px solid var(--emerald);
+  outline: 2px solid var(--annotation);
   outline-offset: 2px;
 }
 
 ::selection {
-  background: var(--emerald);
-  color: var(--paper);
+  background: var(--annotation);
+  color: var(--surface-sheet);
+}
+
+/* ---- Layout ---------------------------------------------------------- */
+
+.pp-page {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding-inline: 20px;
+}
+
+/* The hero is asymmetric on purpose. A single centred column leaves most of a
+   desktop viewport empty and gives the eye nothing to do. Words left, artifact
+   right and larger, because the artifact is the pitch. */
+.pp-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 56px;
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .pp-hero-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 30px;
+  }
+}
+
+/* On a phone the artifact sits directly under the headline, above the
+   actions. Seeing the product is what earns the tap, so it must not be
+   pushed below two buttons and a footnote. */
+@media (max-width: 900px) {
+  .pp-hero-words {
+    display: contents;
+  }
+  .pp-hero-headline {
+    order: 1;
+  }
+  .pp-artifact {
+    order: 2;
+  }
+  .pp-hero-actions {
+    order: 3;
+  }
+}
+
+/* Three lines, in a column. Not three cards in a row. */
+.pp-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.pp-step {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--rule-on-sheet);
+}
+
+.pp-step:last-child {
+  border-bottom: 0;
 }
 
 /* Method Match: the two methods sit side by side, always. The columns get
    narrower on a phone rather than stacking, because seeing them next to each
-   other is the entire point of the feature. The diagram drops below both. */
+   other is the entire point of the feature. */
 .pp-method-grid {
   display: grid;
   grid-template-columns: 1fr 1px 1fr;
@@ -224,7 +424,7 @@ hr {
 }
 
 .pp-method-rule {
-  background: var(--rule);
+  background: var(--rule-on-sheet);
   align-self: stretch;
   width: 1px;
 }
@@ -264,7 +464,95 @@ hr {
   right: 0;
   bottom: 0;
   z-index: 40;
-  background: var(--paper);
-  border-top: 1px solid var(--ink);
+  background: var(--surface-sheet);
+  border-top: 1px solid var(--text-on-sheet);
   padding: 22px 20px 30px;
+}
+
+/* ---- The hero artifact ----------------------------------------------
+
+   Paper objects lying on the teal desk. Deliberately not a screenshot: no
+   browser chrome, no device frame, no soft drop shadow. The lift is a hard
+   flat offset in the deep frame colour, which is a solid fill rather than a
+   blur, so it reads as paper on a surface and not as a floating UI card. */
+
+.pp-artifact {
+  position: relative;
+}
+
+.pp-sheet {
+  background: var(--surface-sheet);
+  border: 1px solid var(--rule-on-sheet);
+  box-shadow: 7px 7px 0 var(--surface-frame-deep);
+}
+
+.pp-worksheet {
+  position: relative;
+  padding: 26px 24px 30px 44px;
+  transform: rotate(-1.1deg);
+}
+
+/* The ruled margin of an exercise book. */
+.pp-worksheet::before {
+  content: "";
+  position: absolute;
+  left: 28px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--rule-on-sheet);
+}
+
+.pp-coach-card {
+  position: relative;
+  z-index: 2;
+  border-top: 3px solid var(--annotation);
+  padding: 20px 22px 22px;
+  /* Overlaps the sheet enough to read as stacked paper, but never far enough
+     to cover the pen ring and its caret, which are the point of the hero. */
+  margin-top: 18px;
+  margin-left: 14%;
+}
+
+@media (max-width: 900px) {
+  .pp-coach-card {
+    margin-top: 16px;
+    margin-left: 0;
+  }
+  .pp-worksheet {
+    padding: 22px 18px 26px 38px;
+  }
+  .pp-worksheet::before {
+    left: 24px;
+  }
+}
+
+.pp-handwriting {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  overflow: visible;
+}
+
+/* ---- Header nav ------------------------------------------------------
+   Labels never break mid-phrase. Left to wrap freely, "New worksheet" and
+   "Live Mode" each split onto two lines and the header ate a third of a
+   phone viewport, which is the one case that matters most. */
+.pp-nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: var(--type-small);
+}
+
+.pp-nav a {
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .pp-nav {
+    gap: 14px;
+    font-size: 0.875rem;
+  }
 }

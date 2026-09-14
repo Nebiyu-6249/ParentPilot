@@ -94,6 +94,19 @@ export const copy = {
     primaryCta: "Start with a worksheet",
     secondaryCta: "Set up in four steps",
     noChild: "No child account. No student login. Nothing for your child to sign into.",
+
+    /* Three lines, in a column. Each one is a step a parent actually takes,
+       not a feature name. The icon labels the step; it is not decoration. */
+    steps: [
+      { icon: "camera", text: "Photograph the worksheet, their working and all." },
+      { icon: "type", text: "Check what we read. Fix a misread line in one tap." },
+      { icon: "lock", text: "Five questions to ask. The answer stays behind a press and hold." },
+    ],
+
+    /* One citation earns credibility in a glance. The rest sit behind a
+       disclosure, because a parent at 8pm wants to start, not to read a
+       literature review. */
+    researchMoreLabel: "The rest of the research this is built on",
   },
 
   setup: {

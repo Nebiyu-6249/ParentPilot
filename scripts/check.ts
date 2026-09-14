@@ -380,6 +380,137 @@ section("App URL resolution, which failed the production build when it was ??");
 
 // ---------------------------------------------------------------------------
 
+section("Colour contrast, computed from the tokens rather than asserted");
+
+{
+  /**
+   * Parses one custom-property block out of globals.css.
+   *
+   * The design plan carries a contrast table. A table in a document goes stale
+   * the first time someone nudges a token; these assertions do not, because
+   * they read the same file the browser reads.
+   */
+  const css = readFileSync(path.join(process.cwd(), "app", "globals.css"), "utf8");
+
+  const readTokens = (selector: string): Record<string, string> => {
+    const start = css.indexOf(selector);
+    if (start === -1) return {};
+    const open = css.indexOf("{", start);
+    const close = css.indexOf("}", open);
+    const body = css.slice(open + 1, close);
+    const out: Record<string, string> = {};
+    for (const m of body.matchAll(/(--[\w-]+)\s*:\s*(#[0-9a-fA-F]{3,8})\s*;/g)) {
+      const [, name, value] = m;
+      if (name && value) out[name] = value;
+    }
+    return out;
+  };
+
+  const light = readTokens(":root {");
+  const dark = { ...light, ...readTokens(':root[data-theme="dark"] {') };
+
+  const channel = (v: number): number => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+
+  const luminance = (hex: string): number => {
+    const h = hex.replace("#", "");
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+  };
+
+  const contrast = (a: string, b: string): number => {
+    const la = luminance(a);
+    const lb = luminance(b);
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+  };
+
+  /** [foreground token, background token, minimum ratio, what it is] */
+  const pairs: [string, string, number, string][] = [
+    // 4.5 is AA for body text. 3.0 is AA for non-text, which is what a pen
+    // mark circling a wrong digit is.
+    ["--text-on-frame", "--surface-frame", 4.5, "text on the teal desk"],
+    ["--text-on-frame", "--surface-frame-deep", 4.5, "text on the header and footer"],
+    ["--text-on-frame-muted", "--surface-frame", 4.5, "muted text on the desk"],
+    ["--text-on-sheet", "--surface-sheet", 4.5, "text on paper"],
+    ["--text-on-sheet-muted", "--surface-sheet", 4.5, "muted text on paper"],
+    ["--annotation", "--surface-sheet", 3.0, "the pen mark on paper"],
+    ["--annotation-on-frame", "--surface-frame", 3.0, "the pen mark on the desk"],
+    ["--pencil", "--surface-sheet", 4.5, "the child's handwriting on paper"],
+    ["--alert-fg", "--surface-sheet", 4.5, "alert text on paper"],
+  ];
+
+  for (const [mode, tokens] of [["light", light], ["dark", dark]] as const) {
+    for (const [fg, bg, min, label] of pairs) {
+      const fgValue = tokens[fg];
+      const bgValue = tokens[bg];
+      if (!fgValue || !bgValue) {
+        ok(`${mode}: ${fg} and ${bg} are both defined`, false);
+        continue;
+      }
+      const ratio = contrast(fgValue, bgValue);
+      ok(
+        `${mode}: ${label} is at least ${min.toFixed(1)} to 1  (${ratio.toFixed(2)})`,
+        ratio >= min,
+      );
+    }
+  }
+
+  // The pen is emerald, but brand emerald on paper measures 2.71 and fails
+  // even the non-text threshold, so the on-paper variant must be darker.
+  ok("the on-paper pen is darker than brand emerald, because #00A878 on paper is 2.71",
+    (light["--annotation"] ?? "").toLowerCase() !== "#00a878");
+  ok("emerald holds in dark mode",
+    (dark["--annotation"] ?? "").toLowerCase() === "#00a878");
+  // "Rules get lighter rather than darker" in dark mode.
+  ok("dark rules are lighter than the surface they sit on",
+    luminance(dark["--rule-on-sheet"] ?? "#000000") > luminance(dark["--surface-sheet"] ?? "#ffffff"));
+}
+
+// ---------------------------------------------------------------------------
+
+section("Redesign direction holds");
+
+{
+  const css = readFileSync(path.join(process.cwd(), "app", "globals.css"), "utf8");
+  const landing = readFileSync(path.join(process.cwd(), "app", "page.tsx"), "utf8");
+  const layout = readFileSync(path.join(process.cwd(), "app", "layout.tsx"), "utf8");
+  const icons = readFileSync(path.join(process.cwd(), "components", "icons.tsx"), "utf8");
+
+  ok("body face is Public Sans", /--font-sans:\s*"Public Sans"/.test(css));
+  ok("IBM Plex Sans is gone", !/IBM Plex/.test(css) && !/IBM\+Plex/.test(layout));
+  ok("Fraunces is still the display face", /--font-display:\s*"Fraunces"/.test(css));
+  ok("dark mode is a designed variant, not an inversion",
+    css.includes('[data-theme="dark"]') && css.includes("prefers-color-scheme: dark"));
+  ok("the theme choice is applied before first paint", layout.includes("pp_theme"));
+
+  // Two additions to the ban list, scoped to the landing page.
+  ok("no tracked-out all-caps eyebrow on the landing page",
+    !/textTransform:\s*"uppercase"/.test(landing));
+  // A headline with one word in a different colour is the other addition. The
+  // headline must be a single expression, not a sentence broken up by spans.
+  const headline = landing.match(/<h1[^>]*>\s*\{([^}]*)\}\s*<\/h1>/);
+  ok("the headline is one string, with no single accented word",
+    headline !== null && !headline[1]?.includes("<"));
+
+  // The hero shows the product rather than a picture of a screen.
+  ok("the hero renders the real fixture, not marketing copy", landing.includes("demoBundle"));
+  ok("no device or browser chrome around the artifact",
+    !/browser|laptop|deviceFrame|macbook/i.test(landing));
+
+  // The four-point diamond is the brand mark. At 16px it is also the AI
+  // sparkle cliché, so it appears in the compass icon and nowhere else.
+  const diamondUses = icons.split("d={DIAMOND}").length - 1;
+  ok(`the compass diamond is used once, in the compass icon only (${diamondUses})`, diamondUses === 1);
+  ok("no icon library", !/lucide|heroicons|phosphor|react-icons/i.test(icons));
+  ok("icons are a 24px grid at 1.5px", icons.includes('viewBox="0 0 24 24"') && icons.includes("strokeWidth={1.5}"));
+}
+
+// ---------------------------------------------------------------------------
+
 section("Seed data");
 
 interface StandardSeed { id: string; code: string; grade: number; plainLanguage: string; expectedMethods: string[]; parentMethod: string }
