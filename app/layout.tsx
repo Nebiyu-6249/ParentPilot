@@ -115,6 +115,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           >
             <a href="/privacy">{copy.nav.privacy}</a>
             <a href="/check">{copy.nav.check}</a>
+            <a href="/history">{copy.history.heading}</a>
+            <a href="/account">{copy.account.heading}</a>
             <a href="/setup">Set up</a>
             <span style={{ marginLeft: "auto", maxWidth: "46ch" }}>{copy.landing.noChild}</span>
           </div>
