@@ -2,11 +2,15 @@ import type { Metadata, Viewport } from "next";
 
 import Logo from "@/components/Logo";
 import LogoReveal from "@/components/LogoReveal";
+import { resolveAppUrl } from "@/lib/app-url";
 import { copy } from "@/lib/copy";
 
 import "./globals.css";
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+// Never read NEXT_PUBLIC_APP_URL directly here. On Vercel it is frequently
+// defined but empty, and `new URL("")` throws at module scope, which fails the
+// production build rather than one request. See lib/app-url.ts.
+const appUrl = resolveAppUrl();
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
