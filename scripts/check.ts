@@ -24,6 +24,7 @@ import { computeAnswer, verifyAnswer } from "../lib/verify";
 import { sanitizeSvg } from "../lib/svg";
 import { stripMetadata } from "../lib/exif";
 import { packetCacheKey } from "../lib/packet";
+import { resolveAppUrl } from "../lib/app-url";
 import type { MoveLabelName } from "../lib/ai/schemas";
 
 let failures = 0;
@@ -258,6 +259,123 @@ section("Packet cache key");
   ok("a different problem on the same standard does not reuse the answer", a !== c);
   ok("register is part of the key", a !== packetCacheKey("CCSS.MATH.5.NF.A.1", "PLAIN", "en", "1/4 + 2/3 ="));
   ok("language is part of the key", a !== packetCacheKey("CCSS.MATH.5.NF.A.1", "STANDARD", "es", "1/4 + 2/3 ="));
+}
+
+// ---------------------------------------------------------------------------
+
+section("App URL resolution, which failed the production build when it was ??");
+
+{
+  /**
+   * Runs `body` with exactly the given app-url variables set and every other
+   * one unset, then puts the environment back however it found it. Saving and
+   * restoring keeps these cases order-independent and stops them leaking into
+   * the rest of the suite.
+   */
+  const withEnv = (
+    vars: { appUrl?: string; productionUrl?: string; deploymentUrl?: string },
+    body: (resolved: string) => void,
+  ): void => {
+    const keys = ["NEXT_PUBLIC_APP_URL", "VERCEL_PROJECT_PRODUCTION_URL", "VERCEL_URL"] as const;
+    const saved = keys.map((key) => [key, process.env[key]] as const);
+
+    try {
+      for (const key of keys) delete process.env[key];
+      if (vars.appUrl !== undefined) process.env.NEXT_PUBLIC_APP_URL = vars.appUrl;
+      if (vars.productionUrl !== undefined) process.env.VERCEL_PROJECT_PRODUCTION_URL = vars.productionUrl;
+      if (vars.deploymentUrl !== undefined) process.env.VERCEL_URL = vars.deploymentUrl;
+
+      // The production invariant: this is called at module scope in
+      // app/layout.tsx, so a throw here is a failed build, not a failed request.
+      let resolved: string;
+      try {
+        resolved = resolveAppUrl();
+      } catch {
+        ok("resolveAppUrl threw, which would fail the build", false);
+        return;
+      }
+      body(resolved);
+    } finally {
+      for (const [key, value] of saved) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+  };
+
+  /** Every return value must be something `new URL()` accepts. */
+  const constructible = (value: string): boolean => {
+    try {
+      new URL(value);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  // The actual production bug: defined, but empty. `??` does not substitute
+  // here, so the old code handed `new URL("")` an empty string and the build
+  // died on /_not-found.
+  withEnv({ appUrl: "" }, (resolved) => {
+    eq("an empty NEXT_PUBLIC_APP_URL falls through to localhost", resolved, "http://localhost:3000");
+    ok("  and the result is constructible", constructible(resolved));
+  });
+
+  withEnv({ appUrl: "   " }, (resolved) => {
+    eq("a whitespace-only value falls through", resolved, "http://localhost:3000");
+  });
+
+  withEnv({}, (resolved) => {
+    eq("an undefined value falls through", resolved, "http://localhost:3000");
+  });
+
+  withEnv({ appUrl: "not-a-url" }, (resolved) => {
+    eq("a malformed value falls through rather than killing the build", resolved, "http://localhost:3000");
+    ok("  and the result is constructible", constructible(resolved));
+  });
+
+  withEnv({ appUrl: "https://parentpilot.app/" }, (resolved) => {
+    eq("a trailing slash is stripped", resolved, "https://parentpilot.app");
+  });
+
+  withEnv({ appUrl: "https://parentpilot.app/app/" }, (resolved) => {
+    eq("a trailing slash is stripped from a path too", resolved, "https://parentpilot.app/app");
+  });
+
+  // Vercel sets these two automatically, and neither carries a protocol.
+  withEnv({ productionUrl: "parentpilot.vercel.app" }, (resolved) => {
+    eq("a bare production host gains https", resolved, "https://parentpilot.vercel.app");
+  });
+
+  withEnv({ deploymentUrl: "parentpilot-abc123.vercel.app" }, (resolved) => {
+    eq("a bare deployment host gains https", resolved, "https://parentpilot-abc123.vercel.app");
+  });
+
+  // Precedence, including the empty-but-defined case Vercel actually produces.
+  withEnv({ appUrl: "", productionUrl: "prod.vercel.app", deploymentUrl: "dep.vercel.app" }, (resolved) => {
+    eq("an empty explicit value defers to the production host", resolved, "https://prod.vercel.app");
+  });
+
+  withEnv({ appUrl: "https://chosen.example", productionUrl: "prod.vercel.app" }, (resolved) => {
+    eq("an explicit value wins over the production host", resolved, "https://chosen.example");
+  });
+
+  withEnv({ productionUrl: "", deploymentUrl: "dep.vercel.app" }, (resolved) => {
+    eq("an empty production host defers to the deployment host", resolved, "https://dep.vercel.app");
+  });
+
+  // Values that parse as a URL but are useless as a site origin.
+  withEnv({ appUrl: "mailto:hi@parentpilot.app" }, (resolved) => {
+    eq("a non-http protocol falls through", resolved, "http://localhost:3000");
+  });
+
+  withEnv({ appUrl: "https://already.example", productionUrl: "https://schemed.example" }, (resolved) => {
+    ok("a host that already has a protocol is not double-prefixed", !resolved.includes("https://https://"));
+  });
+
+  withEnv({ productionUrl: "https://schemed.example" }, (resolved) => {
+    eq("  and is used as it stands", resolved, "https://schemed.example");
+  });
 }
 
 // ---------------------------------------------------------------------------
