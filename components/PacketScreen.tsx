@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import AudioPrimer from "@/components/AudioPrimer";
+import Citation from "@/components/Citation";
 import Disclosure from "@/components/Disclosure";
 import LockedAnswer from "@/components/LockedAnswer";
 import MethodMatch from "@/components/MethodMatch";
@@ -85,6 +87,12 @@ export default function PacketScreen({ initial }: { initial: PacketBundle }) {
       <header>
         <Label>{standard ? `Grade ${standard.grade}` : "Worksheet"}</Label>
         <p style={{ fontSize: 20, marginTop: 2 }}>{problem.printedText}</p>
+
+        {standard && (
+          <div style={{ marginTop: 10 }}>
+            <Citation code={standard.code} plainLanguage={standard.plainLanguage} />
+          </div>
+        )}
 
         {problem.childWorkText && (
           <pre
@@ -255,6 +263,10 @@ export default function PacketScreen({ initial }: { initial: PacketBundle }) {
         </Disclosure>
 
         <Disclosure title={copy.packet.discloseTeaching} icon={BookIcon}>
+          <div style={{ marginBottom: 20 }}>
+            <AudioPrimer problemId={problem.id} register={register} />
+          </div>
+
           <p style={{ fontSize: 17 }}>{primerOpening}</p>
           {primerRest && (
             <details style={{ marginTop: 14 }}>
