@@ -557,9 +557,9 @@ export default function AppShell({
                     gap: 10,
                     padding: "15px 24px",
                     borderRadius: "var(--r-control)",
-                    border: "1px solid var(--accent)",
-                    background: "var(--accent)",
-                    color: "#ffffff",
+                    border: "1px solid var(--app-action)",
+                    background: "var(--app-action)",
+                    color: "var(--app-action-label)",
                     fontSize: 15.5,
                     fontWeight: 500,
                   }}

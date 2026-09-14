@@ -83,7 +83,13 @@ export default function SettingsScreen({
       {saved && <Banner text="Saved." />}
 
       <Section title={copy.settings.registerHeading} note={copy.settings.registerHelp}>
-        <RegisterControl value={register} onChange={(next) => void save({ register: next })} />
+        {/* The section heading is "How I write to you"; the control's own
+            label is "How I write". One of them is enough. */}
+        <RegisterControl
+          value={register}
+          heading={false}
+          onChange={(next) => void save({ register: next })}
+        />
       </Section>
 
       <Section title={copy.settings.languageHeading} note={copy.setup.step4.help}>
