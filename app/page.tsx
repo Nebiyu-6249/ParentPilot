@@ -105,7 +105,16 @@ export default async function LandingPage() {
       </section>
 
       {/* ---- Paper. Everything below here is content. ----------------- */}
-      <div className="pp-page" style={{ paddingBlock: "clamp(40px, 5vw, 64px)" }}>
+      <div
+        className="pp-page"
+        style={{
+          background: "var(--surface-sheet)",
+          color: "var(--text-on-sheet)",
+          maxWidth: "none",
+          paddingBlock: "clamp(40px, 5vw, 64px)",
+        }}
+      >
+        <div style={{ maxWidth: 1160, margin: "0 auto" }}>
         <section style={{ maxWidth: 760 }}>
           <h2 style={{ marginBottom: 4 }}>How it works</h2>
           <ul className="pp-steps" style={{ marginTop: 12 }}>
@@ -215,6 +224,7 @@ export default async function LandingPage() {
           >
             {copy.landing.primaryCta}
           </Link>
+        </div>
         </div>
       </div>
     </main>

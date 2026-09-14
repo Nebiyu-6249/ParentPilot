@@ -227,3 +227,68 @@ defaults that had crept in.
 | Draft accented "not to your child" in emerald inside the headline | Removed, banned addition. Headline is one weight, one colour |
 | Dark mode was going to reuse `--alert` unchanged at **2.52** | Lifted to `#E08770`, 5.68 |
 | Dark rules were going darker than the surface | Lighter than the surface, per brief |
+
+---
+
+# Round three, Part B: dark mode redone
+
+## What was wrong
+
+The first dark mode made the sheet `#132A25` and the desk `#0A1614`: two dark
+greens close in value, so paper stopped reading as paper. The child's working
+in cream on dark green read as chalk on a blackboard, which inverts the
+meaning of the hero. A blackboard is the teacher's authoritative surface; that
+worksheet is the child's fallible attempt.
+
+## The answer
+
+**The room is dim. There is a lamp on the desk. The paper stays paper.**
+
+Dark mode keeps the unlit frame and lights the sheet. It is not an inversion
+and not a darkened copy; it is the same scene at night.
+
+| Token | Light | Dark | Note |
+|---|---|---|---|
+| `--surface-frame` | `#0B4F4A` | `#0A1614` | the desk, teal by day and unlit at night |
+| `--surface-sheet` | `#F5F1E8` | `#DED8C9` | paper, dimmed to 78% of its daytime luminance |
+| `--text-on-sheet` | `#14201E` | `#14201E` | ink on paper, identical in both |
+| `--annotation` | `#006646` | `#006646` | one pen colour, both modes |
+| `--pencil` | `#5A5247` | `#5A5247` | graphite, both modes |
+| `--alert-fg` | `#A8422F` | `#943826` | lifted only where the paper is dimmer |
+| `--text-on-frame` | `#EDE7DA` | `#EDE7DA` | warm off-white on the desk |
+
+Because the sheet stays paper, ink, pencil and pen are now the **same values in
+both modes**. Half the dark palette stops existing, which is the point: a
+designed variant needs fewer overrides than a darkened copy, not more.
+
+## Structural change this forces
+
+The body was `--surface-sheet`, so the whole viewport was paper and the desk
+only appeared inside the landing hero. With a lit sheet that would make dark
+mode a mostly-bright page, which is not "a lamp on the desk", it is light mode
+with a dark header.
+
+So the body becomes the desk in both modes, and content screens render an
+explicit sheet on it. `Page` gains a `surface` prop: `sheet` by default, and
+`desk` for Live Mode, which is the one screen that is not a document and
+should not be a lit rectangle at eight in the evening.
+
+## Deviation from the brief, measured
+
+The brief specifies `--annotation: #00704F` unchanged in both modes. On the
+dimmed paper that measures **4.31**, which fails AA for the 13px "What went
+wrong" label that uses it. `#006646` is 6.23 on daytime paper and 4.94 on
+dimmed paper, and a paper-coloured label on top of it clears 4.5 both ways.
+
+It is still one value across both modes, which was the actual intent, and the
+shift is small enough to be invisible side by side. `--alert-fg` needed the
+same treatment but only on the dimmed sheet, so it keeps `#A8422F` by day.
+
+## Review pass
+
+| Caught | Changed to |
+|---|---|
+| Body as sheet would make dark mode a bright page | Body is the desk; content sits on an explicit sheet |
+| Live Mode would render a lit rectangle at night | `Page surface="desk"` for that one screen |
+| `--annotation` at `#00704F` fails on dimmed paper | One value, `#006646`, passing on both |
+| Half the dark block was redundant once the sheet is paper | Overrides reduced to the frame, the dimmed sheet, and alert |
