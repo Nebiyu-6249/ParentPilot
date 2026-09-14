@@ -114,6 +114,13 @@ export default function AccountScreen({
             <HistoryIcon size={18} />
             Past sessions
           </Link>
+          {/* The setup flow's only entry point. It used to hang off the site
+              footer, which was the wrong home for it: a visitor who has not
+              opened the product has nobody to set up. */}
+          <Link href="/setup" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: "var(--type-small)" }}>
+            <AccountIcon size={18} />
+            {copy.account.setupLink}
+          </Link>
         </div>
       </Section>
 

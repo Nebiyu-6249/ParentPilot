@@ -57,7 +57,152 @@ export const copy = {
     tagline: "Homework help that talks to you, not to your child.",
   },
 
+  /* The marketing site. Four pages, each answering one question a specific
+     person actually has: what happens to my photo, does any of this hold up,
+     will this undermine my classroom, and what do you keep. */
+  howItWorks: {
+    heading: "What happens to the photograph",
+    standfirst:
+      "Five stages between the page on your table and the question you ask out loud. None of them is the answer.",
+    artifactCaption: "The saved worksheet this site is built from. Everything below is what happens to it.",
+    checkedLine: "Checked in code, not by a model",
+    stages: [
+      {
+        title: "We read the page",
+        body: "A model transcribes the printed question and your child's handwriting, and reports how confident it was about each line. You see what we read before anything else happens, and you can fix a misread line in one tap.",
+        shows: "read" as const,
+      },
+      {
+        title: "We check the arithmetic ourselves",
+        body: "Not with a model. The sum is recomputed in exact fractions by a library, and the result is compared to what the packet says. When the two disagree, or when the problem is not one we can compute, we say so and the answer stays hidden rather than being shown unverified.",
+        shows: "checked" as const,
+      },
+      {
+        title: "We work out what is being taught",
+        body: "The problem is matched against a corpus of curriculum standards, so the explanation you get is about the idea the class is working on rather than about the shortcut that would get past this one question.",
+        shows: "standard" as const,
+      },
+      {
+        title: "We name the mistake, when there is one",
+        body: "Twenty documented misconceptions, each with a signature in the working and a question that surfaces it. A wrong answer that is just a slip is called a slip. We do not invent a misunderstanding to have something to say.",
+        shows: "misconception" as const,
+      },
+      {
+        title: "You get the question to ask",
+        body: "Five of them, in escalating order, one at a time. You tap for the next one only when you need it. The answer sits behind a press and hold, so opening it is a decision rather than something you read by accident.",
+        shows: "ask" as const,
+      },
+    ],
+    notHeading: "What it does not do",
+    notList: [
+      "It never speaks to your child. There is no child account, no student login and no screen for them to read.",
+      "It does not give you the answer in a sentence. Not in a reply, not in a summary, not when you ask for it directly.",
+      "It does not teach your method. If the class is doing common denominators, that is what you get, even if you would have cross multiplied.",
+      "It does not grade your child, score your parenting, or keep a streak.",
+    ],
+    failHeading: "When it cannot do the job",
+    failBody:
+      "A blurred photo, a topic outside the corpus, a model that times out twice, a spending ceiling reached: all of these happen, and all of them produce a visible notice saying what went wrong rather than a confident-looking answer built on nothing.",
+    failBodyTwo:
+      "When the arithmetic cannot be verified in code, the answer is not merely hidden behind the hold, it is absent from the data sent to your browser. There is nothing there to reveal.",
+  },
+
+  research: {
+    heading: "What this is built on, and what it has not shown",
+    standfirst:
+      "ParentPilot has not been evaluated. No trial, no control group, no published result. Nothing on this page is a claim about this product.",
+    admissionHeading: "The honest position",
+    admission:
+      "Four findings shaped how this is built. Each one is about parents, children and homework in general, not about this app. A product that cites research it did not run is describing its reasoning, not its results, and the two are easy to blur on purpose. We would rather say it plainly than imply otherwise with a graph.",
+    tableHeading: "The four findings",
+    columnFinding: "Finding",
+    columnSource: "Source",
+    columnConsequence: "What it changed here",
+    entries: [
+      {
+        finding:
+          "Parents who are anxious about math pass that anxiety to their children, and the effect appears only among parents who help with homework often.",
+        source: "Maloney, Ramirez, Gunderson, Levine and Beilock, Psychological Science, 2015",
+        consequence:
+          "The product never asks the parent to explain anything. It hands them a question to ask, so the help they give does not require them to perform competence they do not feel.",
+      },
+      {
+        finding:
+          "Praise aimed at effort and strategy sustains persistence later. Praise aimed at the person does not.",
+        source: "Gunderson and colleagues, Child Development, 2013",
+        consequence:
+          "Live Mode raises a card for generic praise and suggests naming what the child actually did. Praise is never scored or counted against the parent.",
+      },
+      {
+        finding:
+          "Help that supports a child's autonomy produces better learning than help that takes over the task.",
+        source: "Grolnick and Ryan, Journal of Personality and Social Psychology, 1989",
+        consequence:
+          "The hint ladder escalates one rung at a time and the answer is locked. The session summary measures questions asked and silences waited through against answers given.",
+      },
+      {
+        finding:
+          "Waiting several seconds after asking a question lengthens and improves the answer that comes back.",
+        source: "Rowe, Journal of Teacher Education, 1986",
+        consequence:
+          "Every question on the ask card is labelled with the instruction to wait, and a long silence after a question is classified as productive rather than as nothing happening.",
+      },
+    ],
+    corpusHeading: "The curriculum corpus",
+    corpusBody:
+      "Standards are matched against a hand-written corpus covering grades three to six, and the twenty misconceptions are documented ones with a stated signature in a child's working. The corpus is small and its limits are visible: a problem outside it produces a general explanation and says that is what it is.",
+    limitsHeading: "What would actually settle it",
+    limitsBody:
+      "A trial comparing families using this against families using nothing, measuring both the child's learning and the parent's anxiety, over a term rather than an evening. Until somebody runs one, the right description of this product is a careful application of other people's findings.",
+    howLink: "See what it actually does",
+  },
+
+  forTeachers: {
+    heading: "It will not undo your lesson",
+    standfirst:
+      "The worry is reasonable: a parent with an AI at the kitchen table teaching the shortcut you spent three weeks getting them past. Here is what stops that.",
+    noteCaption: "The note a family sends you when they stop. Drafted by the product, sent by the parent.",
+    /* An example of the shape the note takes. Written by hand for this page
+       and labelled as an example, because a real one would be a real child. */
+    sampleNote:
+      "Hello, we spent about twenty five minutes on the fractions homework tonight and stopped before finishing. She could add fractions with the same denominator confidently. Adding quarters to thirds is where it came apart: she added the denominators as well as the numerators. I did not want to teach her a shortcut that contradicts what you are doing in class, so we left the last three questions.",
+    misconceptionLabel: "Documented misconception matched:",
+    seeIt: "See the product",
+    promisesHeading: "Four things it will not do",
+    promises: [
+      {
+        title: "It does not give the answer",
+        body: "Not in a reply, not in a summary, not when a parent asks for it outright. The answer sits behind a press and hold, and the request for it is answered with the next question instead.",
+      },
+      {
+        title: "It teaches the method you are teaching",
+        body: "Every explanation is anchored to a curriculum standard. Where the parent's own method differs, both are shown side by side and the class method is the one the questions follow.",
+      },
+      {
+        title: "It never speaks to the child",
+        body: "There is no child account and no screen for a child to read. Everything it produces is addressed to the adult, including the sentences they are meant to say out loud.",
+      },
+      {
+        title: "It stops rather than pushing",
+        body: "Twenty minutes on one problem, or a session that has turned sharp, ends the session and drafts you a note. Unfinished homework with an explanation is better for you than finished homework that was really the parent's.",
+      },
+    ],
+    noteHeading: "The note",
+    noteBody:
+      "When a session is parked, the product drafts a note saying what the child could do, where it came apart, and why they stopped. The parent reads it, edits it, and sends it. Nothing reaches you automatically and nothing is sent without a parent choosing to.",
+    standardsHeading: "Standards",
+    standardsBody:
+      "Grades three to six, matched against a hand-written corpus. Every packet cites the standard it was built from, and a parent can open the citation to read the plain-language version of it. When a problem falls outside the corpus, the product says so rather than guessing at a standard.",
+    askHeading: "If it gets something wrong",
+    askBody:
+      "It will. A misread line, a standard matched to the wrong idea, a misconception named where there was only a slip. The parent sees what was read before anything is built on it, and every packet says how confident the reading was. If you want a topic or a misconception handled differently, that is a change to the corpus, which is hand written and reviewable rather than learned.",
+  },
+
   nav: {
+    howItWorks: "How it works",
+    research: "Research",
+    forTeachers: "For teachers",
+    openApp: "Open ParentPilot",
     capture: "New worksheet",
     live: "Live Mode",
     check: "Check finished work",
@@ -107,6 +252,7 @@ export const copy = {
        disclosure, because a parent at 8pm wants to start, not to read a
        literature review. */
     researchMoreLabel: "The rest of the research this is built on",
+    researchLink: "What this is built on, and what it has not shown",
   },
 
   setup: {
@@ -393,6 +539,7 @@ export const copy = {
   },
 
   account: {
+    setupLink: "Add or change a child",
     heading: "Your account",
     signedInAs: "Signed in as",
     anonymous: "You are not signed in. Everything still works; nothing is kept beyond this browser.",

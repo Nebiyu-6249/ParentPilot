@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { Page, Section } from "@/components/ui";
+import { SiteBody, SiteHero, SiteSection } from "@/components/site/SitePage";
 
 export const metadata: Metadata = { title: "Privacy and cookies" };
 
@@ -8,20 +8,25 @@ export const metadata: Metadata = { title: "Privacy and cookies" };
  * The privacy page.
  *
  * Every claim here is a claim about code that exists in this repository, and
- * the file that backs it is named. If a claim below stops being true, the
- * page is wrong and must change in the same commit as the code.
+ * the file that backs it is now actually named rather than merely promised.
+ * `scripts/check.ts` reads the paths off this page and fails if one of them
+ * does not exist, so a file that moves takes the page down with it instead of
+ * leaving a citation pointing at nothing.
+ *
+ * If a claim below stops being true, the page is wrong and must change in the
+ * same commit as the code.
  */
 export default function PrivacyPage() {
   return (
-    <Page>
-      <header style={{ padding: "44px 0 24px" }}>
-        <h1>Privacy and cookies</h1>
-        <p style={{ marginTop: 16, fontSize: 17 }}>
-          Plain language, no legalese. Everything on this page describes what the code actually does.
-        </p>
-      </header>
+    <main>
+      <SiteHero
+        title="What we keep, and what we cannot keep"
+        standfirst="Plain language, no legalese. Every section below names the file that makes it true."
+      />
 
-      <Section title="Worksheet photos">
+      <SiteBody>
+
+      <SiteSection title="Worksheet photos" first>
         <p style={{ fontSize: 17, marginBottom: 14 }}>
           When you photograph a worksheet, the image is sent to OpenAI so it can be read. Before it
           leaves our server we strip the metadata out of it, which on a phone photo usually includes
@@ -37,9 +42,13 @@ export default function PrivacyPage() {
           OpenAI processes the image under their API terms. We do not use your worksheets to train
           anything.
         </p>
-      </Section>
+        <p style={{ marginTop: 18, display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <code className="pp-source-file">lib/exif.ts</code>
+        <code className="pp-source-file">app/api/thread/turn/route.ts</code>
+        </p>
+      </SiteSection>
 
-      <Section title="Live Mode audio">
+      <SiteSection title="Live Mode audio">
         <p style={{ fontSize: 17, marginBottom: 14 }}>
           In Chrome, Edge and Safari, Live Mode uses the speech recognition built into your browser.
           The audio never leaves your device. Nothing is uploaded, nothing is recorded, and there is
@@ -60,9 +69,13 @@ export default function PrivacyPage() {
           conversational moves has no text field at all, so this is not a policy we are asking you to
           trust, it is a shape the database is in.
         </p>
-      </Section>
+        <p style={{ marginTop: 18, display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <code className="pp-source-file">lib/live/useLiveTranscript.ts</code>
+        <code className="pp-source-file">prisma/schema.prisma</code>
+        </p>
+      </SiteSection>
 
-      <Section title="Your child">
+      <SiteSection title="Your child">
         <p style={{ fontSize: 17, marginBottom: 14 }}>
           No account is created for your child. There is no student login, no child-facing screen,
           and nothing for them to sign into. We store a grade level, a curriculum, the subjects you
@@ -73,9 +86,12 @@ export default function PrivacyPage() {
           The AI in this product never addresses your child. That rule is written into every prompt
           file, not just into the interface.
         </p>
-      </Section>
+        <p style={{ marginTop: 18, display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <code className="pp-source-file">prompts/_standing-rules.md</code>
+        </p>
+      </SiteSection>
 
-      <Section title="Cookies">
+      <SiteSection title="Cookies">
         <p style={{ fontSize: 17, marginBottom: 14 }}>
           One cookie, called <code>pp_session</code>. It holds an identifier for your profile and
           nothing else. Without it we cannot tell your worksheets from anyone else&apos;s, which makes
@@ -89,24 +105,34 @@ export default function PrivacyPage() {
         <p style={{ fontSize: 16, color: "var(--muted)" }}>
           If analytics are ever added, this stops being true and a consent banner becomes mandatory.
         </p>
-      </Section>
+        <p style={{ marginTop: 18, display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <code className="pp-source-file">lib/session.ts</code>
+        </p>
+      </SiteSection>
 
-      <Section title="Getting your data out, or deleting it">
+      <SiteSection title="Getting your data out, or deleting it">
         <p style={{ fontSize: 17, marginBottom: 14 }}>
           Both controls are in <a href="/settings">Settings</a>, and both actually work. Export gives
           you a JSON file with everything we hold about you and your children. Delete removes your
           profile, your children&apos;s profiles, every worksheet, every problem, every packet and
           every session, and it cannot be undone.
         </p>
-      </Section>
+        <p style={{ marginTop: 18, display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <code className="pp-source-file">app/api/account/route.ts</code>
+        </p>
+      </SiteSection>
 
-      <Section title="Who we share with">
+      <SiteSection title="Who we share with">
         <p style={{ fontSize: 17, marginBottom: 14 }}>
           OpenAI, for reading worksheets and writing your primer, and for fallback transcription in
           browsers that need it. Our hosting and database providers, because the app runs on their
           machines. Nobody else. We do not sell anything to anyone.
         </p>
-      </Section>
-    </Page>
+        <p style={{ marginTop: 18, display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <code className="pp-source-file">lib/ai/provider.ts</code>
+        </p>
+      </SiteSection>
+      </SiteBody>
+    </main>
   );
 }

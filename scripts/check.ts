@@ -1000,6 +1000,112 @@ section("The chat surface keeps the promises the old screens made");
 
 // ---------------------------------------------------------------------------
 
+section("The marketing site says only things that are true");
+
+{
+  const pages = ["page", "how-it-works/page", "research/page", "for-teachers/page", "privacy/page"];
+  const source = Object.fromEntries(
+    pages.map((name) => [
+      name,
+      readFileSync(path.join(process.cwd(), "app", "(site)", `${name}.tsx`), "utf8"),
+    ]),
+  );
+
+  for (const name of pages) {
+    ok(`${name} exists`, (source[name] ?? "").length > 0);
+  }
+
+  /* Comments, not code, have now produced four false failures in this file.
+     The comment on for-teachers says there are no testimonials on it, which
+     is exactly the word the ban scans for. */
+  const all = codeOnly(pages.map((n) => source[n] ?? "").join("\n"));
+
+  /* The two additions round two made to the ban list, held across four pages
+     rather than one. Round four withdrew the ban list's radius and typeface
+     clauses by name and left these two standing. */
+  ok("no tracked-out all-caps eyebrow anywhere on the site",
+    !/textTransform:\s*"uppercase"/.test(all));
+  ok("no invented testimonial", !/testimonial|["“][^"”]{20,}["”]\s*,?\s*[—-]\s*[A-Z][a-z]+ [A-Z]/.test(all));
+  ok("no mascot, no confetti, no glassmorphism",
+    !/mascot|confetti|backdrop-?filter/i.test(all));
+  ok('no "it is not X, it is Y"',
+    !/\bit(?:'s| is) not [a-z ]{3,20}, it(?:'s| is)\b/i.test(all));
+
+  /* Every headline is one string. A single accented word inside one is the
+     other round two addition, and it is easiest to introduce by splitting a
+     headline into spans. */
+  const headlines = [...all.matchAll(/<h1[^>]*>\s*\{([^}]*)\}\s*<\/h1>/g)];
+  ok(`every headline is one expression with no accented word  (${headlines.length})`,
+    headlines.length > 0 && headlines.every((m) => !(m[1] ?? "").includes("<")));
+
+  /* The pages are built from the fixture rather than from invented output, so
+     a page cannot describe a product different from the one behind the door. */
+  ok("how-it-works renders the real fixture", (source["how-it-works/page"] ?? "").includes("demoBundle"));
+  ok("for-teachers renders the real standard", (source["for-teachers/page"] ?? "").includes("demoBundle"));
+
+  /* The research page's whole argument is that it has no results of its own.
+     If that admission is ever quietly dropped, the citations become a claim
+     about this product rather than about other people's work. */
+  ok("the research page admits the product is unevaluated",
+    /has not been evaluated/i.test(copy.research.standfirst));
+  ok("and says what would settle it", copy.research.limitsBody.length > 80);
+  ok("every finding names its source and its consequence",
+    copy.research.entries.length === 4 &&
+      copy.research.entries.every((e) => e.source.length > 10 && e.consequence.length > 40));
+  // No effect sizes or percentages, which would invite the findings to be read
+  // as results about this product.
+  const researchText = copy.research.entries.map((e) => `${e.finding} ${e.consequence}`).join(" ");
+  ok("no invented statistic on the research page",
+    !/\d+\s?%|\bp\s?[<=]\s?0?\.\d|\bd\s?=\s?0?\.\d/.test(researchText));
+
+  /* The privacy page claims each section names the file that makes it true.
+     That claim is only worth making if the files are real. */
+  const cited = [...(source["privacy/page"] ?? "").matchAll(/className="pp-source-file">([^<]+)</g)]
+    .map((m) => (m[1] ?? "").trim());
+  ok(`the privacy page cites source files  (${cited.length})`, cited.length >= 6);
+  for (const file of cited) {
+    ok(`cited file exists: ${file}`, existsSync(path.join(process.cwd(), file)));
+  }
+
+  /* Rewriting the footer orphaned /setup entirely: nothing linked to it. Every
+     page route must be reachable from somewhere, so this walks the links. */
+  {
+    const linkable = readdirSync(path.join(process.cwd(), "app", "(site)"), { withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name)
+      .filter((name) => !name.startsWith("(") && !name.startsWith("["));
+
+    const everySource = [
+      ...listFiles(path.join("app"), /\.tsx$/),
+      ...listFiles("components", /\.tsx$/),
+    ]
+      .map((f) => readFileSync(f, "utf8"))
+      .join("\n");
+
+    for (const route of linkable) {
+      /* A redirect stub exists precisely to be unlinked: it is there for old
+         bookmarks after the thing moved into the thread. A dynamic route keeps
+         its page one level down, under the [param] segment. */
+      const direct = path.join(process.cwd(), "app", "(site)", route, "page.tsx");
+      const page = existsSync(direct) ? readFileSync(direct, "utf8") : "";
+      if (/redirect\("\/[a-z]/.test(page)) continue;
+
+      /* Three spellings. A literal href; a template literal for a dynamic
+         route, which is how /recap is linked; and the same interpolated into
+         an absolute URL, which is how a share link is built. */
+      const literal = [...everySource.matchAll(new RegExp(`href="/${route}(?:["/?])`, "g"))].length;
+      const templated = [...everySource.matchAll(new RegExp("/" + route + "/\\$\\{", "g"))].length;
+      ok(`/${route} is reachable  (${literal + templated})`, literal + templated > 0);
+    }
+  }
+
+  // The teacher note on /for-teachers is an example and is labelled as one.
+  ok("the sample teacher note is labelled as a draft, not as a real family",
+    /Drafted by the product/.test(copy.forTeachers.noteCaption));
+}
+
+// ---------------------------------------------------------------------------
+
 section("Nothing anybody says is ever kept");
 
 {

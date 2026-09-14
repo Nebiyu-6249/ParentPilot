@@ -38,12 +38,16 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
             <Logo size={26} onFrame />
           </a>
 
+          {/* Three questions and one door. Settings, history and the account
+              live inside the product, because a visitor who has not opened it
+              has nothing to set. */}
           <nav className="pp-nav">
-            {/* One product link. Photographing a worksheet and listening are
-                both things that happen in the thread now, so the nav does not
-                pretend they are separate destinations. */}
-            <a href="/app">{copy.nav.capture}</a>
-            <a href="/settings">{copy.nav.settings}</a>
+            <a href="/how-it-works">{copy.nav.howItWorks}</a>
+            <a href="/research">{copy.nav.research}</a>
+            <a href="/for-teachers">{copy.nav.forTeachers}</a>
+            <a href="/app" className="pp-nav-cta">
+              {copy.nav.openApp}
+            </a>
             <ThemeToggle onFrame />
           </nav>
         </div>
@@ -70,10 +74,11 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
           }}
         >
           <a href="/privacy">{copy.nav.privacy}</a>
+          <a href="/how-it-works">{copy.nav.howItWorks}</a>
+          <a href="/research">{copy.nav.research}</a>
+          <a href="/for-teachers">{copy.nav.forTeachers}</a>
           <a href="/check">{copy.nav.check}</a>
-          <a href="/history">{copy.history.heading}</a>
-          <a href="/account">{copy.account.heading}</a>
-          <a href="/setup">Set up</a>
+          <a href="/settings">{copy.nav.settings}</a>
           <span style={{ marginLeft: "auto", maxWidth: "46ch" }}>{copy.landing.noChild}</span>
         </div>
       </footer>

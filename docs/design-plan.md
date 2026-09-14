@@ -668,3 +668,56 @@ in it.
 |---|---|
 | The clock started when the parent tapped, counting the permission prompt as homework | It starts when listening starts |
 | "See the whole session" read as a sentence, not a link | Thread links take the accent and an underline; the global rule is `color: inherit`, which only works inside prose |
+
+## Step six: a marketing site, four pages
+
+The brief pinned the palette and the type in round two, so those were not free
+axes here. What was free was how each page opens, and the hero is where a
+generated page usually gives itself away.
+
+Each page opens on a real artifact from the fixture instead of a slogan:
+
+| Page | Opens on | Rejected |
+|---|---|---|
+| `/` | The demo packet, rendering live | A screenshot in a laptop frame |
+| `/how-it-works` | The worksheet itself, in the child's handwriting | Three feature cards in a row |
+| `/research` | The admission that the product is unevaluated | Three big numbers over citations |
+| `/for-teachers` | The note a teacher actually receives | Testimonials, which would mean inventing a teacher |
+| `/privacy` | The claim that each section names its file | "Your privacy matters to us" |
+
+`/how-it-works` is numbered because it genuinely is a sequence, which is the
+only case where numbered markers are honest. Each stage quotes what that stage
+produced, pulled from the same fixture the product serves, so the page cannot
+drift into describing a different product from the one behind the door.
+
+`/research` is the page that mattered most to get right. The usual shape is
+three large numbers over a citation, which invites a reader to take findings
+about parents in general as results about this product. So the admission goes
+first, in the standfirst, and each finding gets a third column saying what it
+changed in the build. That column is the only part of the page about
+ParentPilot, and the rule between it and the finding is the argument: those are
+not the same kind of statement. No effect sizes are quoted, asserted by a check
+that scans for percentages and p values.
+
+`/privacy` now does what it always claimed. Every section names the file that
+makes it true, and `scripts/check.ts` reads those paths off the page and fails
+if one does not exist. A file that moves takes the page down with it rather
+than leaving a citation pointing at nothing.
+
+## What the screenshots and the checks caught
+
+| Found | Fix |
+|---|---|
+| Four nav links plus a bordered call to action measured 478px in a 390px viewport, pushing all five pages sideways | On a phone the header is the logo and one door; the content links are in the footer and each page links onward in its own body |
+| `/research` and `/privacy` left the right half of the hero empty | With no artifact beside it, the headline and the line under it become the two columns |
+| Rewriting the footer orphaned `/setup` entirely, with nothing linking to it | The setup flow hangs off the account screen, where a parent with a child to add actually is |
+
+The orphan is the one worth dwelling on, because nothing would have caught it:
+the route built, the page rendered, and no test visited it. There is now a walk
+over every route under `app/(site)` that fails when nothing links to it,
+skipping redirect stubs, which exist precisely to be unlinked.
+
+Four of the checks written across this round failed first time because they
+scanned comments rather than code. The comment on `/for-teachers` says there
+are no testimonials on it, which is exactly the word the ban scans for. There
+is a shared `codeOnly()` helper now, and it is used everywhere a ban list runs.
