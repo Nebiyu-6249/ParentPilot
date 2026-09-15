@@ -120,10 +120,65 @@ export const CHAT_INTENTS = [
 ] as const;
 export type ChatIntent = (typeof CHAT_INTENTS)[number];
 
+/**
+ * A definition, rendered as a card rather than a paragraph.
+ *
+ * `forNineYearOld` is a separate field rather than an instruction to write
+ * simply, because a parent asking for the child-level version wants the same
+ * idea in different words, not the explanation replaced. Keeping both lets the
+ * card carry a toggle instead of costing a second turn.
+ */
+export const explainerSchema = z.object({
+  term: z.string().min(1).max(80),
+  short: z.string().min(1),
+  more: z.string().default(""),
+  forNineYearOld: z.string().default(""),
+});
+
+/**
+ * A method demonstrated end to end, on numbers that are not the child's.
+ *
+ * `problem` is required and is the safety rail made structural: there is
+ * nowhere here to put a walkthrough that does not name the numbers it used, so
+ * a worked example on the active problem is visible rather than buried in
+ * prose.
+ */
+export const workedExampleSchema = z.object({
+  problem: z.string().min(1).max(120),
+  steps: z
+    .array(z.object({ move: z.string().min(1), working: z.string().default("") }))
+    .min(2)
+    .max(8),
+  point: z.string().default(""),
+});
+
+export const strategySchema = z.object({
+  moves: z.array(z.object({ title: z.string().min(1), body: z.string().min(1) })).min(1).max(3),
+  avoid: z.string().default(""),
+});
+
 export const chatTurnSchema = z.object({
   intent: z.enum(CHAT_INTENTS),
+  /* First in the shape on purpose. The streaming extractor reads this field
+     out of the partial JSON as it arrives, so it has to come before the
+     structured payloads or a parent watches a blank screen while the card is
+     written. */
   reply: z.string().min(1),
+  explainer: explainerSchema.nullable().default(null),
+  workedExample: workedExampleSchema.nullable().default(null),
+  strategy: strategySchema.nullable().default(null),
+  /**
+   * Two or three next moves, written for this turn.
+   *
+   * Not a fixed list: what is worth asking after a definition is not what is
+   * worth asking after a worked example. Short enough to be a chip.
+   */
+  chips: z.array(z.string().min(1).max(44)).max(3).default([]),
 });
+
+export type Explainer = z.infer<typeof explainerSchema>;
+export type WorkedExample = z.infer<typeof workedExampleSchema>;
+export type Strategy = z.infer<typeof strategySchema>;
 
 export type ChatTurn = z.infer<typeof chatTurnSchema>;
 

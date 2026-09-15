@@ -10,6 +10,8 @@ import {
   AccountIcon,
   CameraIcon,
   CheckIcon,
+  ChevronIcon,
+  CopyIcon,
   MicrophoneIcon,
   MicrophoneOffIcon,
   PanelIcon,
@@ -18,6 +20,7 @@ import {
 } from "@/components/icons";
 import { useLiveSession } from "@/lib/live/useLiveSession";
 import { copy } from "@/lib/copy";
+import { Markdown } from "@/lib/markdown";
 import type { RegisterName } from "@/lib/ai/schemas";
 import {
   currentProblem,
@@ -65,6 +68,12 @@ export default function AppShell({
   const [register, setRegister] = useState<RegisterName>(initialRegister);
   const [text, setText] = useState("");
   const [shareOpen, setShareOpen] = useState(false);
+  /** The reply as it streams, before the turn is committed. */
+  const [draft, setDraft] = useState("");
+  /** Next moves for the turn just finished, written by the model. */
+  const [chips, setChips] = useState<string[]>([]);
+  /** False once the parent scrolls up, so the thread stops yanking them back. */
+  const [pinned, setPinned] = useState(true);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const threadRef = useRef<HTMLDivElement>(null);
@@ -117,12 +126,42 @@ export default function AppShell({
 
   const live = useLiveSession(language, emitLive);
 
+  /* Set while the thread scrolls itself, so its own scroll does not read as
+     the parent scrolling away. Without this the thread un-pinned itself on
+     the first streamed chunk, stopped following, and put up a jump control
+     nobody had asked for. */
+  const selfScrolling = useRef(false);
+
   const scrollToEnd = useCallback(() => {
     window.requestAnimationFrame(() => {
       const el = threadRef.current;
-      if (el) el.scrollTop = el.scrollHeight;
+      if (!el) return;
+      selfScrolling.current = true;
+      el.scrollTop = el.scrollHeight;
+      window.setTimeout(() => {
+        selfScrolling.current = false;
+      }, 120);
     });
   }, []);
+
+  /**
+   * Follow the bottom, until the parent says otherwise.
+   *
+   * Scrolling up mid-reply is how someone re-reads the question they were
+   * given, and a thread that drags them back down is unusable while text is
+   * streaming into it. Within a screen of the bottom counts as still pinned.
+   */
+  const onThreadScroll = useCallback(() => {
+    if (selfScrolling.current) return;
+    const el = threadRef.current;
+    if (!el) return;
+    const fromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setPinned(fromBottom < 120);
+  }, []);
+
+  const follow = useCallback(() => {
+    if (pinned) scrollToEnd();
+  }, [pinned, scrollToEnd]);
 
   /** Appends a turn from the parent, then streams the assistant's reply. */
   const send = useCallback(
@@ -140,6 +179,9 @@ export default function AppShell({
         ]);
       }
       setStatus(copy.status.reading);
+      setDraft("");
+      setChips([]);
+      setPinned(true);
       scrollToEnd();
 
       try {
@@ -150,15 +192,29 @@ export default function AppShell({
         const decoder = new TextDecoder();
         let buffer = "";
         let cards: Card[] = [];
+        let nextChips: string[] = [];
 
         const consume = (line: string): void => {
           const trimmed = line.trim();
           if (!trimmed) return;
           const event = JSON.parse(trimmed) as
             | { type: "status"; text: string }
-            | { type: "cards"; cards: Card[] };
-          if (event.type === "status") setStatus(event.text);
-          else cards = event.cards;
+            | { type: "delta"; text: string }
+            | { type: "cards"; cards: Card[]; chips?: string[] };
+
+          if (event.type === "status") {
+            setStatus(event.text);
+            return;
+          }
+          if (event.type === "delta") {
+            // The reply, as it is written. Cleared when the turn commits.
+            setStatus(null);
+            setDraft((current) => current + event.text);
+            follow();
+            return;
+          }
+          cards = event.cards;
+          nextChips = event.chips ?? [];
         };
 
         for (;;) {
@@ -184,6 +240,7 @@ export default function AppShell({
             createdAt: new Date().toISOString(),
           },
         ]);
+        setChips(nextChips);
       } catch {
         setTurns((current) => [
           ...current,
@@ -197,10 +254,11 @@ export default function AppShell({
         ]);
       } finally {
         setStatus(null);
+        setDraft("");
         scrollToEnd();
       }
     },
-    [scrollToEnd],
+    [scrollToEnd, follow],
   );
 
   function post(payload: Record<string, unknown>, parentBody: string | null): void {
@@ -375,7 +433,7 @@ export default function AppShell({
           onShareClose={() => setShareOpen(false)}
         />
 
-        <div className="pp-thread" ref={threadRef}>
+        <div className="pp-thread" ref={threadRef} onScroll={onThreadScroll}>
           <div className="pp-thread-inner">
             {empty && (
               <div className="pp-empty">
@@ -453,7 +511,7 @@ export default function AppShell({
                   {turn.body}
                 </div>
               ) : (
-                <div key={turn.id} className="pp-turn-assistant">
+                <div key={turn.id} className="pp-turn-assistant" data-turn="assistant">
                   {turn.cards.map((card, index) => (
                     <ThreadCard
                       key={`${turn.id}-${index}`}
@@ -462,11 +520,24 @@ export default function AppShell({
                       onSolved={solved}
                     />
                   ))}
+                  <TurnCopy turn={turn} />
                 </div>
               ),
             )}
 
-            {status && (
+            {/* The reply as it is written. Committed as a turn when the
+                structured half validates, so what is on screen here is a
+                preview and never the record. */}
+            {draft && (
+              <div className="pp-turn-assistant pp-turn-draft" aria-live="polite">
+                <div className="pp-turn-text" style={{ fontSize: 15, lineHeight: 1.6, maxWidth: "68ch" }}>
+                  <Markdown source={draft} />
+                  <span className="pp-caret" aria-hidden="true" />
+                </div>
+              </div>
+            )}
+
+            {status && !draft && (
               <div
                 className="pp-turn-assistant"
                 style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--app-text-dim)", fontSize: 14 }}
@@ -478,8 +549,35 @@ export default function AppShell({
                 <span aria-hidden="true">…</span>
               </div>
             )}
+
+            {/* Next moves, written for the turn above. Tapping one is the same
+                as typing it, which is why they read like something a parent
+                would have typed. */}
+            {chips.length > 0 && !status && !draft && (
+              <div className="pp-next" aria-label={copy.chat.chipsLabel}>
+                {chips.map((chip) => (
+                  <button key={chip} type="button" className="pp-chip" onClick={() => submitText(chip)}>
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
+
+        {!pinned && (
+          <button
+            type="button"
+            className="pp-jump"
+            onClick={() => {
+              setPinned(true);
+              scrollToEnd();
+            }}
+          >
+            <ChevronIcon direction="down" size={15} />
+            {copy.chat.jumpToLatest}
+          </button>
+        )}
 
         <div className="pp-composer-wrap">
           <div className="pp-composer">
@@ -590,4 +688,74 @@ function groupThreads(threads: ThreadSummary[]): Record<string, ThreadSummary[]>
 function formatClock(seconds: number): string {
   const m = String(Math.floor(seconds / 60)).padStart(2, "0");
   return `${m}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+/**
+ * Copy an assistant turn.
+ *
+ * Appears on hover and on focus, so it is reachable by keyboard rather than
+ * only by pointer. It copies the words, not the cards: a parent copying a
+ * worked example wants to paste it into a message, and a JSON blob is not
+ * that.
+ */
+function TurnCopy({ turn }: { turn: Turn }) {
+  const [copied, setCopied] = useState(false);
+  const text = plainText(turn);
+  if (!text) return null;
+
+  return (
+    <div className="pp-turn-tools">
+      <button
+        type="button"
+        className="pp-turn-copy"
+        aria-label={copy.chat.copyTurn}
+        onClick={() => {
+          void navigator.clipboard
+            .writeText(text)
+            .then(() => setCopied(true))
+            .catch(() => setCopied(false));
+        }}
+      >
+        <CopyIcon size={14} />
+        {copied ? copy.chat.copiedTurn : copy.chat.copyTurn}
+      </button>
+    </div>
+  );
+}
+
+/** An assistant turn as something a parent could paste into a message. */
+function plainText(turn: Turn): string {
+  const parts: string[] = [];
+
+  for (const card of turn.cards) {
+    switch (card.kind) {
+      case "text":
+        parts.push(card.body);
+        break;
+      case "ask":
+        parts.push(card.question);
+        break;
+      case "explainer":
+        parts.push(`${card.term}: ${card.short}`);
+        if (card.more) parts.push(card.more);
+        break;
+      case "worked_example":
+        parts.push(card.problem);
+        parts.push(
+          card.steps.map((s, i) => `${i + 1}. ${s.move}${s.working ? ` ${s.working}` : ""}`).join("\n"),
+        );
+        if (card.point) parts.push(card.point);
+        break;
+      case "strategy":
+        parts.push(card.moves.map((m) => `${m.title}: ${m.body}`).join("\n"));
+        if (card.avoid) parts.push(card.avoid);
+        break;
+      // The answer is not copyable from here. It lives behind the press and
+      // hold, and a copy control that lifted it out would be a way around it.
+      default:
+        break;
+    }
+  }
+
+  return parts.join("\n\n").trim();
 }

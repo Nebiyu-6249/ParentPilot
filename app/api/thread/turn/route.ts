@@ -13,7 +13,7 @@ import {
 import { clientIp, consume, logFailure, validateUpload } from "@/lib/limits";
 import { copy } from "@/lib/copy";
 import { demoBundle } from "@/lib/demo";
-import { chatTurn, extractWorksheet, isConfigured, ModelError } from "@/lib/ai/provider";
+import { chatTurnStreaming, extractWorksheet, isConfigured, ModelError } from "@/lib/ai/provider";
 import { prisma, hasDatabase } from "@/lib/db";
 import { toDataUrl } from "@/lib/exif";
 import { currentParent, ensureParent } from "@/lib/session";
@@ -366,7 +366,11 @@ export async function POST(request: Request): Promise<Response> {
 
         let turn;
         try {
-          turn = await chatTurn({
+          /* Streamed. The reply arrives as it is written, which is the single
+             biggest difference between this and a two second blank screen.
+             The cards are built from the structured half once it validates. */
+          turn = await chatTurnStreaming(
+            {
             childName: parent.child?.firstName ?? null,
             printedText: bundle?.problem.printedText ?? null,
             childWorkText: bundle?.problem.childWorkText ?? null,
@@ -377,7 +381,9 @@ export async function POST(request: Request): Promise<Response> {
             transcript: renderTranscript(parsed.data.transcript ?? [], said),
             register,
             language: parent.language,
-          });
+            },
+            (text: string) => send({ type: "delta", text }),
+          );
         } catch (error) {
           await logFailure("thread-text", error instanceof Error ? error.message : String(error));
           send({ type: "cards", cards: [{ kind: "text", body: copy.chat.turnFailed }] });
@@ -392,6 +398,19 @@ export async function POST(request: Request): Promise<Response> {
         const leaked = revealsAnswer(turn.reply, computed);
         const reply = leaked ? copy.chat.answerBehindHold : turn.reply;
         if (leaked) await logFailure("thread-text", "A reply named the answer and was replaced.");
+
+        /* A worked example on the active problem's own numbers is the one way
+           the new cards could give it away, so the guard covers the structured
+           half too. Dropping the card rather than editing it: a walkthrough
+           with a step removed teaches the wrong method. */
+        const structured = { explainer: turn.explainer, workedExample: turn.workedExample, strategy: turn.strategy };
+        const cardLeak = revealsAnswer(JSON.stringify(structured), computed);
+        if (cardLeak) {
+          await logFailure("thread-text", "A card named the answer and was dropped.");
+          turn.explainer = null;
+          turn.workedExample = null;
+          turn.strategy = null;
+        }
 
         /* Logged, not rewritten. "this tool" and "I can't assist with" are the
            voice this prompt exists to get rid of, and a reply carrying one is
@@ -411,6 +430,20 @@ export async function POST(request: Request): Promise<Response> {
 
         const cards: Card[] = [{ kind: "text", body: reply, intent }];
 
+        /* The structured half. A definition, a worked example and a teaching
+           strategy are different objects and rendering all three as a
+           paragraph is why this side of the thread read as dead next to the
+           card side. Prose only turns stay prose: the model returns null. */
+        if (turn.explainer) {
+          cards.push({ kind: "explainer", ...turn.explainer });
+        }
+        if (turn.workedExample) {
+          cards.push({ kind: "worked_example", ...turn.workedExample });
+        }
+        if (turn.strategy) {
+          cards.push({ kind: "strategy", ...turn.strategy });
+        }
+
         if (intent === "answer" && bundle) {
           // Written here, from the packet, and never by the model.
           cards.push({
@@ -425,7 +458,9 @@ export async function POST(request: Request): Promise<Response> {
           cards.push({ kind: "ask", problemId, question: ladder[at] ?? "", rung: at, total: ladder.length });
         }
 
-        send({ type: "cards", cards });
+        /* Two or three next moves, written for this turn. They post as normal
+           parent turns, so a tap is the same thing as typing it. */
+        send({ type: "cards", cards, chips: cardLeak ? [] : turn.chips });
       });
 
     default:

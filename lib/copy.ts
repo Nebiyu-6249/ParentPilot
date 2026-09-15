@@ -538,6 +538,21 @@ export const copy = {
     /* The thread's own turn label when a parent taps a suggestion chip rather
        than typing. */
     nextQuestion: "Here is the next one to try.",
+
+    /* The three chat cards. Labels only: everything else on them is written
+       per turn by the model. */
+    exampleLabel: "Worked through on different numbers",
+    avoidLabel: "Worth not saying:",
+    explainerMore: "A bit more",
+    explainerLess: "Less",
+    explainerChild: "Say it to a nine year old",
+    explainerAdult: "Back to the full version",
+    /* The chips under an assistant turn. Tapping one is the same as typing it,
+       so the label is what a parent would have typed. */
+    chipsLabel: "Next",
+    copyTurn: "Copy",
+    copiedTurn: "Copied",
+    jumpToLatest: "Jump to latest",
     suggestions: [
       "she's getting frustrated",
       "she got it but I don't think she understands",

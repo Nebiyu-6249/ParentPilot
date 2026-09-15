@@ -287,6 +287,9 @@ enum MessageKind {
   LIVE_SUMMARY
   PARK_IT
   LIVE_COACH
+  EXPLAINER
+  WORKED_EXAMPLE
+  STRATEGY
 }
 
 enum Register {

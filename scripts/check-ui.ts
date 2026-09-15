@@ -394,6 +394,172 @@ async function runTopBar(browser: Browser): Promise<void> {
   await runMarketing(browser);
   await runSettledScreens(browser);
   await runTranscript(browser);
+  await runChatCards(browser);
+}
+
+/**
+ * What a free-text turn looks like once it arrives.
+ *
+ * The cards, the chips, the typing, and the three reading controls. All of it
+ * is layout and behaviour, none of it visible from the source, and the chat
+ * half of the thread reading as dead next to the card half was the complaint
+ * this fixes.
+ */
+async function runChatCards(browser: Browser): Promise<void> {
+  section("The chat half of the thread");
+  const context = await browser.newContext({ viewport: { width: 1280, height: 1000 } });
+  const page = await context.newPage();
+  await page.goto(`${BASE}/app`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(300);
+
+  await page.locator("button:has-text('saved worksheet')").first().click();
+  await page.waitForSelector(".pp-card-ask", { timeout: 60000 });
+  await page.waitForTimeout(300);
+
+  const say = async (text: string): Promise<void> => {
+    const before = await page.locator('[data-turn="assistant"]').count();
+    await page.locator(".pp-composer textarea").fill(text);
+    await page.locator(".pp-composer textarea").press("Enter");
+    await page.waitForFunction(
+      (n) => document.querySelectorAll('[data-turn="assistant"]').length > n,
+      before,
+      { timeout: 60000 },
+    );
+    await page.waitForTimeout(400);
+  };
+
+  /* Typing. The reply has to appear before the turn is committed, or the
+     parent is watching a blank screen, which is the gap against every product
+     this shell imitates. */
+  const streamed = await page.evaluate(async () => {
+    const response = await fetch("/api/thread/turn", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        kind: "text",
+        text: "can you show me with examples",
+        problemId: "demo",
+        rung: 0,
+        register: "STANDARD",
+        transcript: [],
+      }),
+    });
+    const reader = response.body?.getReader();
+    if (!reader) return { deltas: 0, firstAt: 0, totalAt: 0 };
+
+    const decoder = new TextDecoder();
+    const started = Date.now();
+    let buffer = "";
+    let deltas = 0;
+    let firstAt = 0;
+    let totalAt = 0;
+
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let at = buffer.indexOf("\n");
+      while (at !== -1) {
+        const line = buffer.slice(0, at).trim();
+        buffer = buffer.slice(at + 1);
+        at = buffer.indexOf("\n");
+        if (!line) continue;
+        const event = JSON.parse(line) as { type: string };
+        if (event.type === "delta") {
+          deltas += 1;
+          if (!firstAt) firstAt = Date.now() - started;
+        }
+        if (event.type === "cards") totalAt = Date.now() - started;
+      }
+    }
+    return { deltas, firstAt, totalAt };
+  });
+
+  ok(`the reply is typed out rather than dropped in  (${streamed.deltas} chunks)`, streamed.deltas > 2);
+  ok(`and starts well before it finishes  (${streamed.firstAt}ms of ${streamed.totalAt}ms)`,
+    streamed.firstAt > 0 && streamed.firstAt < streamed.totalAt);
+
+  // The three cards.
+  await say("what is the powerhouse of the cell");
+
+  if ((await page.locator("[data-intent]").last().getAttribute("data-intent")) === null) {
+    console.log("  note  turns are being refused, so the card assertions did not run");
+    await context.close();
+    return;
+  }
+
+  ok("a definition renders as an explainer", (await page.locator(".pp-card-explainer").count()) > 0);
+
+  /* The child level version is a toggle rather than another turn, so it costs
+     a tap instead of a wait. */
+  const short = await page.locator(".pp-explainer-short").last().innerText();
+  await page.locator("button:has-text('nine year old')").last().click();
+  await page.waitForTimeout(200);
+  const child = await page.locator(".pp-explainer-short").last().innerText();
+  ok("and says it to a nine year old on request", child !== short && child.length > 0);
+
+  await say("can you show me with examples");
+  const example = page.locator(".pp-example-problem").last();
+  ok("an example request renders a worked example", (await example.count()) === 1);
+  /* The rule that makes showing the whole method safe. The active problem is
+     the demo's 1/4 + 2/3. */
+  const used = await example.innerText();
+  ok(`and it uses different numbers  (${used})`, !used.includes("1/4") && !used.includes("2/3"));
+  ok("with the working shown", (await page.locator(".pp-example-working").count()) > 0);
+
+  await say("how do i teach my kid calculus");
+  ok("a teaching question renders a strategy", (await page.locator(".pp-strategy").count()) > 0);
+  ok("with one thing not to say", (await page.locator(".pp-strategy-avoid").count()) > 0);
+
+  // Chips, written for the turn, posting the way typing does.
+  const chips = await page.locator(".pp-next .pp-chip").allInnerTexts();
+  ok(`the turn offers next moves  (${chips.join(", ")})`, chips.length >= 2 && chips.length <= 3);
+  const parentTurns = await page.locator(".pp-turn-parent").count();
+  await page.locator(".pp-next .pp-chip").first().click();
+  await page.waitForTimeout(700);
+  ok("and tapping one posts it as the parent's own turn",
+    (await page.locator(".pp-turn-parent").count()) === parentTurns + 1);
+
+  // Markdown, rather than asterisks on screen.
+  const prose = await page.locator(".pp-turn-text").allInnerTexts();
+  ok("markdown is rendered, not printed", !prose.join(" ").includes("**"));
+
+  /* Copy is on hover and on focus. Focus is the half that matters: without it
+     the control is unreachable from a keyboard. */
+  await page.mouse.move(5, 5);
+  await page.waitForTimeout(200);
+  const idle = await page.locator(".pp-turn-tools").first().evaluate((el) => getComputedStyle(el).opacity);
+  await page.locator(".pp-turn-assistant").first().hover();
+  await page.waitForTimeout(200);
+  const hovered = await page.locator(".pp-turn-tools").first().evaluate((el) => getComputedStyle(el).opacity);
+  await page.locator(".pp-turn-copy").first().focus();
+  await page.waitForTimeout(200);
+  const focused = await page.locator(".pp-turn-tools").first().evaluate((el) => getComputedStyle(el).opacity);
+  ok(`copy appears on hover and on focus  (${idle} / ${hovered} / ${focused})`,
+    idle === "0" && hovered === "1" && focused === "1");
+
+  /* Scrolling up is how a parent re-reads the question they were given, and a
+     thread that drags them back down while text streams is unusable. */
+  /* Back to the bottom first. Focusing the copy control above scrolled the
+     thread up, which correctly un-pins it, so asserting here without
+     returning would be testing the previous step. */
+  await page.evaluate(() => {
+    const el = document.querySelector(".pp-thread");
+    if (el) el.scrollTop = el.scrollHeight;
+  });
+  await page.waitForTimeout(400);
+  ok("no jump control while following the bottom", (await page.locator(".pp-jump").count()) === 0);
+  await page.evaluate(() => {
+    const el = document.querySelector(".pp-thread");
+    if (el) el.scrollTop = 0;
+  });
+  await page.waitForTimeout(300);
+  ok("scrolling up offers a way back to the latest", (await page.locator(".pp-jump").count()) === 1);
+  await page.locator(".pp-jump").click();
+  await page.waitForTimeout(400);
+  ok("and taking it returns to the bottom", (await page.locator(".pp-jump").count()) === 0);
+
+  await context.close();
 }
 
 /**
@@ -408,6 +574,19 @@ async function runTopBar(browser: Browser): Promise<void> {
  * the half that is code: which cards come back, and whether the answer to the
  * problem in front of the child is among them.
  */
+/**
+ * Whether a turn came back from a model at all.
+ *
+ * A reply this product wrote itself, because there is no key or because the
+ * hourly ceiling is reached, carries no intent. Sections that need a real
+ * reply check this and say they did not run, rather than reporting the
+ * product's own correct refusal as a failure. Driving this suite twice inside
+ * an hour reaches that ceiling, which is the product working.
+ */
+function answered(intent: string | null): boolean {
+  return intent !== null;
+}
+
 async function runTranscript(browser: Browser): Promise<void> {
   section("The failing transcript, line by line");
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
@@ -445,6 +624,14 @@ async function runTranscript(browser: Browser): Promise<void> {
 
   // With a problem in front of the child, so the press and hold is live.
   const denominator = await say("what is a denominator", "demo");
+
+  if (!answered(denominator.intent)) {
+    console.log(`  note  turns are being refused, so the transcript did not run: "${denominator.prose}"`);
+    ok("a refused turn still says something", denominator.prose.length > 0);
+    await context.close();
+    return;
+  }
+
   ok(`"what is a denominator" is a definition, not the answer  (${denominator.intent})`,
     denominator.intent === "explain" && !denominator.kinds.includes("answer"));
 
@@ -473,8 +660,12 @@ async function runTranscript(browser: Browser): Promise<void> {
     ["what is the powerhouse of the cell", "biology"],
   ] as const) {
     const out = await say(said, null);
-    ok(`"${said}" is answered  (${out.intent})`,
-      out.intent !== "redirect" && !out.kinds.includes("answer") && out.prose.length > 20);
+    /* Substance, wherever it landed. Since the cards arrived the prose is
+       often one line with the body of the answer in an explainer beside it,
+       so measuring the paragraph alone now fails on a correct turn. */
+    const substantial = out.prose.length > 20 || out.kinds.some((k) => k !== "text");
+    ok(`"${said}" is answered  (${out.intent}, ${out.kinds.join("+")})`,
+      out.intent !== "redirect" && !out.kinds.includes("answer") && substantial);
     ok(`and the ${label} reply is not a help desk line`,
       !/this tool|this product|i can'?t assist|feel free to/i.test(out.prose));
   }

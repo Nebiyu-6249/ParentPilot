@@ -1099,6 +1099,74 @@ ok("every specified card trigger has its exact text",
 
 // ---------------------------------------------------------------------------
 
+section("A free-text turn produces an object, not a paragraph");
+
+{
+  const schemas = readFileSync(path.join(process.cwd(), "lib", "ai", "schemas.ts"), "utf8");
+  const thread = readFileSync(path.join(process.cwd(), "lib", "thread.ts"), "utf8");
+  const cards = readFileSync(path.join(process.cwd(), "components", "app", "Cards.tsx"), "utf8");
+  const shell = readFileSync(path.join(process.cwd(), "components", "app", "AppShell.tsx"), "utf8");
+  const route = readFileSync(
+    path.join(process.cwd(), "app", "api", "thread", "turn", "route.ts"), "utf8");
+  const schema = readFileSync(path.join(process.cwd(), "prisma", "schema.prisma"), "utf8");
+
+  for (const [kind, enumName] of [
+    ["explainer", "EXPLAINER"],
+    ["worked_example", "WORKED_EXAMPLE"],
+    ["strategy", "STRATEGY"],
+  ] as const) {
+    ok(`the thread models a ${kind} card`, new RegExp(`kind: "${kind}"`).test(thread));
+    ok(`and renders it`, new RegExp(`case "${kind}":`).test(cards));
+    ok(`and a stored thread can hold one`, new RegExp(enumName).test(schema));
+  }
+
+  /* The explainer's child level version is a field rather than a second turn,
+     so "say it to a nine year old" is a tap. */
+  ok("the explainer carries a child level version",
+    /forNineYearOld/.test(schemas) && /explainerChild/.test(cards));
+
+  /* The safety rail, made structural: a worked example must name the numbers
+     it used, so one on the active problem is visible rather than buried. */
+  ok("a worked example must state the problem it used",
+    /problem: z\.string\(\)\.min\(1\)/.test(schemas));
+  ok("and the answer guard covers the cards, not only the prose",
+    /revealsAnswer\(JSON\.stringify\(structured\), computed\)/.test(route));
+  ok("a card that names the answer is dropped rather than edited",
+    /turn\.workedExample = null;/.test(route));
+  ok("and its chips are dropped with it", /chips: cardLeak \? \[\] : turn\.chips/.test(route));
+
+  // Chips: written per turn, and posted the way typing is.
+  ok("chips are part of the turn", /chips: z\.array/.test(schemas));
+  ok("they are capped at three", /\.max\(3\)/.test(schemas));
+  ok("and tapping one is the same as typing it", /onClick=\{\(\) => submitText\(chip\)\}/.test(shell));
+
+  // Streaming.
+  ok("the reply is streamed", /chatTurnStreaming/.test(route) && /type: "delta"/.test(route));
+  ok("the thread shows it as it arrives", /event\.type === "delta"/.test(shell));
+  ok("the preview is replaced by the committed turn, never kept",
+    /setDraft\(""\)/.test(shell));
+  const provider = readFileSync(path.join(process.cwd(), "lib", "ai", "provider.ts"), "utf8");
+  /* Every model call increments the ledger. A streamed one reports usage in a
+     final chunk only if asked, and this is the most frequent call there is. */
+  ok("a streamed call still costs the ledger",
+    /stream_options: \{ include_usage: true \}/.test(provider) && /recordSpend\(/.test(provider));
+  ok("and estimates when the provider reports none",
+    /Math\.ceil\(raw\.length \/ 4\)/.test(provider));
+
+  // Reading the thread: markdown, copy, and scrolling that respects the parent.
+  ok("assistant prose renders markdown", /<Markdown source=\{card\.body\}/.test(cards));
+  ok("a turn can be copied", /pp-turn-copy/.test(shell));
+  /* The answer lives behind the press and hold. A copy control that lifted it
+     out of the thread would be a way around it. */
+  const plain = shell.slice(shell.indexOf("function plainText"));
+  ok("but never the answer", !/case "answer":/.test(plain));
+  ok("the thread stops following once the parent scrolls up",
+    /setPinned\(fromBottom < 120\)/.test(shell));
+  ok("and offers a way back to the bottom", /pp-jump/.test(shell));
+}
+
+// ---------------------------------------------------------------------------
+
 section("A typed problem is a worksheet, not a remark");
 
 {
@@ -1470,9 +1538,18 @@ section("Free text holds the thesis under conversational pressure");
      the answer card" indistinguishable from "write the answer". */
   ok("a turn carries an intent as well as a reply",
     /chatTurnSchema/.test(schemas) && /intent: z\.enum\(CHAT_INTENTS\)/.test(schemas));
-  ok("the schema has no field an answer could travel in",
-    /chatTurnSchema = z\.object\(\{\s*intent[^}]*reply: z\.string\(\)\.min\(1\),\s*\}\)/.test(
-      schemas.replace(/\r/g, "")));
+  /* The schema grew structured payloads for the three chat cards, so the
+     property worth asserting is no longer its exact shape. It is that nothing
+     in it is named for an answer, and that the guard covers the new fields as
+     well as the prose. */
+  const turnShape = schemas.slice(
+    schemas.indexOf("export const chatTurnSchema"),
+    schemas.indexOf("export type Explainer"),
+  );
+  ok("the turn schema has no field an answer could travel in",
+    turnShape.length > 0 && !/\b(?:answer|lockedAnswer|solution|result)\s*:/i.test(turnShape));
+  ok("and the reply is declared first, so it can be streamed",
+    turnShape.indexOf("reply:") < turnShape.indexOf("explainer:"));
 
   const textCase = route.slice(route.indexOf('case "text":'));
   ok("the answer card is written from the packet, never from the reply",
