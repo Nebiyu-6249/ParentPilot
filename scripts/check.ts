@@ -20,11 +20,17 @@ import { copy, sanitize, sanitizeDeep } from "../lib/copy";
 import { autonomyScore, countMoves } from "../lib/autonomy";
 import { detectors } from "../lib/misconception";
 import { evaluateMove, initialLiveState, LIVE_RULES } from "../lib/live/rules";
-import { computeAnswer, verifyAnswer } from "../lib/verify";
+import { computeAnswer, looksLikeProblem, verifyAnswer } from "../lib/verify";
 import { sanitizeSvg } from "../lib/svg";
 import { stripMetadata } from "../lib/exif";
 import { packetCacheKey } from "../lib/packet";
-import { currentProblem, revealsAnswer, threadTitle, threadTranscript } from "../lib/thread";
+import {
+  currentProblem,
+  resolveIntent,
+  revealsAnswer,
+  threadTitle,
+  threadTranscript,
+} from "../lib/thread";
 import { resolveAppUrl } from "../lib/app-url";
 import type { MoveLabelName } from "../lib/ai/schemas";
 
@@ -519,7 +525,16 @@ section("Colour contrast, computed from the tokens rather than asserted");
     // hairline is 1.2:1. The composer and the outline buttons use this one.
     ["--app-border-interactive", "--app-bg", 3.0, "app control borders"],
     ["--app-border-interactive", "--app-card", 3.0, "app control borders on a card"],
+    /* A filled button's label is normal-size text and needs 4.5, which white
+       on brand emerald does not reach: it measures 3.06 and was the colour of
+       Still stuck, Send, and every primary on the settled screens. --accent
+       stays the mark; --accent-fill carries the words. */
+    ["--paper-white", "--accent-fill", 4.5, "a white label on a filled accent button"],
   ];
+
+  // Not a design token: the literal the filled buttons actually set.
+  light["--paper-white"] = "#ffffff";
+  dark["--paper-white"] = "#ffffff";
 
   for (const [mode, tokens] of [["light", light], ["dark", dark]] as const) {
     for (const [fg, bg, min, label] of pairs) {
@@ -551,6 +566,10 @@ section("Colour contrast, computed from the tokens rather than asserted");
      chalk on a blackboard, which inverts whose surface it is. */
   const lighter = (a: string | undefined, b: string | undefined): boolean =>
     luminance(a ?? "#000000") > luminance(b ?? "#ffffff");
+
+  // Not a design token: the literal the filled buttons actually set.
+  light["--paper-white"] = "#ffffff";
+  dark["--paper-white"] = "#ffffff";
 
   for (const [mode, tokens] of [["light", light], ["dark", dark]] as const) {
     ok(`${mode}: the sheet is lighter than the desk, so paper reads as paper`,
@@ -1080,6 +1099,380 @@ ok("every specified card trigger has its exact text",
 
 // ---------------------------------------------------------------------------
 
+section("A free-text turn produces an object, not a paragraph");
+
+{
+  const schemas = readFileSync(path.join(process.cwd(), "lib", "ai", "schemas.ts"), "utf8");
+  const thread = readFileSync(path.join(process.cwd(), "lib", "thread.ts"), "utf8");
+  const cards = readFileSync(path.join(process.cwd(), "components", "app", "Cards.tsx"), "utf8");
+  const shell = readFileSync(path.join(process.cwd(), "components", "app", "AppShell.tsx"), "utf8");
+  const route = readFileSync(
+    path.join(process.cwd(), "app", "api", "thread", "turn", "route.ts"), "utf8");
+  const schema = readFileSync(path.join(process.cwd(), "prisma", "schema.prisma"), "utf8");
+
+  for (const [kind, enumName] of [
+    ["explainer", "EXPLAINER"],
+    ["worked_example", "WORKED_EXAMPLE"],
+    ["strategy", "STRATEGY"],
+  ] as const) {
+    ok(`the thread models a ${kind} card`, new RegExp(`kind: "${kind}"`).test(thread));
+    ok(`and renders it`, new RegExp(`case "${kind}":`).test(cards));
+    ok(`and a stored thread can hold one`, new RegExp(enumName).test(schema));
+  }
+
+  /* The explainer's child level version is a field rather than a second turn,
+     so "say it to a nine year old" is a tap. */
+  ok("the explainer carries a child level version",
+    /forNineYearOld/.test(schemas) && /explainerChild/.test(cards));
+
+  /* The safety rail, made structural: a worked example must name the numbers
+     it used, so one on the active problem is visible rather than buried. */
+  ok("a worked example must state the problem it used",
+    /problem: z\.string\(\)\.min\(1\)/.test(schemas));
+  ok("and the answer guard covers the cards, not only the prose",
+    /revealsAnswer\(JSON\.stringify\(structured\), computed\)/.test(route));
+  ok("a card that names the answer is dropped rather than edited",
+    /turn\.workedExample = null;/.test(route));
+  ok("and its chips are dropped with it", /chips: cardLeak \? \[\] : turn\.chips/.test(route));
+
+  // Chips: written per turn, and posted the way typing is.
+  ok("chips are part of the turn", /chips: z\.array/.test(schemas));
+  ok("they are capped at three", /\.max\(3\)/.test(schemas));
+  ok("and tapping one is the same as typing it", /onClick=\{\(\) => submitText\(chip\)\}/.test(shell));
+
+  // Streaming.
+  ok("the reply is streamed", /chatTurnStreaming/.test(route) && /type: "delta"/.test(route));
+  ok("the thread shows it as it arrives", /event\.type === "delta"/.test(shell));
+  ok("the preview is replaced by the committed turn, never kept",
+    /setDraft\(""\)/.test(shell));
+  const provider = readFileSync(path.join(process.cwd(), "lib", "ai", "provider.ts"), "utf8");
+  /* Every model call increments the ledger. A streamed one reports usage in a
+     final chunk only if asked, and this is the most frequent call there is. */
+  ok("a streamed call still costs the ledger",
+    /stream_options: \{ include_usage: true \}/.test(provider) && /recordSpend\(/.test(provider));
+  ok("and estimates when the provider reports none",
+    /Math\.ceil\(raw\.length \/ 4\)/.test(provider));
+
+  // Reading the thread: markdown, copy, and scrolling that respects the parent.
+  ok("assistant prose renders markdown", /<Markdown source=\{card\.body\}/.test(cards));
+  ok("a turn can be copied", /pp-turn-copy/.test(shell));
+  /* The answer lives behind the press and hold. A copy control that lifted it
+     out of the thread would be a way around it. */
+  const plain = shell.slice(shell.indexOf("function plainText"));
+  ok("but never the answer", !/case "answer":/.test(plain));
+  ok("the thread stops following once the parent scrolls up",
+    /setPinned\(fromBottom < 120\)/.test(shell));
+  ok("and offers a way back to the bottom", /pp-jump/.test(shell));
+}
+
+// ---------------------------------------------------------------------------
+
+section("A typed problem is a worksheet, not a remark");
+
+{
+  /* "4 * 4" came back as "here is the next one to try", which answers a
+     question nobody asked. Typed arithmetic now runs the pipeline a photo
+     runs. The risk in doing that is the opposite mistake, hijacking a
+     sentence that merely contains numbers, so both directions are checked. */
+  const problems: [string, string][] = [
+    ["4 * 4", "4 * 4"],
+    ["1/2 + 2/3 =", "1/2 + 2/3 ="],
+    ["1 + 1", "1 + 1"],
+    ["1/4 + 2/3", "1/4 + 2/3"],
+    ["20% of 60", "20% of 60"],
+    // The imperative a parent actually types, stripped back to the sum.
+    ["what is 4 * 4", "4 * 4"],
+    ["  calculate 12 / 4  ", "12 / 4"],
+  ];
+  for (const [typed, expected] of problems) {
+    eq(`"${typed}" is a problem`, looksLikeProblem(typed), expected);
+  }
+
+  const notProblems = [
+    "what is a denominator",
+    "what",
+    "huh",
+    "she got 3/7 again",
+    "she's getting frustrated",
+    "just tell me the answer",
+    "explain it like she's 9",
+    "how do i teach my kid calculus",
+    "what is the powerhouse of the cell",
+    "write me a python script",
+    // A bare number is not a sum, and a long remark is prose whatever is in it.
+    "2",
+    "I tried 12 + 5 with her and she said 18, but the real problem is that she is tired",
+  ];
+  for (const typed of notProblems) {
+    ok(`"${typed}" is not a problem`, looksLikeProblem(typed) === null);
+  }
+
+  const route = readFileSync(
+    path.join(process.cwd(), "app", "api", "thread", "turn", "route.ts"), "utf8");
+  const textCase = route.slice(route.indexOf('case "text":'));
+  ok("a typed problem runs the packet pipeline",
+    /looksLikeProblem\(said\)/.test(textCase) && /buildPacketFromText/.test(textCase));
+  ok("and emits the same cards a photograph does", /cardsForPacket\(bundle, null\)/.test(textCase));
+  /* No working was typed, so there is nothing to diagnose. matchMisconception
+     returns null on empty working by construction and cardsForPacket only
+     emits the card when there is one, so this is a comment on the call site
+     rather than a branch. */
+  ok("it supplies no child working, so no misconception is claimed",
+    /childWorkText: null/.test(textCase));
+
+  const packet = readFileSync(path.join(process.cwd(), "lib", "packet.ts"), "utf8");
+  ok("the pipeline can run without a stored row",
+    /export async function buildPacketFromText/.test(packet));
+  ok("and buildPacket is the wrapper that loads one",
+    /return buildPacketFromText\(\{/.test(packet));
+  /* Packet.problemId is required, so a one-off reads the cache and cannot
+     write it. Writing unconditionally would throw on the anonymous path. */
+  ok("nothing is written when there is no row", /if \(problemId\) \{/.test(packet));
+}
+
+// ---------------------------------------------------------------------------
+
+section("The answer card is offered only for the problem in front of the child");
+
+{
+  const schemas = readFileSync(path.join(process.cwd(), "lib", "ai", "schemas.ts"), "utf8");
+  const route = readFileSync(
+    path.join(process.cwd(), "app", "api", "thread", "turn", "route.ts"), "utf8");
+
+  /* A single "answer" bucket is what sent a parent asking for a definition to
+     the press and hold. Definitions, examples and clarifications each need
+     somewhere else to go, or the classifier has nowhere to put them. */
+  for (const intent of ["explain", "example", "strategy", "clarify"]) {
+    ok(`the classifier can return "${intent}"`, new RegExp(`"${intent}"`).test(schemas));
+  }
+
+  /* The server's own guard. Even a misclassification cannot reveal an answer
+     that does not exist, because there is no packet to take one from. */
+  ok("an answer intent with no active problem is demoted",
+    /if \(!hasActiveProblem\) return "explain";/.test(
+      readFileSync(path.join(process.cwd(), "lib", "thread.ts"), "utf8")));
+  ok("and the card is emitted only on the guarded intent",
+    /if \(intent === "answer" && bundle\)/.test(route));
+  ok("the answer still comes from the packet, never the reply",
+    /answer: bundle\.packet\.lockedAnswer/.test(route));
+  ok("and resolveIntent has the last word", /resolveIntent\(said, turn\.intent, bundle !== null\)/.test(route));
+
+  /* Every line below is from the transcript this round exists to fix. Each
+     one had the classifier return "answer" and each one is now impossible to
+     show a press and hold for, whatever the model says. */
+  const misread: [string, string][] = [
+    ["what is a denominator", "explain"],
+    ["what is an improper fraction", "explain"],
+    ["what's a numerator", "explain"],
+    ["so what is the lowest common denominator", "explain"],
+    ["what does regrouping mean", "explain"],
+    ["definition of a factor", "explain"],
+    ["can you show me with examples", "example"],
+    ["show me one", "example"],
+    ["walk me through it", "example"],
+    ["what", "clarify"],
+    ["what?", "clarify"],
+    ["huh", "clarify"],
+    ["sorry?", "clarify"],
+    ["i don't get it", "clarify"],
+  ];
+  for (const [said, expected] of misread) {
+    eq(`"${said}" cannot reach the answer card`, resolveIntent(said, "answer", true), expected);
+  }
+
+  /* The requests that genuinely are asking for it, which must still work. */
+  for (const said of [
+    "just tell me the answer",
+    "what is it",
+    "what's the answer",
+    "am I right that it's 11/12",
+    "I need to know if she's right",
+  ]) {
+    eq(`"${said}" still reaches the answer card`, resolveIntent(said, "answer", true), "answer");
+  }
+
+  // With nothing in front of the child there is nothing to hold back.
+  eq("no active problem means no answer to offer",
+    resolveIntent("just tell me the answer", "answer", false), "explain");
+  // And the guard only ever narrows: it never invents an answer intent.
+  for (const intent of ["coach", "explain", "example", "strategy", "clarify", "redirect"] as const) {
+    eq(`${intent} passes through untouched`, resolveIntent("anything at all", intent, true), intent);
+  }
+}
+
+// ---------------------------------------------------------------------------
+
+section("Live Mode is part of the thread rather than a screen beside it");
+
+{
+  const hook = readFileSync(path.join(process.cwd(), "lib", "live", "useLiveSession.ts"), "utf8");
+  const shell = readFileSync(path.join(process.cwd(), "components", "app", "AppShell.tsx"), "utf8");
+  const cards = readFileSync(path.join(process.cwd(), "components", "app", "Cards.tsx"), "utf8");
+  const thread = readFileSync(path.join(process.cwd(), "lib", "thread.ts"), "utf8");
+  const livePage = readFileSync(path.join(process.cwd(), "app", "(site)", "live", "page.tsx"), "utf8");
+
+  ok("the separate Live Mode screen is gone",
+    !existsSync(path.join(process.cwd(), "components", "LiveMode.tsx")));
+  ok("its route redirects into the thread", /redirect\("\/app"\)/.test(livePage));
+  ok("the microphone is a toggle in the composer, not a link",
+    /aria-pressed=\{live\.listening\}/.test(shell) && !/location\.href = "\/live"/.test(shell));
+
+  // Cards inline, and a summary when it stops. Both are turns in the thread.
+  ok("a coaching card is a turn in the thread", /kind: "live_coach"/.test(hook));
+  ok("and renders", /case "live_coach":/.test(cards));
+  ok("stopping emits a summary card", /kind: "live_summary"/.test(hook));
+  ok("a Park It emits its own card too", /kind: "park_it"/.test(hook));
+
+  /* The privacy invariant, restated for the new home. The rolling window is
+     read into a local, posted, and dropped. Anything that put it in React
+     state would make it serialisable and inspectable, which is exactly what
+     the product promises it is not. */
+  ok("the rolling window never enters React state",
+    /readWindow\(\)/.test(hook) && !/useState[^\n]*window/i.test(hook));
+  /* Scanned over code with comments stripped: the comments in that file
+     legitimately say "words" while explaining that none are kept, and a raw
+     scan read its own documentation as a violation. */
+  const hookCode = hook
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/(^|[^:])\/\/[^\n]*/g, "$1 ");
+  ok("and nothing in the session hook stores what was said",
+    !/transcriptText|setWindow|setTranscript|utterances/i.test(hookCode));
+  ok("a coaching card carries a label and a time, never a sentence that was said",
+    /triggerLabel: string;\s*body: string;\s*tOffset: number;/.test(thread.replace(/\r/g, "")));
+  /* The thread is fed back to a model on a typed turn, so what a live card
+     contributes to that transcript matters as much as what it renders. */
+  ok("a live card contributes only its label to the transcript",
+    /Raised a coaching card: \$\{card\.triggerLabel\}/.test(thread));
+
+  ok("the summary says what it was written from",
+    /summaryProvenance/.test(cards) && /No recording was kept/.test(
+      readFileSync(path.join(process.cwd(), "lib", "copy.ts"), "utf8")));
+
+  // The enum that persists a thread has to know about the new kind, or a
+  // stored thread could not hold the one turn Live Mode produces.
+  const schema = readFileSync(path.join(process.cwd(), "prisma", "schema.prisma"), "utf8");
+  ok("the message kind enum carries LIVE_COACH", /LIVE_COACH/.test(schema));
+}
+
+// ---------------------------------------------------------------------------
+
+section("The settled screens wear the product surface, not the paper one");
+
+{
+  /* Account, Settings, History, Sign in and Check moved off the marketing
+     layout. The bug this guards is specific and was live: a button on Settings
+     kept `var(--ink)` for its idle label, which is dark ink designed for paper
+     and is invisible on the app surface in dark mode. The two token families
+     must not mix on one screen. */
+  const PAPER_ONLY = [
+    "--ink", "--paper", "--muted", "--rule", "--action", "--action-label",
+    "--text-on-sheet", "--text-on-sheet-muted", "--rule-on-sheet", "--surface-sheet",
+    "--alert-fg", "--annotation", "--border-interactive",
+  ];
+
+  const onProduct = [
+    "components/AccountScreen.tsx",
+    "components/SettingsScreen.tsx",
+    "components/HistoryList.tsx",
+    "components/LoginForm.tsx",
+    "components/CheckFlow.tsx",
+    "components/app/AppPage.tsx",
+    "components/app/AppShell.tsx",
+    "components/app/ThreadBar.tsx",
+    "components/app/ShareSheet.tsx",
+  ];
+
+  for (const file of onProduct) {
+    const source = readFileSync(path.join(process.cwd(), file), "utf8");
+    const found = PAPER_ONLY.filter((token) =>
+      new RegExp(`var\\(\\s*${token}\\s*[,)]`).test(source));
+    ok(`${file.replace("components/", "")} uses no paper token${found.length ? ` (${found.join(", ")})` : ""}`,
+      found.length === 0);
+  }
+
+  /* They also have to be off the marketing layout, or they inherit its teal
+     frame and its footer of links, which on the way back from Settings is an
+     invitation to wander rather than to return. */
+  for (const route of ["account", "settings", "history", "login", "check"]) {
+    ok(`/${route} is outside the site layout`,
+      !existsSync(path.join(process.cwd(), "app", "(site)", route)) &&
+        existsSync(path.join(process.cwd(), "app", route)));
+  }
+
+  // One way back, on every one of them.
+  const appPage = readFileSync(path.join(process.cwd(), "components", "app", "AppPage.tsx"), "utf8");
+  ok("every settled screen leads back to the thread",
+    /href="\/app"/.test(appPage) && /backToThread/.test(appPage));
+}
+
+// ---------------------------------------------------------------------------
+
+section("The marketing pages say only what the product does");
+
+{
+  const pages = ["how-it-works", "research", "for-teachers"] as const;
+  for (const name of pages) {
+    const file = path.join(process.cwd(), "app", "(site)", name, "page.tsx");
+    ok(`/${name} exists`, existsSync(file));
+    const source = readFileSync(file, "utf8");
+    // Server components: no "use client", so the content is in the HTML.
+    ok(`/${name} is server rendered`, !/^"use client"/m.test(source));
+    ok(`/${name} declares its own metadata`, /export const metadata/.test(source));
+    ok(`/${name} carries OG tags`, /openGraph/.test(source) && /twitter/.test(source));
+    ok(`/${name} takes its words from lib/copy`, !/<p>[A-Z][a-z]+ [a-z]/.test(source));
+  }
+
+  /* A research page is a credibility asset, so the thing that matters is that
+     it states its limits. A page of findings with none reads as marketing. */
+  ok("the research page says what none of it proves",
+    copy.research.honest.includes("No trial of this app has been run"));
+  ok("and does not claim the product is proven",
+    !/proven|clinically|guarantees better/i.test(copy.research.thesis + copy.research.intro));
+  ok("every finding names a source",
+    [...copy.research.findings, ...copy.research.ai].every((f) => f.source.trim().length > 0));
+  /* Each citation has to say which line of the product it caused, or the page
+     is borrowing authority rather than showing its working. */
+  ok("and says what the product does because of it",
+    [...copy.research.findings, ...copy.research.ai].every((f) => f.why.trim().length > 20));
+
+  // The one promise these pages must not overstate.
+  const marketing = JSON.stringify([copy.howItWorks, copy.research, copy.forTeachers]);
+  ok("no marketing page offers anything to the child",
+    !/for your child to|your child can (use|open|sign)/i.test(marketing));
+  ok("the teacher page states what is kept about a student",
+    copy.forTeachers.privacyBody.includes("no login"));
+}
+
+// ---------------------------------------------------------------------------
+
+section("The em-dash ban covers hard-written copy, not only model output");
+
+{
+  /* `sanitize` protects what a model writes. Until now nothing protected what
+     we write, and the product's claim is "no em dashes anywhere". Walking the
+     object rather than the file, because the file legitimately contains the
+     character inside sanitize's own regexes. */
+  const offenders: string[] = [];
+  const walk = (value: unknown, at: string): void => {
+    if (typeof value === "string") {
+      if (/—|―/.test(value)) offenders.push(at);
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.forEach((v, i) => walk(v, `${at}[${i}]`));
+      return;
+    }
+    if (value && typeof value === "object") {
+      for (const [k, v] of Object.entries(value)) walk(v, at ? `${at}.${k}` : k);
+    }
+  };
+  walk(copy, "");
+  ok(`no em dash in any user-facing string${offenders.length ? ` (${offenders.join(", ")})` : ""}`,
+    offenders.length === 0);
+}
+
+// ---------------------------------------------------------------------------
+
 section("Free text holds the thesis under conversational pressure");
 
 {
@@ -1090,25 +1483,73 @@ section("Free text holds the thesis under conversational pressure");
   const thread = readFileSync(path.join(process.cwd(), "lib", "thread.ts"), "utf8");
   const schemas = readFileSync(path.join(process.cwd(), "lib", "ai", "schemas.ts"), "utf8");
 
-  // The four rules the brief names, each present in the file that enforces it.
   ok("the prompt writes the question, never the explanation to read aloud",
     /write the question the parent should ask, not the explanation/i.test(flat));
-  ok("the prompt forbids stating the answer in prose",
+  ok("the prompt forbids stating the active problem's answer in prose",
     /Do not write the answer/i.test(flat) && /not yours to write/i.test(flat));
-  ok("the prompt refuses to become a general tutor",
-    /outside what this product does/i.test(flat) && /redirect/i.test(flat));
-  ok("the prompt caps the reply at three sentences",
-    /Three sentences or fewer/i.test(flat));
-  ok("and says when depth is allowed instead", /asking for depth/i.test(flat));
+
+  /* The scope of that ban is the whole point of this round. It protects one
+     number, and it had been read as a reason to refuse a definition. */
+  ok("the ban is scoped to the active problem",
+    /Only these two, and only while ACTIVE_PROBLEM is not null/i.test(flat));
+  ok("definitions are explicitly not protected",
+    /"What is a denominator" gets a real answer/i.test(flat));
+  ok("worked examples on other numbers are explicitly allowed",
+    /Worked examples on different numbers/i.test(flat));
+  /* The single constraint that replaces the blanket refusal. */
+  ok("and the rule that makes them safe is stated",
+    /The rule that makes this safe is different numbers/i.test(flat));
+  ok("the child level version is allowed on request",
+    /Explain it the way you would to a nine year old/i.test(flat));
+
+  // Subject scope: any subject, with one honest limitation, stated once.
+  ok("any subject is in scope", /Any subject, any age, any level/i.test(flat));
+  ok("the structured tools name their real limit",
+    /kindergarten to grade eight/i.test(flat) && /Mention it once in a thread/i.test(flat));
+  ok("only requests unrelated to the child earn a redirect",
+    /The only thing that earns a redirect/i.test(flat) &&
+      /nothing to do with learning or with their child/i.test(flat));
+
+  // Length follows the question, which is why the cap is gone.
+  ok("there is no sentence cap", !/Three sentences or fewer/i.test(flat));
+  ok("length is said to follow the question", /Length follows the question/i.test(flat));
+
+  // The classifier, narrowed.
+  ok("the prompt says when answer must not fire", /`answer` is narrow/i.test(flat));
+  for (const phrase of [
+    'Any question of the form "what is a',
+    "Any request for an example",
+    'A bare "what"',
+    "Anything at all when ACTIVE_PROBLEM is null",
+  ]) {
+    ok(`answer is ruled out for: ${phrase}`, flat.includes(phrase));
+  }
+  ok("a bare what is a request to say it again", /`clarify`/.test(flat));
+
+  /* The voice. Every one of these appeared in the failing transcript. */
+  for (const phrase of ["this tool", "this product", "I can't assist with", "feel free to"]) {
+    ok(`the prompt bans "${phrase}"`, flat.includes(`"${phrase}"`));
+  }
+  ok("and the banned phrasing is logged when it slips through",
+    /HELP_DESK/.test(route) && /help desk phrasing/.test(route));
 
   /* The intent is separate from the prose so the answer can be emitted by the
      route from the packet. A single free-text field would have made "return
      the answer card" indistinguishable from "write the answer". */
   ok("a turn carries an intent as well as a reply",
     /chatTurnSchema/.test(schemas) && /intent: z\.enum\(CHAT_INTENTS\)/.test(schemas));
-  ok("the schema has no field an answer could travel in",
-    /chatTurnSchema = z\.object\(\{\s*intent[^}]*reply: z\.string\(\)\.min\(1\),\s*\}\)/.test(
-      schemas.replace(/\r/g, "")));
+  /* The schema grew structured payloads for the three chat cards, so the
+     property worth asserting is no longer its exact shape. It is that nothing
+     in it is named for an answer, and that the guard covers the new fields as
+     well as the prose. */
+  const turnShape = schemas.slice(
+    schemas.indexOf("export const chatTurnSchema"),
+    schemas.indexOf("export type Explainer"),
+  );
+  ok("the turn schema has no field an answer could travel in",
+    turnShape.length > 0 && !/\b(?:answer|lockedAnswer|solution|result)\s*:/i.test(turnShape));
+  ok("and the reply is declared first, so it can be streamed",
+    turnShape.indexOf("reply:") < turnShape.indexOf("explainer:"));
 
   const textCase = route.slice(route.indexOf('case "text":'));
   ok("the answer card is written from the packet, never from the reply",

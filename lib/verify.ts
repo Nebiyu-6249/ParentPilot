@@ -105,6 +105,39 @@ function formatResult(value: Fraction, preferDecimal: boolean): string {
 }
 
 /**
+ * Whether a line a parent typed is a problem rather than a remark.
+ *
+ * "4 * 4" and "1/2 + 2/3 =" are worksheets arriving through the composer and
+ * should run the same pipeline a photograph runs. "she got 3/7 again" is a
+ * remark that happens to contain a fraction, and hijacking it would answer a
+ * question nobody asked.
+ *
+ * Deliberately strict. It requires the whole line, after a short imperative
+ * prefix is removed, to be arithmetic and nothing else, which `computeAnswer`
+ * already decides. The length cap is the second guard: a sentence long enough
+ * to be prose is prose, whatever it contains.
+ *
+ * Returns the problem text to work with, or null.
+ */
+const PROBLEM_PREFIX =
+  /^\s*(?:what(?:'|\u2019)?s|what is|whats|how much is|calculate|solve|work out|compute|evaluate)\s+/i;
+
+const MAX_PROBLEM_CHARS = 120;
+
+export function looksLikeProblem(typed: string): string | null {
+  const trimmed = typed.trim();
+  if (!trimmed || trimmed.length > MAX_PROBLEM_CHARS) return null;
+
+  // "what is 4 * 4" is the same request as "4 * 4". "what is a denominator"
+  // survives the strip as "a denominator" and fails the arithmetic test, which
+  // is the case this must not take.
+  const stripped = trimmed.replace(PROBLEM_PREFIX, "").trim();
+  if (!stripped) return null;
+
+  return computeAnswer(stripped) === null ? null : stripped;
+}
+
+/**
  * Recomputes the answer to a printed question using exact arithmetic.
  *
  * Returns `null` when the question is not a bare computation, which includes

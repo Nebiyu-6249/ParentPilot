@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { AccountIcon, HistoryIcon, SettingsIcon } from "@/components/icons";
-import { buttonStyle, Label, Page, Section } from "@/components/ui";
+import { appButton, AppLabel, AppPage, AppSection } from "@/components/app/AppPage";
 import { copy } from "@/lib/copy";
 import type { RegisterName } from "@/lib/ai/schemas";
 
@@ -44,35 +44,32 @@ export default function AccountScreen({
   }
 
   return (
-    <Page>
-      <header style={{ paddingBottom: 20 }}>
-        <h1 style={{ fontSize: "var(--type-h1)" }}>{copy.account.heading}</h1>
-      </header>
+    <AppPage title={copy.account.heading}>
 
-      <Section title={email ? copy.account.signedInAs : copy.account.signIn}>
+      <AppSection title={email ? copy.account.signedInAs : copy.account.signIn}>
         {email ? (
           <>
             <p style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 17 }}>
-              <AccountIcon size={20} style={{ color: "var(--action)" }} />
+              <AccountIcon size={20} style={{ color: "var(--accent-ink)" }} />
               {email}
             </p>
-            <button type="button" onClick={signOut} style={{ ...buttonStyle("quiet"), marginTop: 20 }}>
+            <button type="button" onClick={signOut} style={{ ...appButton("quiet"), marginTop: 20 }}>
               {copy.account.signOut}
             </button>
           </>
         ) : (
           <>
             <p style={{ fontSize: 17, marginBottom: 18 }}>{copy.account.anonymous}</p>
-            <Link href="/login" style={{ ...buttonStyle("primary"), textDecoration: "none", display: "inline-block" }}>
+            <Link href="/login" style={{ ...appButton("primary"), textDecoration: "none", display: "inline-block" }}>
               {copy.account.signIn}
             </Link>
           </>
         )}
-      </Section>
+      </AppSection>
 
-      <Section title={copy.account.childrenHeading} note={copy.account.childNote}>
+      <AppSection title={copy.account.childrenHeading} note={copy.account.childNote}>
         {children.length === 0 ? (
-          <p style={{ color: "var(--text-on-sheet-muted)" }}>{copy.account.noChildren}</p>
+          <p style={{ color: "var(--app-text-dim)" }}>{copy.account.noChildren}</p>
         ) : (
           <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
             {children.map((child) => (
@@ -83,21 +80,21 @@ export default function AccountScreen({
                   justifyContent: "space-between",
                   gap: 14,
                   padding: "14px 0",
-                  borderBottom: "1px solid var(--rule-on-sheet)",
+                  borderBottom: "1px solid var(--app-line)",
                   fontSize: 17,
                 }}
               >
                 <span>{child.firstName ?? "Your child"}</span>
-                <span style={{ color: "var(--text-on-sheet-muted)", fontSize: "var(--type-small)" }}>
+                <span style={{ color: "var(--app-text-dim)", fontSize: "var(--type-small)" }}>
                   {child.grade === 0 ? "Kindergarten" : `Grade ${child.grade}`} · {child.curriculum}
                 </span>
               </li>
             ))}
           </ul>
         )}
-      </Section>
+      </AppSection>
 
-      <Section title={copy.account.preferencesHeading}>
+      <AppSection title={copy.account.preferencesHeading}>
         <p style={{ fontSize: 17, marginBottom: 6 }}>
           {copy.register.options.find((o) => o.value === register)?.label ?? register}
           {" · "}
@@ -115,15 +112,15 @@ export default function AccountScreen({
             Past sessions
           </Link>
         </div>
-      </Section>
+      </AppSection>
 
-      <div style={{ borderTop: "1px solid var(--rule-on-sheet)", paddingTop: 22 }}>
-        <Label>Your data</Label>
-        <p style={{ fontSize: "var(--type-small)", color: "var(--text-on-sheet-muted)", marginTop: 6 }}>
+      <div style={{ borderTop: "1px solid var(--app-line)", paddingTop: 22 }}>
+        <AppLabel>Your data</AppLabel>
+        <p style={{ fontSize: "var(--type-small)", color: "var(--app-text-dim)", marginTop: 6 }}>
           Export and delete live in <Link href="/settings">Settings</Link>, and both still work exactly
           as the privacy page describes.
         </p>
       </div>
-    </Page>
+    </AppPage>
   );
 }

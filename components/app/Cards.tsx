@@ -12,10 +12,12 @@ import {
   ChevronIcon,
   ColumnsIcon,
   LockIcon,
+  MicrophoneIcon,
   TypeIcon,
   type IconProps,
 } from "@/components/icons";
 import { copy } from "@/lib/copy";
+import { Markdown } from "@/lib/markdown";
 import { sanitizeSvg } from "@/lib/svg";
 import type { Card } from "@/lib/thread";
 
@@ -86,15 +88,66 @@ export default function ThreadCard({
         </article>
       );
 
+    /* A definition. The one line answer is always visible; the expansion and
+       the child level version are each one tap, because a parent asking what a
+       denominator is may want to understand it, or may want a sentence to say
+       out loud, and those are different things. */
+    case "explainer":
+      return <Explainer card={card} />;
+
+    /* A method worked through on numbers that are not the child's. The problem
+       is stated at the top and styled as the heading, so a parent can see at a
+       glance that this is not their child's question. That visibility is what
+       makes showing the whole method safe. */
+    case "worked_example":
+      return (
+        <article className="pp-card">
+          <div className="pp-card-body" style={{ paddingTop: 15 }}>
+            <p className="pp-example-label">{copy.chat.exampleLabel}</p>
+            <p className="pp-example-problem">{card.problem}</p>
+            <ol className="pp-example-steps">
+              {card.steps.map((step, i) => (
+                <li key={`${step.move}-${i}`}>
+                  <span className="pp-example-move">{step.move}</span>
+                  {step.working && <span className="pp-example-working">{step.working}</span>}
+                </li>
+              ))}
+            </ol>
+            {card.point && <p className="pp-example-point">{card.point}</p>}
+          </div>
+        </article>
+      );
+
+    case "strategy":
+      return (
+        <article className="pp-card">
+          <div className="pp-card-body" style={{ paddingTop: 15 }}>
+            <ol className="pp-strategy">
+              {card.moves.map((move, i) => (
+                <li key={`${move.title}-${i}`}>
+                  <p className="pp-strategy-title">{move.title}</p>
+                  <p className="pp-strategy-body">{move.body}</p>
+                </li>
+              ))}
+            </ol>
+            {card.avoid && (
+              <p className="pp-strategy-avoid">
+                <span>{copy.chat.avoidLabel}</span> {card.avoid}
+              </p>
+            )}
+          </div>
+        </article>
+      );
+
     case "text":
       return (
-        <p
+        <div
           className="pp-turn-text"
           data-intent={card.intent}
           style={{ fontSize: 15, lineHeight: 1.6, maxWidth: "68ch" }}
         >
-          {card.body}
-        </p>
+          <Markdown source={card.body} />
+        </div>
       );
 
     case "worksheet":
@@ -189,8 +242,8 @@ export default function ThreadCard({
                 style={{
                   padding: "11px 18px",
                   borderRadius: "var(--r-control)",
-                  border: "1px solid var(--accent)",
-                  background: "var(--accent)",
+                  border: "1px solid var(--accent-fill)",
+                  background: "var(--accent-fill)",
                   color: "#ffffff",
                   fontSize: 14.5,
                   fontWeight: 500,
@@ -285,13 +338,43 @@ export default function ThreadCard({
         </Shell>
       );
 
+    /* Raised while Live Mode is listening. Never collapsed: it is an
+       interruption, and an interruption behind a chevron is not one. It keeps
+       the minute it fired at, because a parent scrolling back afterwards is
+       asking "when did that happen", and because the only thing the product
+       kept about that moment is a label and a timestamp. */
+    case "live_coach":
+      return (
+        <article className="pp-card pp-card-coach" role="status">
+          <div className="pp-card-body" style={{ paddingTop: 15 }}>
+            <p style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <MicrophoneIcon size={15} style={{ color: "var(--accent-ink)" }} />
+              <span style={{ fontSize: 12.5, color: "var(--app-text-dim)" }}>
+                {formatOffset(card.tOffset)}
+              </span>
+            </p>
+            <p style={{ fontSize: 15.5, lineHeight: 1.55 }}>{card.body}</p>
+          </div>
+        </article>
+      );
+
     case "live_summary":
       return (
-        <Shell title="How that stretch went" icon={CheckIcon} defaultOpen>
+        <Shell title={copy.live.summaryHeading} icon={CheckIcon} defaultOpen>
           <p style={{ fontFamily: "var(--font-display)", fontSize: 34, color: "var(--accent-ink)", lineHeight: 1 }}>
             {card.autonomyScore.toFixed(2)}
           </p>
           <p style={{ marginTop: 10, fontSize: 15 }}>{card.reading}</p>
+          {/* Counts and a duration, which is the entirety of what was kept.
+              Naming it is the point: a parent should be able to see that the
+              summary was written from this and not from a recording. */}
+          <p style={{ marginTop: 14, fontSize: 13.5, color: "var(--app-text-dim)" }}>
+            {card.minutes} {card.minutes === 1 ? "minute" : "minutes"}
+            {countsLine(card.moveCounts)}
+          </p>
+          <p style={{ marginTop: 8, fontSize: 12.5, color: "var(--app-text-dim)" }}>
+            {copy.live.summaryProvenance}
+          </p>
         </Shell>
       );
 
@@ -311,4 +394,82 @@ export default function ThreadCard({
     default:
       return null;
   }
+}
+
+/** mm:ss since the session started, for a coaching card. */
+function formatOffset(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const sec = seconds % 60;
+  return `${m}:${String(sec).padStart(2, "0")}`;
+}
+
+/**
+ * The move counts, as a sentence.
+ *
+ * Only the labels that mean something to a parent, and only the ones that
+ * actually happened. A table of ten enum names would be a report about them
+ * rather than something they can use.
+ */
+function countsLine(counts: Record<string, number>): string {
+  const named: [string, string][] = [
+    ["PROBING_QUESTION", "questions asked"],
+    ["PRODUCTIVE_WAIT", "times you waited"],
+    ["SPECIFIC_PRAISE", "specific praises"],
+    ["GIVES_ANSWER", "answers given"],
+    ["GENERIC_PRAISE", "generic praises"],
+    ["TAKES_OVER", "stretches you took over"],
+  ];
+
+  const parts = named
+    .filter(([label]) => (counts[label] ?? 0) > 0)
+    .map(([label, words]) => `${counts[label]} ${words}`);
+
+  return parts.length > 0 ? `, ${parts.join(", ")}` : "";
+}
+
+/**
+ * The definition card.
+ *
+ * Its own component because it holds state: which of the two expansions is
+ * open. A parent who wants to understand the idea and a parent who wants a
+ * sentence to say to a nine year old are asking for different things, and
+ * making the second one a toggle rather than another turn is the difference
+ * between one tap and waiting again.
+ */
+function Explainer({ card }: { card: Extract<Card, { kind: "explainer" }> }) {
+  const [child, setChild] = useState(false);
+  const [more, setMore] = useState(false);
+
+  return (
+    <article className="pp-card pp-card-explainer">
+      <div className="pp-card-body" style={{ paddingTop: 15 }}>
+        <p className="pp-explainer-term">{card.term}</p>
+        <p className="pp-explainer-short">{child && card.forNineYearOld ? card.forNineYearOld : card.short}</p>
+
+        {!child && more && card.more && (
+          <div className="pp-explainer-more">
+            <Markdown source={card.more} />
+          </div>
+        )}
+
+        <div className="pp-explainer-actions">
+          {card.more && !child && (
+            <button type="button" className="pp-chip pp-chip-quiet" onClick={() => setMore((v) => !v)}>
+              {more ? copy.chat.explainerLess : copy.chat.explainerMore}
+            </button>
+          )}
+          {card.forNineYearOld && (
+            <button
+              type="button"
+              className="pp-chip pp-chip-quiet"
+              aria-pressed={child}
+              onClick={() => setChild((v) => !v)}
+            >
+              {child ? copy.chat.explainerAdult : copy.chat.explainerChild}
+            </button>
+          )}
+        </div>
+      </div>
+    </article>
+  );
 }

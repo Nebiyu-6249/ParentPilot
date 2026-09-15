@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import RegisterControl from "@/components/RegisterControl";
-import { Banner, buttonStyle, inputStyle, Page, Section } from "@/components/ui";
+import { AppBanner, appButton, appInput, AppPage, AppSection } from "@/components/app/AppPage";
 import { copy } from "@/lib/copy";
 import type { RegisterName } from "@/lib/ai/schemas";
 
@@ -66,31 +66,28 @@ export default function SettingsScreen({
 
   if (deleted) {
     return (
-      <Page>
-        <Section title={copy.settings.heading}>
+      <AppPage title={copy.settings.heading}>
+        <AppSection>
           <p style={{ fontSize: 17 }}>{copy.settings.deleted}</p>
-        </Section>
-      </Page>
+        </AppSection>
+      </AppPage>
     );
   }
 
   return (
-    <Page>
-      <header style={{ padding: "40px 0 22px" }}>
-        <h1 style={{ fontSize: "clamp(1.7rem, 6vw, 2.2rem)" }}>{copy.settings.heading}</h1>
-      </header>
+    <AppPage title={copy.settings.heading}>
 
-      {saved && <Banner text="Saved." />}
+      {saved && <AppBanner text="Saved." />}
 
-      <Section title={copy.settings.registerHeading} note={copy.settings.registerHelp}>
-        <RegisterControl value={register} onChange={(next) => void save({ register: next })} />
-      </Section>
+      <AppSection title={copy.settings.registerHeading} note={copy.settings.registerHelp}>
+        <RegisterControl value={register} onChange={(next) => void save({ register: next })} surface="app" />
+      </AppSection>
 
-      <Section title={copy.settings.languageHeading} note={copy.setup.step4.help}>
+      <AppSection title={copy.settings.languageHeading} note={copy.setup.step4.help}>
         <select
           value={language}
           onChange={(event) => void save({ language: event.target.value })}
-          style={inputStyle}
+          style={appInput}
         >
           {LANGUAGES.map((l) => (
             <option key={l.code} value={l.code}>
@@ -98,9 +95,9 @@ export default function SettingsScreen({
             </option>
           ))}
         </select>
-      </Section>
+      </AppSection>
 
-      <Section title={copy.settings.anxietyHeading} note={copy.setup.step2.help}>
+      <AppSection title={copy.settings.anxietyHeading} note={copy.setup.step2.help}>
         {copy.setup.step2.options.map((option) => (
           <button
             key={option.band}
@@ -114,43 +111,50 @@ export default function SettingsScreen({
               padding: "14px 18px",
               marginBottom: 10,
               fontSize: 16,
-              background: anxietyBand === option.band ? "var(--action)" : "transparent",
-              color: anxietyBand === option.band ? "var(--action-label)" : "var(--ink)",
-              border: `1px solid ${anxietyBand === option.band ? "var(--action)" : "var(--border-interactive)"}`,
+              borderRadius: "var(--r-control)",
+              /* Brand emerald when chosen, not the darker ink version: this is
+                 a filled control, and --accent-ink is the accent as text. The
+                 idle colour used to be --ink, a paper-surface token that is
+                 dark on a dark ground and vanished in dark mode. */
+              background: anxietyBand === option.band ? "var(--accent-fill)" : "transparent",
+              color: anxietyBand === option.band ? "#ffffff" : "var(--app-text)",
+              border: `1px solid ${
+                anxietyBand === option.band ? "var(--accent-fill)" : "var(--app-border-interactive)"
+              }`,
             }}
           >
             {option.label}
           </button>
         ))}
-      </Section>
+      </AppSection>
 
-      <Section title={copy.settings.exportHeading}>
+      <AppSection title={copy.settings.exportHeading}>
         <a
           href="/api/account"
           download="parentpilot-export.json"
-          style={{ ...buttonStyle("secondary"), textDecoration: "none", display: "inline-block" }}
+          style={{ ...appButton("secondary"), textDecoration: "none", display: "inline-block" }}
         >
           {copy.settings.exportButton}
         </a>
 
-        <div style={{ marginTop: 34, borderTop: "1px solid var(--rule)", paddingTop: 26 }}>
+        <div style={{ marginTop: 34, borderTop: "1px solid var(--app-line)", paddingTop: 26 }}>
           <p style={{ fontSize: 16, marginBottom: 16 }}>{copy.settings.deleteConfirm}</p>
           <input
             value={confirmText}
             onChange={(event) => setConfirmText(event.target.value)}
             placeholder="DELETE"
-            style={{ ...inputStyle, marginBottom: 14 }}
+            style={{ ...appInput, marginBottom: 14 }}
           />
           <button
             type="button"
             onClick={deleteEverything}
             disabled={confirmText !== "DELETE"}
-            style={buttonStyle("alert", true)}
+            style={appButton("alert", true)}
           >
             {copy.settings.deleteButton}
           </button>
         </div>
-      </Section>
-    </Page>
+      </AppSection>
+    </AppPage>
   );
 }

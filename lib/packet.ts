@@ -93,6 +93,28 @@ export interface BuildPacketArgs {
 }
 
 /**
+ * The same pipeline, given the problem directly rather than by id.
+ *
+ * A parent who types `4 * 4` into the composer has handed over a worksheet,
+ * and it should run everything a photograph runs. It cannot always be stored
+ * first: an assignment needs a child profile, and a parent trying the product
+ * before setting one up has none. So the row is optional. With one, this
+ * behaves exactly as it did and writes the cache; without, it does the same
+ * work and keeps nothing.
+ */
+export interface BuildFromTextArgs {
+  /** A real Problem row to persist against, or null for a one-off. */
+  problemId: string | null;
+  printedText: string;
+  childWorkText: string | null;
+  childAnswer: string | null;
+  register: RegisterName;
+  language: string;
+  grade: number | null;
+  onStep?: (step: PacketStep) => void;
+}
+
+/**
  * Builds the bundle for one problem, using the cache where it can.
  *
  * Returns the demo bundle with an honest banner rather than throwing, for
@@ -111,12 +133,45 @@ export async function buildPacket(args: BuildPacketArgs): Promise<PacketBundle> 
   const problem = await prisma.problem.findUnique({ where: { id: problemId } });
   if (!problem) return demoBundle(register, copy.errors.noProblem);
 
+  return buildPacketFromText({
+    problemId: problem.id,
+    printedText: problem.printedText,
+    childWorkText: problem.childWorkText,
+    childAnswer: problem.childAnswer,
+    register,
+    language,
+    grade: args.grade,
+    onStep,
+  });
+}
+
+export async function buildPacketFromText(args: BuildFromTextArgs): Promise<PacketBundle> {
+  const { problemId, printedText, childWorkText, childAnswer, register, language, onStep } = args;
+
+  /* A stand-in row for the one-off case, so everything downstream sees the
+     same shape whether or not this was persisted. The id is what the ask card
+     sends back on "Still stuck", and `buildPacket` resolves it to the demo,
+     which is the right thing: there is no stored ladder to advance. */
+  const problem = {
+    id: problemId ?? "typed",
+    index: 0,
+    printedText,
+    childWorkText,
+    childAnswer,
+    ocrConfidence: problemId ? null : 1,
+    standardCode: null as string | null,
+    expectedMethod: null as string | null,
+    verified: false,
+    computedAnswer: null as string | null,
+    misconceptionId: null as string | null,
+    status: "OPEN" as const,
+  };
+
   const grade = args.grade;
 
   // Step 1: recompute the arithmetic ourselves. This happens before any
   // model call, so a verification result exists even when generation fails.
   onStep?.("checking");
-  const printedText = problem.printedText;
 
   // Step 2: find the standard the problem belongs to.
   onStep?.("matching");
@@ -124,9 +179,9 @@ export async function buildPacket(args: BuildPacketArgs): Promise<PacketBundle> 
   if (!standardCode) {
     const matches = await nearestStandards(printedText, grade, 1).catch(() => []);
     standardCode = matches[0]?.code ?? null;
-    if (standardCode) {
+    if (standardCode && problemId) {
       await prisma.problem
-        .update({ where: { id: problem.id }, data: { standardCode } })
+        .update({ where: { id: problemId }, data: { standardCode } })
         .catch(() => undefined);
     }
   }
@@ -141,9 +196,9 @@ export async function buildPacket(args: BuildPacketArgs): Promise<PacketBundle> 
       standardCode,
     }).catch(() => null);
 
-    if (misconceptionId) {
+    if (misconceptionId && problemId) {
       await prisma.problem
-        .update({ where: { id: problem.id }, data: { misconceptionId } })
+        .update({ where: { id: problemId }, data: { misconceptionId } })
         .catch(() => undefined);
     }
   }
@@ -222,10 +277,14 @@ export async function buildPacket(args: BuildPacketArgs): Promise<PacketBundle> 
   // Verify the model's answer against our own arithmetic, independently.
   const checked = verifyAnswer(printedText, payload.lockedAnswer);
 
-  await prisma.packet
+  /* The cache is read for both, and written only when there is a row to hang
+     it on: Packet.problemId is required. A one-off pays full price and warms
+     nothing, which is the honest trade for not needing a profile first. */
+  if (problemId) {
+    await prisma.packet
     .create({
       data: {
-        problemId: problem.id,
+        problemId,
         register,
         language,
         cacheKey,
@@ -239,12 +298,13 @@ export async function buildPacket(args: BuildPacketArgs): Promise<PacketBundle> 
     })
     .catch(() => undefined);
 
-  await prisma.problem
-    .update({
-      where: { id: problem.id },
-      data: { verified: checked.status === "checked", computedAnswer: checked.computedAnswer },
-    })
-    .catch(() => undefined);
+    await prisma.problem
+      .update({
+        where: { id: problemId },
+        data: { verified: checked.status === "checked", computedAnswer: checked.computedAnswer },
+      })
+      .catch(() => undefined);
+  }
 
   return assemble(problem, standard, misconception, payload, register, language, null, "live", checked.status);
 }

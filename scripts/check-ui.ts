@@ -35,7 +35,8 @@ const SCREENS: [string, string][] = [
   ["/app", "button:has-text('Take a photo of the page')"],
   ["/setup", "button:has-text('Next')"],
   ["/check", "button:has-text('Look at this')"],
-  ["/live", "button:has-text('Start listening')"],
+  // /live is a redirect into the thread now; its control is the composer's
+  // microphone, which is covered by the Live Mode section below.
 ];
 
 /** Two real phone sizes. The small one is the constraint that matters. */
@@ -389,6 +390,472 @@ async function runTopBar(browser: Browser): Promise<void> {
   await context.close();
 
   await runFreeText(browser);
+  await runLiveToggle(browser);
+  await runMarketing(browser);
+  await runSettledScreens(browser);
+  await runTranscript(browser);
+  await runChatCards(browser);
+}
+
+/**
+ * What a free-text turn looks like once it arrives.
+ *
+ * The cards, the chips, the typing, and the three reading controls. All of it
+ * is layout and behaviour, none of it visible from the source, and the chat
+ * half of the thread reading as dead next to the card half was the complaint
+ * this fixes.
+ */
+async function runChatCards(browser: Browser): Promise<void> {
+  section("The chat half of the thread");
+  const context = await browser.newContext({ viewport: { width: 1280, height: 1000 } });
+  const page = await context.newPage();
+  await page.goto(`${BASE}/app`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(300);
+
+  await page.locator("button:has-text('saved worksheet')").first().click();
+  await page.waitForSelector(".pp-card-ask", { timeout: 60000 });
+  await page.waitForTimeout(300);
+
+  const say = async (text: string): Promise<void> => {
+    const before = await page.locator('[data-turn="assistant"]').count();
+    await page.locator(".pp-composer textarea").fill(text);
+    await page.locator(".pp-composer textarea").press("Enter");
+    await page.waitForFunction(
+      (n) => document.querySelectorAll('[data-turn="assistant"]').length > n,
+      before,
+      { timeout: 60000 },
+    );
+    await page.waitForTimeout(400);
+  };
+
+  /* Typing. The reply has to appear before the turn is committed, or the
+     parent is watching a blank screen, which is the gap against every product
+     this shell imitates. */
+  const streamed = await page.evaluate(async () => {
+    const response = await fetch("/api/thread/turn", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        kind: "text",
+        text: "can you show me with examples",
+        problemId: "demo",
+        rung: 0,
+        register: "STANDARD",
+        transcript: [],
+      }),
+    });
+    const reader = response.body?.getReader();
+    if (!reader) return { deltas: 0, firstAt: 0, totalAt: 0 };
+
+    const decoder = new TextDecoder();
+    const started = Date.now();
+    let buffer = "";
+    let deltas = 0;
+    let firstAt = 0;
+    let totalAt = 0;
+
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let at = buffer.indexOf("\n");
+      while (at !== -1) {
+        const line = buffer.slice(0, at).trim();
+        buffer = buffer.slice(at + 1);
+        at = buffer.indexOf("\n");
+        if (!line) continue;
+        const event = JSON.parse(line) as { type: string };
+        if (event.type === "delta") {
+          deltas += 1;
+          if (!firstAt) firstAt = Date.now() - started;
+        }
+        if (event.type === "cards") totalAt = Date.now() - started;
+      }
+    }
+    return { deltas, firstAt, totalAt };
+  });
+
+  ok(`the reply is typed out rather than dropped in  (${streamed.deltas} chunks)`, streamed.deltas > 2);
+  ok(`and starts well before it finishes  (${streamed.firstAt}ms of ${streamed.totalAt}ms)`,
+    streamed.firstAt > 0 && streamed.firstAt < streamed.totalAt);
+
+  // The three cards.
+  await say("what is the powerhouse of the cell");
+
+  if ((await page.locator("[data-intent]").last().getAttribute("data-intent")) === null) {
+    console.log("  note  turns are being refused, so the card assertions did not run");
+    await context.close();
+    return;
+  }
+
+  ok("a definition renders as an explainer", (await page.locator(".pp-card-explainer").count()) > 0);
+
+  /* The child level version is a toggle rather than another turn, so it costs
+     a tap instead of a wait. */
+  const short = await page.locator(".pp-explainer-short").last().innerText();
+  await page.locator("button:has-text('nine year old')").last().click();
+  await page.waitForTimeout(200);
+  const child = await page.locator(".pp-explainer-short").last().innerText();
+  ok("and says it to a nine year old on request", child !== short && child.length > 0);
+
+  await say("can you show me with examples");
+  const example = page.locator(".pp-example-problem").last();
+  ok("an example request renders a worked example", (await example.count()) === 1);
+  /* The rule that makes showing the whole method safe. The active problem is
+     the demo's 1/4 + 2/3. */
+  const used = await example.innerText();
+  ok(`and it uses different numbers  (${used})`, !used.includes("1/4") && !used.includes("2/3"));
+  ok("with the working shown", (await page.locator(".pp-example-working").count()) > 0);
+
+  await say("how do i teach my kid calculus");
+  ok("a teaching question renders a strategy", (await page.locator(".pp-strategy").count()) > 0);
+  ok("with one thing not to say", (await page.locator(".pp-strategy-avoid").count()) > 0);
+
+  // Chips, written for the turn, posting the way typing does.
+  const chips = await page.locator(".pp-next .pp-chip").allInnerTexts();
+  ok(`the turn offers next moves  (${chips.join(", ")})`, chips.length >= 2 && chips.length <= 3);
+  const parentTurns = await page.locator(".pp-turn-parent").count();
+  await page.locator(".pp-next .pp-chip").first().click();
+  await page.waitForTimeout(700);
+  ok("and tapping one posts it as the parent's own turn",
+    (await page.locator(".pp-turn-parent").count()) === parentTurns + 1);
+
+  // Markdown, rather than asterisks on screen.
+  const prose = await page.locator(".pp-turn-text").allInnerTexts();
+  ok("markdown is rendered, not printed", !prose.join(" ").includes("**"));
+
+  /* Copy is on hover and on focus. Focus is the half that matters: without it
+     the control is unreachable from a keyboard. */
+  await page.mouse.move(5, 5);
+  await page.waitForTimeout(200);
+  const idle = await page.locator(".pp-turn-tools").first().evaluate((el) => getComputedStyle(el).opacity);
+  await page.locator(".pp-turn-assistant").first().hover();
+  await page.waitForTimeout(200);
+  const hovered = await page.locator(".pp-turn-tools").first().evaluate((el) => getComputedStyle(el).opacity);
+  await page.locator(".pp-turn-copy").first().focus();
+  await page.waitForTimeout(200);
+  const focused = await page.locator(".pp-turn-tools").first().evaluate((el) => getComputedStyle(el).opacity);
+  ok(`copy appears on hover and on focus  (${idle} / ${hovered} / ${focused})`,
+    idle === "0" && hovered === "1" && focused === "1");
+
+  /* Scrolling up is how a parent re-reads the question they were given, and a
+     thread that drags them back down while text streams is unusable. */
+  /* Back to the bottom first. Focusing the copy control above scrolled the
+     thread up, which correctly un-pins it, so asserting here without
+     returning would be testing the previous step. */
+  await page.evaluate(() => {
+    const el = document.querySelector(".pp-thread");
+    if (el) el.scrollTop = el.scrollHeight;
+  });
+  await page.waitForTimeout(400);
+  ok("no jump control while following the bottom", (await page.locator(".pp-jump").count()) === 0);
+  await page.evaluate(() => {
+    const el = document.querySelector(".pp-thread");
+    if (el) el.scrollTop = 0;
+  });
+  await page.waitForTimeout(300);
+  ok("scrolling up offers a way back to the latest", (await page.locator(".pp-jump").count()) === 1);
+  await page.locator(".pp-jump").click();
+  await page.waitForTimeout(400);
+  ok("and taking it returns to the bottom", (await page.locator(".pp-jump").count()) === 0);
+
+  await context.close();
+}
+
+/**
+ * The failing transcript, replayed.
+ *
+ * Every line here returned the wrong thing before this round. They are driven
+ * through the real endpoint rather than the pure functions, because the bug
+ * was never in one function: it was the prompt, the classifier and the router
+ * disagreeing about what a question was.
+ *
+ * What this cannot check is the prose, which is the model's half. It checks
+ * the half that is code: which cards come back, and whether the answer to the
+ * problem in front of the child is among them.
+ */
+/**
+ * Whether a turn came back from a model at all.
+ *
+ * A reply this product wrote itself, because there is no key or because the
+ * hourly ceiling is reached, carries no intent. Sections that need a real
+ * reply check this and say they did not run, rather than reporting the
+ * product's own correct refusal as a failure. Driving this suite twice inside
+ * an hour reaches that ceiling, which is the product working.
+ */
+function answered(intent: string | null): boolean {
+  return intent !== null;
+}
+
+async function runTranscript(browser: Browser): Promise<void> {
+  section("The failing transcript, line by line");
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await context.newPage();
+  await page.goto(`${BASE}/app`, { waitUntil: "networkidle" });
+
+  const say = async (text: string, problemId: string | null) =>
+    page.evaluate(
+      async ([said, active]) => {
+        const response = await fetch("/api/thread/turn", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            kind: "text",
+            text: said,
+            problemId: active,
+            rung: 0,
+            register: "STANDARD",
+            transcript: [],
+          }),
+        });
+        const lines = (await response.text()).trim().split("\n").filter(Boolean);
+        const final = JSON.parse(lines[lines.length - 1] ?? "{}") as {
+          cards?: { kind: string; intent?: string; body?: string }[];
+        };
+        const cards = final.cards ?? [];
+        return {
+          kinds: cards.map((c) => c.kind),
+          intent: cards.find((c) => c.kind === "text")?.intent ?? null,
+          prose: cards.filter((c) => c.kind === "text").map((c) => c.body ?? "").join(" "),
+        };
+      },
+      [text, problemId] as const,
+    );
+
+  // With a problem in front of the child, so the press and hold is live.
+  const denominator = await say("what is a denominator", "demo");
+
+  if (!answered(denominator.intent)) {
+    console.log(`  note  turns are being refused, so the transcript did not run: "${denominator.prose}"`);
+    ok("a refused turn still says something", denominator.prose.length > 0);
+    await context.close();
+    return;
+  }
+
+  ok(`"what is a denominator" is a definition, not the answer  (${denominator.intent})`,
+    denominator.intent === "explain" && !denominator.kinds.includes("answer"));
+
+  const bare = await say("what", "demo");
+  ok(`a bare "what" asks for it again, not for the answer  (${bare.intent})`,
+    bare.intent === "clarify" && !bare.kinds.includes("answer"));
+
+  const example = await say("can you show me with examples", "demo");
+  ok(`"can you show me with examples" is an example  (${example.intent})`,
+    example.intent === "example" && !example.kinds.includes("answer"));
+
+  // The one case that must still reach it.
+  const wanted = await say("just tell me the answer", "demo");
+  ok(`"just tell me the answer" still returns the answer card  (${wanted.intent})`,
+    wanted.intent === "answer" && wanted.kinds.includes("answer"));
+
+  /* The invariant, restated against every reply above: none of them may name
+     the demo problem's computed answer. */
+  const proseSoFar = [denominator, bare, example, wanted].map((r) => r.prose).join(" ");
+  ok("no reply named the active problem's answer", !proseSoFar.includes("11/12"));
+
+  // With nothing in front of the child, nothing is held back and nothing
+  // is refused for being off topic.
+  for (const [said, label] of [
+    ["how do i teach my kid calculus", "calculus"],
+    ["what is the powerhouse of the cell", "biology"],
+  ] as const) {
+    const out = await say(said, null);
+    /* Substance, wherever it landed. Since the cards arrived the prose is
+       often one line with the body of the answer in an explainer beside it,
+       so measuring the paragraph alone now fails on a correct turn. */
+    const substantial = out.prose.length > 20 || out.kinds.some((k) => k !== "text");
+    ok(`"${said}" is answered  (${out.intent}, ${out.kinds.join("+")})`,
+      out.intent !== "redirect" && !out.kinds.includes("answer") && substantial);
+    ok(`and the ${label} reply is not a help desk line`,
+      !/this tool|this product|i can'?t assist|feel free to/i.test(out.prose));
+  }
+
+  const offTopic = await say("write me a python script that scrapes a website", null);
+  ok(`an unrelated request is redirected  (${offTopic.intent})`, offTopic.intent === "redirect");
+
+  /* Typed arithmetic is a worksheet. This is pure routing, so it does not
+     depend on how the model behind it classifies anything. */
+  for (const sum of ["4 * 4", "1/2 + 2/3 =", "1 + 1"]) {
+    const out = await say(sum, null);
+    ok(`"${sum}" runs the problem pipeline  (${out.kinds.join("+") || "nothing"})`,
+      out.kinds.includes("worksheet") && out.kinds.includes("ask"));
+    ok(`"${sum}" claims no misconception, since no working was typed`,
+      !out.kinds.includes("misconception"));
+  }
+
+  await context.close();
+}
+
+/**
+ * The screens a parent goes to and comes straight back from.
+ *
+ * Measured in dark mode specifically. The failure this catches is a paper
+ * token surviving on the product surface, which computes fine in the
+ * stylesheet and renders as dark text on a dark ground in the browser.
+ */
+async function runSettledScreens(browser: Browser): Promise<void> {
+  section("The settled screens, in dark mode");
+  for (const route of ["/account", "/settings", "/history", "/login", "/check"]) {
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 900 },
+      colorScheme: "dark",
+    });
+    const page = await context.newPage();
+    await page.goto(BASE + route, { waitUntil: "networkidle" });
+    await page.waitForTimeout(400);
+
+    ok(`${route} is on the product surface`, (await page.locator(".pp-appview").count()) === 1);
+    ok(`${route} is off the marketing layout`, (await page.locator(".pp-nav").count()) === 0);
+    ok(`${route} offers one way back`, (await page.locator(".pp-back").count()) === 1);
+
+    /* Every visible run of text against the ground it is actually painted on.
+       4.5 because these are all normal-size labels, and because 3:1 let white
+       on brand emerald through at 3.06 across five screens. What the token
+       check in `npm run check` cannot see is which pairs actually meet on a
+       rendered page, which is why this measures as well. */
+    const worst = await page.evaluate(() => {
+      /* Luminance is computed inline rather than in a helper: esbuild wraps a
+         named function expression in a __name call that does not exist inside
+         the page, and a tidier version throws at runtime. Noted once already
+         in this file and repeated here because it is easy to undo. */
+      let lowest = { ratio: 99, text: "" };
+      for (const el of Array.from(document.querySelectorAll("body *"))) {
+        const text = (el.textContent ?? "").trim();
+        if (!text || el.children.length > 0) continue;
+        const box = el.getBoundingClientRect();
+        if (box.width === 0 || box.height === 0) continue;
+
+        const fg = getComputedStyle(el).color;
+        let bg = "rgba(0, 0, 0, 0)";
+        let at: Element | null = el;
+        while (at) {
+          const value = getComputedStyle(at).backgroundColor;
+          if (value && value !== "rgba(0, 0, 0, 0)" && value !== "transparent") {
+            bg = value;
+            break;
+          }
+          at = at.parentElement;
+        }
+
+        const lums: number[] = [];
+        for (const colour of [fg, bg]) {
+          const parts = colour.match(/\d+(\.\d+)?/g);
+          if (!parts || parts.length < 3) {
+            lums.push(1);
+            continue;
+          }
+          const channels: number[] = [];
+          for (const value of parts.slice(0, 3)) {
+            const c = Number(value) / 255;
+            channels.push(c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+          }
+          lums.push(0.2126 * (channels[0] ?? 0) + 0.7152 * (channels[1] ?? 0) + 0.0722 * (channels[2] ?? 0));
+        }
+
+        const a = lums[0] ?? 1;
+        const b = lums[1] ?? 1;
+        const ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+        if (ratio < lowest.ratio) lowest = { ratio, text: text.slice(0, 40) };
+      }
+      return lowest;
+    });
+
+    ok(`${route} has no unreadable text  (worst ${worst.ratio.toFixed(2)}:1 on "${worst.text}")`,
+      worst.ratio >= 4.5);
+
+    await context.close();
+  }
+}
+
+/**
+ * Live Mode, as a control rather than a destination.
+ *
+ * The microphone cannot actually be granted in this browser, so what is
+ * asserted here is the folding in: that the separate screen is gone, that the
+ * control is in the composer, and that it is a toggle rather than a link.
+ * Whether it hears anything is a question for a device with a microphone.
+ */
+async function runLiveToggle(browser: Browser): Promise<void> {
+  section("Live Mode is a control in the thread, not a screen");
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await context.newPage();
+
+  await page.goto(`${BASE}/live`, { waitUntil: "networkidle" });
+  ok(`/live redirects into the thread  (${new URL(page.url()).pathname})`,
+    new URL(page.url()).pathname === "/app");
+
+  await page.waitForTimeout(300);
+  const mic = page.locator(".pp-composer button[aria-pressed]");
+  ok("the composer carries the microphone as a toggle", (await mic.count()) === 1);
+  ok("and it starts off", (await mic.getAttribute("aria-pressed")) === "false");
+  ok("it is a button, not a link to somewhere else",
+    (await mic.evaluate((el) => el.tagName)) === "BUTTON");
+
+  /* The old screen is gone rather than orphaned. A component still in the tree
+     with its own copy of the session logic is the thing that drifts. */
+  ok("nothing still links to a Live Mode screen",
+    (await page.locator("a[href='/live']").count()) === 0);
+
+  await context.close();
+}
+
+/**
+ * The marketing pages.
+ *
+ * Server rendered, so the assertion worth making is that the content is in the
+ * HTML rather than painted in afterwards, along with the tags that decide what
+ * a shared link looks like.
+ */
+async function runMarketing(browser: Browser): Promise<void> {
+  section("The marketing pages");
+  const pages: [string, string][] = [
+    ["/how-it-works", "How it works"],
+    ["/research", "Research"],
+    ["/for-teachers", "For teachers"],
+  ];
+
+  for (const [route, name] of pages) {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await context.newPage();
+
+    // Scripting off: whatever survives is what a crawler and a slow phone get.
+    const response = await page.goto(BASE + route, { waitUntil: "domcontentloaded" });
+    const html = (await response?.text()) ?? "";
+
+    ok(`${route} responds 200`, response?.status() === 200);
+    ok(`${route} is server rendered  (${Math.round(html.length / 1024)}kb of HTML)`,
+      html.includes("<h1") && html.length > 4000);
+    ok(`${route} titles itself`, (await page.title()).startsWith(name));
+
+    const og = await page.locator('meta[property="og:title"]').getAttribute("content");
+    const desc = await page.locator('meta[name="description"]').getAttribute("content");
+    ok(`${route} carries an OG title  (${og})`, og !== null && og.includes(name));
+    ok(`${route} carries a description`, desc !== null && desc.length > 40);
+
+    ok(`${route} can be reached from the header`,
+      (await page.locator(`header a[href='${route}']`).count()) > 0);
+
+    await context.close();
+  }
+
+  /* One nav change took every page on this surface to a 468px scroll width at
+     phone size, and none of the existing assertions covered the site header.
+     They do now. */
+  section("The site surface fits a phone");
+  for (const route of ["/", "/privacy", "/how-it-works", "/research", "/for-teachers"]) {
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const page = await context.newPage();
+    await page.goto(BASE + route, { waitUntil: "networkidle" });
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(400);
+    const widths = await page.evaluate(() => ({
+      client: document.documentElement.clientWidth,
+      scroll: document.documentElement.scrollWidth,
+    }));
+    ok(`${route} does not scroll sideways  (${widths.scroll}px in ${widths.client}px)`,
+      widths.scroll <= widths.client);
+    await context.close();
+  }
 }
 
 /**

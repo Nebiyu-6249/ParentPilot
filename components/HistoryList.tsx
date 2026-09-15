@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { CopyIcon, ShareIcon } from "@/components/icons";
-import { buttonStyle, Label } from "@/components/ui";
+import { appButton, AppLabel } from "@/components/app/AppPage";
 import { copy } from "@/lib/copy";
 
 export interface HistoryRow {
@@ -65,7 +65,7 @@ export default function HistoryList({ sessions }: { sessions: HistoryRow[] }) {
   }
 
   if (rows.length === 0) {
-    return <p style={{ color: "var(--text-on-sheet-muted)", fontSize: 17 }}>{copy.history.empty}</p>;
+    return <p style={{ color: "var(--app-text-dim)", fontSize: 17 }}>{copy.history.empty}</p>;
   }
 
   return (
@@ -77,13 +77,13 @@ export default function HistoryList({ sessions }: { sessions: HistoryRow[] }) {
           : null;
 
         return (
-          <li key={row.id} style={{ borderTop: "1px solid var(--rule-on-sheet)", padding: "22px 0" }}>
+          <li key={row.id} style={{ borderTop: "1px solid var(--app-line)", padding: "22px 0" }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
               <div>
                 <p style={{ fontSize: 17, fontWeight: 500 }}>
                   {date.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
                 </p>
-                <p style={{ fontSize: "var(--type-small)", color: "var(--text-on-sheet-muted)", marginTop: 4 }}>
+                <p style={{ fontSize: "var(--type-small)", color: "var(--app-text-dim)", marginTop: 4 }}>
                   {row.grade === 0 ? "Kindergarten" : `Grade ${row.grade}`}
                   {" · "}
                   {copy.history.problemsLabel}: {row.moves}
@@ -92,12 +92,12 @@ export default function HistoryList({ sessions }: { sessions: HistoryRow[] }) {
               </div>
 
               <div style={{ textAlign: "right" }}>
-                <Label>{copy.history.ratioLabel}</Label>
+                <AppLabel>{copy.history.ratioLabel}</AppLabel>
                 <p
                   style={{
                     fontFamily: "var(--font-display)",
                     fontSize: 26,
-                    color: "var(--annotation)",
+                    color: "var(--accent-ink)",
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >
@@ -124,7 +124,7 @@ export default function HistoryList({ sessions }: { sessions: HistoryRow[] }) {
                       }
                     }}
                     style={{
-                      ...buttonStyle("quiet"),
+                      ...appButton("quiet"),
                       padding: "8px 14px",
                       fontSize: "var(--type-small)",
                       display: "inline-flex",
@@ -142,7 +142,7 @@ export default function HistoryList({ sessions }: { sessions: HistoryRow[] }) {
                     style={{
                       background: "transparent",
                       border: 0,
-                      color: "var(--alert-fg)",
+                      color: "var(--app-alert-ink)",
                       fontSize: "var(--type-small)",
                       textDecoration: "underline",
                       textUnderlineOffset: 3,
@@ -158,7 +158,7 @@ export default function HistoryList({ sessions }: { sessions: HistoryRow[] }) {
                   disabled={busy === row.id}
                   onClick={() => void createLink(row.id)}
                   style={{
-                    ...buttonStyle("quiet"),
+                    ...appButton("quiet"),
                     padding: "8px 14px",
                     fontSize: "var(--type-small)",
                     display: "inline-flex",
