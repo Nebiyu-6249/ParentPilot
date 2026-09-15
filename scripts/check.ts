@@ -1080,6 +1080,126 @@ ok("every specified card trigger has its exact text",
 
 // ---------------------------------------------------------------------------
 
+section("Live Mode is part of the thread rather than a screen beside it");
+
+{
+  const hook = readFileSync(path.join(process.cwd(), "lib", "live", "useLiveSession.ts"), "utf8");
+  const shell = readFileSync(path.join(process.cwd(), "components", "app", "AppShell.tsx"), "utf8");
+  const cards = readFileSync(path.join(process.cwd(), "components", "app", "Cards.tsx"), "utf8");
+  const thread = readFileSync(path.join(process.cwd(), "lib", "thread.ts"), "utf8");
+  const livePage = readFileSync(path.join(process.cwd(), "app", "(site)", "live", "page.tsx"), "utf8");
+
+  ok("the separate Live Mode screen is gone",
+    !existsSync(path.join(process.cwd(), "components", "LiveMode.tsx")));
+  ok("its route redirects into the thread", /redirect\("\/app"\)/.test(livePage));
+  ok("the microphone is a toggle in the composer, not a link",
+    /aria-pressed=\{live\.listening\}/.test(shell) && !/location\.href = "\/live"/.test(shell));
+
+  // Cards inline, and a summary when it stops. Both are turns in the thread.
+  ok("a coaching card is a turn in the thread", /kind: "live_coach"/.test(hook));
+  ok("and renders", /case "live_coach":/.test(cards));
+  ok("stopping emits a summary card", /kind: "live_summary"/.test(hook));
+  ok("a Park It emits its own card too", /kind: "park_it"/.test(hook));
+
+  /* The privacy invariant, restated for the new home. The rolling window is
+     read into a local, posted, and dropped. Anything that put it in React
+     state would make it serialisable and inspectable, which is exactly what
+     the product promises it is not. */
+  ok("the rolling window never enters React state",
+    /readWindow\(\)/.test(hook) && !/useState[^\n]*window/i.test(hook));
+  /* Scanned over code with comments stripped: the comments in that file
+     legitimately say "words" while explaining that none are kept, and a raw
+     scan read its own documentation as a violation. */
+  const hookCode = hook
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/(^|[^:])\/\/[^\n]*/g, "$1 ");
+  ok("and nothing in the session hook stores what was said",
+    !/transcriptText|setWindow|setTranscript|utterances/i.test(hookCode));
+  ok("a coaching card carries a label and a time, never a sentence that was said",
+    /triggerLabel: string;\s*body: string;\s*tOffset: number;/.test(thread.replace(/\r/g, "")));
+  /* The thread is fed back to a model on a typed turn, so what a live card
+     contributes to that transcript matters as much as what it renders. */
+  ok("a live card contributes only its label to the transcript",
+    /Raised a coaching card: \$\{card\.triggerLabel\}/.test(thread));
+
+  ok("the summary says what it was written from",
+    /summaryProvenance/.test(cards) && /No recording was kept/.test(
+      readFileSync(path.join(process.cwd(), "lib", "copy.ts"), "utf8")));
+
+  // The enum that persists a thread has to know about the new kind, or a
+  // stored thread could not hold the one turn Live Mode produces.
+  const schema = readFileSync(path.join(process.cwd(), "prisma", "schema.prisma"), "utf8");
+  ok("the message kind enum carries LIVE_COACH", /LIVE_COACH/.test(schema));
+}
+
+// ---------------------------------------------------------------------------
+
+section("The marketing pages say only what the product does");
+
+{
+  const pages = ["how-it-works", "research", "for-teachers"] as const;
+  for (const name of pages) {
+    const file = path.join(process.cwd(), "app", "(site)", name, "page.tsx");
+    ok(`/${name} exists`, existsSync(file));
+    const source = readFileSync(file, "utf8");
+    // Server components: no "use client", so the content is in the HTML.
+    ok(`/${name} is server rendered`, !/^"use client"/m.test(source));
+    ok(`/${name} declares its own metadata`, /export const metadata/.test(source));
+    ok(`/${name} carries OG tags`, /openGraph/.test(source) && /twitter/.test(source));
+    ok(`/${name} takes its words from lib/copy`, !/<p>[A-Z][a-z]+ [a-z]/.test(source));
+  }
+
+  /* A research page is a credibility asset, so the thing that matters is that
+     it states its limits. A page of findings with none reads as marketing. */
+  ok("the research page says what none of it proves",
+    copy.research.honest.includes("No trial of this app has been run"));
+  ok("and does not claim the product is proven",
+    !/proven|clinically|guarantees better/i.test(copy.research.thesis + copy.research.intro));
+  ok("every finding names a source",
+    [...copy.research.findings, ...copy.research.ai].every((f) => f.source.trim().length > 0));
+  /* Each citation has to say which line of the product it caused, or the page
+     is borrowing authority rather than showing its working. */
+  ok("and says what the product does because of it",
+    [...copy.research.findings, ...copy.research.ai].every((f) => f.why.trim().length > 20));
+
+  // The one promise these pages must not overstate.
+  const marketing = JSON.stringify([copy.howItWorks, copy.research, copy.forTeachers]);
+  ok("no marketing page offers anything to the child",
+    !/for your child to|your child can (use|open|sign)/i.test(marketing));
+  ok("the teacher page states what is kept about a student",
+    copy.forTeachers.privacyBody.includes("no login"));
+}
+
+// ---------------------------------------------------------------------------
+
+section("The em-dash ban covers hard-written copy, not only model output");
+
+{
+  /* `sanitize` protects what a model writes. Until now nothing protected what
+     we write, and the product's claim is "no em dashes anywhere". Walking the
+     object rather than the file, because the file legitimately contains the
+     character inside sanitize's own regexes. */
+  const offenders: string[] = [];
+  const walk = (value: unknown, at: string): void => {
+    if (typeof value === "string") {
+      if (/—|―/.test(value)) offenders.push(at);
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.forEach((v, i) => walk(v, `${at}[${i}]`));
+      return;
+    }
+    if (value && typeof value === "object") {
+      for (const [k, v] of Object.entries(value)) walk(v, at ? `${at}.${k}` : k);
+    }
+  };
+  walk(copy, "");
+  ok(`no em dash in any user-facing string${offenders.length ? ` (${offenders.join(", ")})` : ""}`,
+    offenders.length === 0);
+}
+
+// ---------------------------------------------------------------------------
+
 section("Free text holds the thesis under conversational pressure");
 
 {

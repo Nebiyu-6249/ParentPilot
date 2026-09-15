@@ -35,7 +35,8 @@ const SCREENS: [string, string][] = [
   ["/app", "button:has-text('Take a photo of the page')"],
   ["/setup", "button:has-text('Next')"],
   ["/check", "button:has-text('Look at this')"],
-  ["/live", "button:has-text('Start listening')"],
+  // /live is a redirect into the thread now; its control is the composer's
+  // microphone, which is covered by the Live Mode section below.
 ];
 
 /** Two real phone sizes. The small one is the constraint that matters. */
@@ -389,6 +390,99 @@ async function runTopBar(browser: Browser): Promise<void> {
   await context.close();
 
   await runFreeText(browser);
+  await runLiveToggle(browser);
+  await runMarketing(browser);
+}
+
+/**
+ * Live Mode, as a control rather than a destination.
+ *
+ * The microphone cannot actually be granted in this browser, so what is
+ * asserted here is the folding in: that the separate screen is gone, that the
+ * control is in the composer, and that it is a toggle rather than a link.
+ * Whether it hears anything is a question for a device with a microphone.
+ */
+async function runLiveToggle(browser: Browser): Promise<void> {
+  section("Live Mode is a control in the thread, not a screen");
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await context.newPage();
+
+  await page.goto(`${BASE}/live`, { waitUntil: "networkidle" });
+  ok(`/live redirects into the thread  (${new URL(page.url()).pathname})`,
+    new URL(page.url()).pathname === "/app");
+
+  await page.waitForTimeout(300);
+  const mic = page.locator(".pp-composer button[aria-pressed]");
+  ok("the composer carries the microphone as a toggle", (await mic.count()) === 1);
+  ok("and it starts off", (await mic.getAttribute("aria-pressed")) === "false");
+  ok("it is a button, not a link to somewhere else",
+    (await mic.evaluate((el) => el.tagName)) === "BUTTON");
+
+  /* The old screen is gone rather than orphaned. A component still in the tree
+     with its own copy of the session logic is the thing that drifts. */
+  ok("nothing still links to a Live Mode screen",
+    (await page.locator("a[href='/live']").count()) === 0);
+
+  await context.close();
+}
+
+/**
+ * The marketing pages.
+ *
+ * Server rendered, so the assertion worth making is that the content is in the
+ * HTML rather than painted in afterwards, along with the tags that decide what
+ * a shared link looks like.
+ */
+async function runMarketing(browser: Browser): Promise<void> {
+  section("The marketing pages");
+  const pages: [string, string][] = [
+    ["/how-it-works", "How it works"],
+    ["/research", "Research"],
+    ["/for-teachers", "For teachers"],
+  ];
+
+  for (const [route, name] of pages) {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await context.newPage();
+
+    // Scripting off: whatever survives is what a crawler and a slow phone get.
+    const response = await page.goto(BASE + route, { waitUntil: "domcontentloaded" });
+    const html = (await response?.text()) ?? "";
+
+    ok(`${route} responds 200`, response?.status() === 200);
+    ok(`${route} is server rendered  (${Math.round(html.length / 1024)}kb of HTML)`,
+      html.includes("<h1") && html.length > 4000);
+    ok(`${route} titles itself`, (await page.title()).startsWith(name));
+
+    const og = await page.locator('meta[property="og:title"]').getAttribute("content");
+    const desc = await page.locator('meta[name="description"]').getAttribute("content");
+    ok(`${route} carries an OG title  (${og})`, og !== null && og.includes(name));
+    ok(`${route} carries a description`, desc !== null && desc.length > 40);
+
+    ok(`${route} can be reached from the header`,
+      (await page.locator(`header a[href='${route}']`).count()) > 0);
+
+    await context.close();
+  }
+
+  /* One nav change took every page on this surface to a 468px scroll width at
+     phone size, and none of the existing assertions covered the site header.
+     They do now. */
+  section("The site surface fits a phone");
+  for (const route of ["/", "/privacy", "/how-it-works", "/research", "/for-teachers"]) {
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const page = await context.newPage();
+    await page.goto(BASE + route, { waitUntil: "networkidle" });
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(400);
+    const widths = await page.evaluate(() => ({
+      client: document.documentElement.clientWidth,
+      scroll: document.documentElement.scrollWidth,
+    }));
+    ok(`${route} does not scroll sideways  (${widths.scroll}px in ${widths.client}px)`,
+      widths.scroll <= widths.client);
+    await context.close();
+  }
 }
 
 /**

@@ -39,9 +39,10 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
           </a>
 
           <nav className="pp-nav">
-            <a href="/app">{copy.nav.capture}</a>
-            <a href="/live">{copy.nav.live}</a>
-            <a href="/settings">{copy.nav.settings}</a>
+            <a href="/how-it-works">{copy.nav.howItWorks}</a>
+            <a href="/research">{copy.nav.research}</a>
+            <a href="/for-teachers">{copy.nav.forTeachers}</a>
+            <a href="/app">{copy.nav.open}</a>
             <ThemeToggle onFrame />
           </nav>
         </div>
@@ -68,6 +69,9 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
           }}
         >
           <a href="/privacy">{copy.nav.privacy}</a>
+          <a href="/how-it-works">{copy.nav.howItWorks}</a>
+          <a href="/research">{copy.nav.research}</a>
+          <a href="/for-teachers">{copy.nav.forTeachers}</a>
           <a href="/check">{copy.nav.check}</a>
           <a href="/history">{copy.history.heading}</a>
           <a href="/account">{copy.account.heading}</a>

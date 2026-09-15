@@ -18,6 +18,7 @@ export type CardKind =
   | "answer"
   | "teaching"
   | "live_summary"
+  | "live_coach"
   | "park_it"
   | "text";
 
@@ -83,6 +84,25 @@ export interface TeachingCard {
   register: RegisterName;
 }
 
+/**
+ * A coaching interruption raised while Live Mode is listening.
+ *
+ * It is a turn in the thread rather than an overlay, which is the whole of
+ * folding Live Mode in: what the product said at 8:14pm sits above what it
+ * said at 8:15pm, and a parent who missed one can scroll back to it. The
+ * overlay it replaces was dismissable and then gone.
+ *
+ * Carries the label that triggered it and the second it fired, which is
+ * exactly what the `Move` table stores. There is no text of what was said
+ * here, because there is nowhere in the product that holds that.
+ */
+export interface LiveCoachCard {
+  kind: "live_coach";
+  triggerLabel: string;
+  body: string;
+  tOffset: number;
+}
+
 export interface LiveSummaryCard {
   kind: "live_summary";
   autonomyScore: number;
@@ -120,6 +140,7 @@ export type Card =
   | AnswerCard
   | TeachingCard
   | LiveSummaryCard
+  | LiveCoachCard
   | ParkItCard
   | TextCard;
 
@@ -327,6 +348,9 @@ export function threadTranscript(turns: Turn[], limit = TRANSCRIPT_LINES): Threa
           break;
         case "text":
           lines.push({ role: "ASSISTANT", text: card.body });
+          break;
+        case "live_coach":
+          lines.push({ role: "ASSISTANT", text: `Raised a coaching card: ${card.triggerLabel}` });
           break;
         // "answer" is never included. "notice" and the rest are about this
         // deployment or about layout, and say nothing about the child.

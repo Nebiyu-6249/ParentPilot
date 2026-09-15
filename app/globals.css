@@ -622,24 +622,7 @@ hr {
   max-width: 460px;
 }
 
-/* Live Mode cards rise from the bottom of the viewport.
 
-   The one element in the product that genuinely floats: it appears over a
-   live session and is dismissed. It gets a soft shadow. The sheet keeps its
-   hard flat offset instead, because paper lying on a desk and a card hovering
-   above one are different physical claims. */
-.pp-live-card {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 40;
-  background: var(--surface-sheet);
-  color: var(--text-on-sheet);
-  border-top: 1px solid var(--rule-on-sheet);
-  padding: 22px 20px 30px;
-  box-shadow: 0 -10px 30px rgb(0 0 0 / 0.28);
-}
 
 /* ---- The hero artifact ----------------------------------------------
 
@@ -727,9 +710,16 @@ hr {
    Tightened so every screen keeps its primary action above the fold with real
    headroom rather than 20px of it. */
 @media (max-width: 560px) {
+  /* Four links and a toggle do not fit a 390px bar on one row, and pushing
+     them off the edge is worse than a second row: it took every page on this
+     surface to a 468px scroll width. Wrapping between links costs one ~22px
+     row. Wrapping inside a label is the thing the rule above prevents, and it
+     still does. */
   .pp-nav {
-    gap: 13px;
+    gap: 10px 13px;
     font-size: 0.875rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
   .pp-header-bar {
     padding-block: 8px !important;
@@ -775,6 +765,197 @@ hr {
   .pp-sheet-page {
     padding: 26px 20px 96px;
     box-shadow: none;
+  }
+}
+
+/* An article's hero band.
+
+   The landing page's hero is asymmetric and fills 1200px because an artifact
+   sits in the right half. These pages have no artifact, so borrowing that
+   container left the headline starting 200px to the left of the sheet beneath
+   it, which read as two pages stacked rather than one. The band still spans
+   the viewport; its text sits in the sheet's column and lines up with it. */
+.pp-article-head {
+  max-width: 760px;
+  margin: 0 auto;
+  padding-inline: 34px;
+}
+
+@media (max-width: 760px) {
+  .pp-article-head {
+    padding-inline: 20px;
+  }
+}
+
+/* ---- The marketing pages ---------------------------------------------
+
+   One column, numbered, on paper. A three-up grid of feature cards was the
+   obvious shape and the wrong one: these steps are an argument in order, and a
+   grid lets the eye start anywhere, which is exactly what an argument cannot
+   afford. */
+
+.pp-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 32px;
+  counter-reset: none;
+}
+
+.pp-step {
+  display: grid;
+  grid-template-columns: 3.2rem minmax(0, 1fr);
+  gap: 20px;
+  padding: 28px 0;
+  border-bottom: 1px solid var(--rule-on-sheet);
+}
+
+.pp-step:last-child {
+  border-bottom: 0;
+}
+
+/* The only place a number is set in the display face. It is an index, not a
+   decoration, which is why it is muted rather than accented. */
+.pp-step-n {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  line-height: 1.1;
+  color: var(--text-on-sheet-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pp-step-title {
+  font-size: var(--type-h3);
+  font-weight: 600;
+  margin: 0 0 8px;
+  max-width: 34ch;
+}
+
+.pp-step-body {
+  margin: 0;
+  max-width: 60ch;
+  font-size: var(--type-body);
+  line-height: 1.65;
+}
+
+/* The quieter second line: what a sceptical parent actually wants. Marked by
+   the pen rather than by a box, which is the annotation idea the rest of the
+   product already uses. */
+.pp-step-note {
+  margin: 12px 0 0;
+  max-width: 58ch;
+  padding-left: 14px;
+  border-left: 2px solid var(--annotation);
+  font-size: var(--type-small);
+  color: var(--text-on-sheet-muted);
+  line-height: 1.6;
+}
+
+.pp-plain-list {
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+  max-width: 62ch;
+}
+
+.pp-plain-list li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rule-on-sheet);
+  font-size: var(--type-body);
+  line-height: 1.6;
+}
+
+.pp-plain-list li:last-child {
+  border-bottom: 0;
+}
+
+/* Research. The claim leads, what the product does because of it follows, and
+   the source sits last and small. A citation list without the middle line is a
+   page borrowing authority rather than showing its working. */
+.pp-findings {
+  list-style: none;
+  margin: 22px 0 0;
+  padding: 0;
+  counter-reset: finding;
+}
+
+.pp-finding {
+  padding: 22px 0;
+  border-bottom: 1px solid var(--rule-on-sheet);
+}
+
+.pp-finding:last-child {
+  border-bottom: 0;
+}
+
+.pp-finding-claim {
+  margin: 0;
+  max-width: 58ch;
+  font-size: 1.125rem;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.pp-finding-why {
+  margin: 10px 0 0;
+  max-width: 60ch;
+  font-size: var(--type-small);
+  line-height: 1.65;
+  color: var(--text-on-sheet-muted);
+}
+
+.pp-finding-source {
+  margin: 12px 0 0;
+  font-size: var(--type-micro);
+  color: var(--annotation);
+}
+
+/* The one-sentence version of the whole argument. Display face, because this
+   is the second of the two places it is allowed. */
+.pp-pull {
+  margin: 14px 0 0;
+  max-width: 26ch;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(1.5rem, 3.6vw, 2rem);
+  line-height: 1.22;
+  letter-spacing: -0.012em;
+}
+
+/* For teachers. Two columns at desktop and one on a phone, because these four
+   are parallel rather than sequential: unlike the steps, there is no order in
+   which they have to be read. */
+.pp-points {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 40px;
+  margin-top: 8px;
+}
+
+.pp-point {
+  padding: 24px 0;
+  border-top: 1px solid var(--rule-on-sheet);
+}
+
+.pp-point-title {
+  margin: 0 0 8px;
+  font-size: var(--type-h3);
+  font-weight: 600;
+}
+
+.pp-point-body {
+  margin: 0;
+  font-size: var(--type-small);
+  line-height: 1.65;
+  color: var(--text-on-sheet);
+}
+
+@media (max-width: 720px) {
+  .pp-points {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pp-step {
+    grid-template-columns: 2.4rem minmax(0, 1fr);
+    gap: 14px;
   }
 }
 
@@ -1138,6 +1319,48 @@ hr {
   background: var(--accent);
   border-color: var(--accent);
   color: #ffffff;
+}
+
+/* Listening. The one moving thing on the surface, and it is a 6px dot: a
+   waveform would be a picture of audio being captured, which is the opposite
+   of what this product wants a parent to believe about the microphone. */
+.pp-composer-live {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.pp-listening {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.pp-listening-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  animation: pp-pulse 2s ease-in-out infinite;
+}
+
+@keyframes pp-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pp-listening-dot {
+    animation: none;
+  }
+}
+
+/* A coaching interruption. Accented on its leading edge rather than filled,
+   because it arrives unasked for and a filled card mid-thread reads as an
+   alarm. */
+.pp-card-coach {
+  border-left: 3px solid var(--accent);
 }
 
 .pp-composer-note {

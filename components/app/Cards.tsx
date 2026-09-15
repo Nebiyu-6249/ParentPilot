@@ -12,6 +12,7 @@ import {
   ChevronIcon,
   ColumnsIcon,
   LockIcon,
+  MicrophoneIcon,
   TypeIcon,
   type IconProps,
 } from "@/components/icons";
@@ -285,13 +286,43 @@ export default function ThreadCard({
         </Shell>
       );
 
+    /* Raised while Live Mode is listening. Never collapsed: it is an
+       interruption, and an interruption behind a chevron is not one. It keeps
+       the minute it fired at, because a parent scrolling back afterwards is
+       asking "when did that happen", and because the only thing the product
+       kept about that moment is a label and a timestamp. */
+    case "live_coach":
+      return (
+        <article className="pp-card pp-card-coach" role="status">
+          <div className="pp-card-body" style={{ paddingTop: 15 }}>
+            <p style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <MicrophoneIcon size={15} style={{ color: "var(--accent-ink)" }} />
+              <span style={{ fontSize: 12.5, color: "var(--app-text-dim)" }}>
+                {formatOffset(card.tOffset)}
+              </span>
+            </p>
+            <p style={{ fontSize: 15.5, lineHeight: 1.55 }}>{card.body}</p>
+          </div>
+        </article>
+      );
+
     case "live_summary":
       return (
-        <Shell title="How that stretch went" icon={CheckIcon} defaultOpen>
+        <Shell title={copy.live.summaryHeading} icon={CheckIcon} defaultOpen>
           <p style={{ fontFamily: "var(--font-display)", fontSize: 34, color: "var(--accent-ink)", lineHeight: 1 }}>
             {card.autonomyScore.toFixed(2)}
           </p>
           <p style={{ marginTop: 10, fontSize: 15 }}>{card.reading}</p>
+          {/* Counts and a duration, which is the entirety of what was kept.
+              Naming it is the point: a parent should be able to see that the
+              summary was written from this and not from a recording. */}
+          <p style={{ marginTop: 14, fontSize: 13.5, color: "var(--app-text-dim)" }}>
+            {card.minutes} {card.minutes === 1 ? "minute" : "minutes"}
+            {countsLine(card.moveCounts)}
+          </p>
+          <p style={{ marginTop: 8, fontSize: 12.5, color: "var(--app-text-dim)" }}>
+            {copy.live.summaryProvenance}
+          </p>
         </Shell>
       );
 
@@ -311,4 +342,35 @@ export default function ThreadCard({
     default:
       return null;
   }
+}
+
+/** mm:ss since the session started, for a coaching card. */
+function formatOffset(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const sec = seconds % 60;
+  return `${m}:${String(sec).padStart(2, "0")}`;
+}
+
+/**
+ * The move counts, as a sentence.
+ *
+ * Only the labels that mean something to a parent, and only the ones that
+ * actually happened. A table of ten enum names would be a report about them
+ * rather than something they can use.
+ */
+function countsLine(counts: Record<string, number>): string {
+  const named: [string, string][] = [
+    ["PROBING_QUESTION", "questions asked"],
+    ["PRODUCTIVE_WAIT", "times you waited"],
+    ["SPECIFIC_PRAISE", "specific praises"],
+    ["GIVES_ANSWER", "answers given"],
+    ["GENERIC_PRAISE", "generic praises"],
+    ["TAKES_OVER", "stretches you took over"],
+  ];
+
+  const parts = named
+    .filter(([label]) => (counts[label] ?? 0) > 0)
+    .map(([label, words]) => `${counts[label]} ${words}`);
+
+  return parts.length > 0 ? `, ${parts.join(", ")}` : "";
 }
