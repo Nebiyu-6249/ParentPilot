@@ -519,7 +519,16 @@ section("Colour contrast, computed from the tokens rather than asserted");
     // hairline is 1.2:1. The composer and the outline buttons use this one.
     ["--app-border-interactive", "--app-bg", 3.0, "app control borders"],
     ["--app-border-interactive", "--app-card", 3.0, "app control borders on a card"],
+    /* A filled button's label is normal-size text and needs 4.5, which white
+       on brand emerald does not reach: it measures 3.06 and was the colour of
+       Still stuck, Send, and every primary on the settled screens. --accent
+       stays the mark; --accent-fill carries the words. */
+    ["--paper-white", "--accent-fill", 4.5, "a white label on a filled accent button"],
   ];
+
+  // Not a design token: the literal the filled buttons actually set.
+  light["--paper-white"] = "#ffffff";
+  dark["--paper-white"] = "#ffffff";
 
   for (const [mode, tokens] of [["light", light], ["dark", dark]] as const) {
     for (const [fg, bg, min, label] of pairs) {
@@ -551,6 +560,10 @@ section("Colour contrast, computed from the tokens rather than asserted");
      chalk on a blackboard, which inverts whose surface it is. */
   const lighter = (a: string | undefined, b: string | undefined): boolean =>
     luminance(a ?? "#000000") > luminance(b ?? "#ffffff");
+
+  // Not a design token: the literal the filled buttons actually set.
+  light["--paper-white"] = "#ffffff";
+  dark["--paper-white"] = "#ffffff";
 
   for (const [mode, tokens] of [["light", light], ["dark", dark]] as const) {
     ok(`${mode}: the sheet is lighter than the desk, so paper reads as paper`,
@@ -1130,6 +1143,57 @@ section("Live Mode is part of the thread rather than a screen beside it");
   // stored thread could not hold the one turn Live Mode produces.
   const schema = readFileSync(path.join(process.cwd(), "prisma", "schema.prisma"), "utf8");
   ok("the message kind enum carries LIVE_COACH", /LIVE_COACH/.test(schema));
+}
+
+// ---------------------------------------------------------------------------
+
+section("The settled screens wear the product surface, not the paper one");
+
+{
+  /* Account, Settings, History, Sign in and Check moved off the marketing
+     layout. The bug this guards is specific and was live: a button on Settings
+     kept `var(--ink)` for its idle label, which is dark ink designed for paper
+     and is invisible on the app surface in dark mode. The two token families
+     must not mix on one screen. */
+  const PAPER_ONLY = [
+    "--ink", "--paper", "--muted", "--rule", "--action", "--action-label",
+    "--text-on-sheet", "--text-on-sheet-muted", "--rule-on-sheet", "--surface-sheet",
+    "--alert-fg", "--annotation", "--border-interactive",
+  ];
+
+  const onProduct = [
+    "components/AccountScreen.tsx",
+    "components/SettingsScreen.tsx",
+    "components/HistoryList.tsx",
+    "components/LoginForm.tsx",
+    "components/CheckFlow.tsx",
+    "components/app/AppPage.tsx",
+    "components/app/AppShell.tsx",
+    "components/app/ThreadBar.tsx",
+    "components/app/ShareSheet.tsx",
+  ];
+
+  for (const file of onProduct) {
+    const source = readFileSync(path.join(process.cwd(), file), "utf8");
+    const found = PAPER_ONLY.filter((token) =>
+      new RegExp(`var\\(\\s*${token}\\s*[,)]`).test(source));
+    ok(`${file.replace("components/", "")} uses no paper token${found.length ? ` (${found.join(", ")})` : ""}`,
+      found.length === 0);
+  }
+
+  /* They also have to be off the marketing layout, or they inherit its teal
+     frame and its footer of links, which on the way back from Settings is an
+     invitation to wander rather than to return. */
+  for (const route of ["account", "settings", "history", "login", "check"]) {
+    ok(`/${route} is outside the site layout`,
+      !existsSync(path.join(process.cwd(), "app", "(site)", route)) &&
+        existsSync(path.join(process.cwd(), "app", route)));
+  }
+
+  // One way back, on every one of them.
+  const appPage = readFileSync(path.join(process.cwd(), "components", "app", "AppPage.tsx"), "utf8");
+  ok("every settled screen leads back to the thread",
+    /href="\/app"/.test(appPage) && /backToThread/.test(appPage));
 }
 
 // ---------------------------------------------------------------------------

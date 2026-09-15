@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { Banner, buttonStyle, inputStyle, Label, Page } from "@/components/ui";
+import { AppBanner, appButton, appInput, AppLabel, AppPage } from "@/components/app/AppPage";
 import { copy } from "@/lib/copy";
 
 type LoginCopyKey = keyof typeof copy.login;
@@ -46,21 +46,18 @@ export default function LoginForm({ errorKey }: { errorKey: LoginCopyKey | null 
   }
 
   return (
-    <Page>
-      <header style={{ paddingBottom: 18 }}>
-        <h1 style={{ fontSize: "var(--type-h1)" }}>{copy.login.heading}</h1>
-        <p style={{ marginTop: 12, fontSize: 17 }}>{copy.login.help}</p>
-      </header>
+    <AppPage title={copy.login.heading}>
+      <p className="pp-appview-note" style={{ marginBottom: 20 }}>{copy.login.help}</p>
 
-      {message && <Banner text={message} tone={failed ? "alert" : "quiet"} />}
+      {message && <AppBanner text={message} tone={failed ? "alert" : "quiet"} />}
 
       {state === "done" ? (
-        <p style={{ marginTop: 20, color: "var(--text-on-sheet-muted)", fontSize: "var(--type-small)" }}>
+        <p style={{ marginTop: 20, color: "var(--app-text-dim)", fontSize: "var(--type-small)" }}>
           {copy.login.sentQuiet}
         </p>
       ) : (
         <form onSubmit={submit} style={{ marginTop: 22 }}>
-          <Label>{copy.login.emailLabel}</Label>
+          <AppLabel>{copy.login.emailLabel}</AppLabel>
           <input
             type="email"
             required
@@ -68,9 +65,9 @@ export default function LoginForm({ errorKey }: { errorKey: LoginCopyKey | null 
             inputMode="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            style={{ ...inputStyle, marginBottom: 16 }}
+            style={{ ...appInput, marginBottom: 16 }}
           />
-          <button type="submit" disabled={state === "sending"} style={buttonStyle("primary", true)}>
+          <button type="submit" disabled={state === "sending"} style={appButton("primary", true)}>
             {state === "sending" ? copy.common.loading : copy.login.submit}
           </button>
         </form>
@@ -80,13 +77,13 @@ export default function LoginForm({ errorKey }: { errorKey: LoginCopyKey | null 
         style={{
           marginTop: 30,
           paddingTop: 22,
-          borderTop: "1px solid var(--rule-on-sheet)",
+          borderTop: "1px solid var(--app-line)",
           fontSize: "var(--type-small)",
-          color: "var(--text-on-sheet-muted)",
+          color: "var(--app-text-dim)",
         }}
       >
         {copy.login.anonymousNote}
       </p>
-    </Page>
+    </AppPage>
   );
 }

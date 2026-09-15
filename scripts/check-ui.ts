@@ -392,6 +392,88 @@ async function runTopBar(browser: Browser): Promise<void> {
   await runFreeText(browser);
   await runLiveToggle(browser);
   await runMarketing(browser);
+  await runSettledScreens(browser);
+}
+
+/**
+ * The screens a parent goes to and comes straight back from.
+ *
+ * Measured in dark mode specifically. The failure this catches is a paper
+ * token surviving on the product surface, which computes fine in the
+ * stylesheet and renders as dark text on a dark ground in the browser.
+ */
+async function runSettledScreens(browser: Browser): Promise<void> {
+  section("The settled screens, in dark mode");
+  for (const route of ["/account", "/settings", "/history", "/login", "/check"]) {
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 900 },
+      colorScheme: "dark",
+    });
+    const page = await context.newPage();
+    await page.goto(BASE + route, { waitUntil: "networkidle" });
+    await page.waitForTimeout(400);
+
+    ok(`${route} is on the product surface`, (await page.locator(".pp-appview").count()) === 1);
+    ok(`${route} is off the marketing layout`, (await page.locator(".pp-nav").count()) === 0);
+    ok(`${route} offers one way back`, (await page.locator(".pp-back").count()) === 1);
+
+    /* Every visible run of text against the ground it is actually painted on.
+       4.5 because these are all normal-size labels, and because 3:1 let white
+       on brand emerald through at 3.06 across five screens. What the token
+       check in `npm run check` cannot see is which pairs actually meet on a
+       rendered page, which is why this measures as well. */
+    const worst = await page.evaluate(() => {
+      /* Luminance is computed inline rather than in a helper: esbuild wraps a
+         named function expression in a __name call that does not exist inside
+         the page, and a tidier version throws at runtime. Noted once already
+         in this file and repeated here because it is easy to undo. */
+      let lowest = { ratio: 99, text: "" };
+      for (const el of Array.from(document.querySelectorAll("body *"))) {
+        const text = (el.textContent ?? "").trim();
+        if (!text || el.children.length > 0) continue;
+        const box = el.getBoundingClientRect();
+        if (box.width === 0 || box.height === 0) continue;
+
+        const fg = getComputedStyle(el).color;
+        let bg = "rgba(0, 0, 0, 0)";
+        let at: Element | null = el;
+        while (at) {
+          const value = getComputedStyle(at).backgroundColor;
+          if (value && value !== "rgba(0, 0, 0, 0)" && value !== "transparent") {
+            bg = value;
+            break;
+          }
+          at = at.parentElement;
+        }
+
+        const lums: number[] = [];
+        for (const colour of [fg, bg]) {
+          const parts = colour.match(/\d+(\.\d+)?/g);
+          if (!parts || parts.length < 3) {
+            lums.push(1);
+            continue;
+          }
+          const channels: number[] = [];
+          for (const value of parts.slice(0, 3)) {
+            const c = Number(value) / 255;
+            channels.push(c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+          }
+          lums.push(0.2126 * (channels[0] ?? 0) + 0.7152 * (channels[1] ?? 0) + 0.0722 * (channels[2] ?? 0));
+        }
+
+        const a = lums[0] ?? 1;
+        const b = lums[1] ?? 1;
+        const ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+        if (ratio < lowest.ratio) lowest = { ratio, text: text.slice(0, 40) };
+      }
+      return lowest;
+    });
+
+    ok(`${route} has no unreadable text  (worst ${worst.ratio.toFixed(2)}:1 on "${worst.text}")`,
+      worst.ratio >= 4.5);
+
+    await context.close();
+  }
 }
 
 /**
