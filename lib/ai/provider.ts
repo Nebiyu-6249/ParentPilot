@@ -367,6 +367,7 @@ export async function generateTeacherNote(args: TeacherNoteArgs): Promise<string
 }
 
 export interface ChatTurnArgs {
+  childName: string | null;
   printedText: string | null;
   childWorkText: string | null;
   standardPlain: string | null;
@@ -396,6 +397,7 @@ export async function chatTurn(args: ChatTurnArgs): Promise<ChatTurn> {
   const system = await loadPrompt("chat-turn", {
     REGISTER: args.register,
     LANGUAGE: args.language,
+    CHILD_NAME: args.childName,
     PRINTED_TEXT: args.printedText,
     CHILD_WORK: args.childWorkText,
     STANDARD_PLAIN: args.standardPlain,
@@ -408,7 +410,10 @@ export async function chatTurn(args: ChatTurnArgs): Promise<ChatTurn> {
     task: "classify",
     schema: chatTurnSchema,
     temperature: 0.4,
-    maxTokens: 400,
+    /* Room for a worked example. The cap was 400 while replies were capped at
+       three sentences; an eight step walkthrough with its arithmetic shown
+       does not fit in that, and a truncated one is worse than none. */
+    maxTokens: 1400,
     /* The conversation goes in the user message, not the system prompt. It is
        the thing being acted on rather than an instruction, and putting it in
        the prompt left it above the worked examples, so the last line that

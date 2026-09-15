@@ -388,3 +388,47 @@ export function revealsAnswer(reply: string, computedAnswer: string | null): boo
   const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(`(?<![\\w/.])${escaped}(?![\\w/]|\\.\\d)`).test(reply);
 }
+
+/**
+ * The last word on whether the press and hold is offered.
+ *
+ * The prompt tells the classifier when `answer` may fire. This decides it, for
+ * the same reason `sanitize` exists next to the em-dash rule in every prompt
+ * file: a prompt is a request and this is a guarantee.
+ *
+ * Every case below is a line from the transcript this was written to fix. A
+ * parent typing "what is a denominator" was shown "Here it is, behind the
+ * hold", which tells them a reasonable question is off limits. That is the
+ * worst failure the product has, and it is cheap to make impossible.
+ */
+/* "what is a denominator" is a definition. "what is the answer" is not, and
+   an earlier version of this caught both, which would have broken the one
+   case the press and hold exists for. The nouns below name the thing being
+   worked out rather than a term to define. */
+const ANSWER_NOUN = /^(?:answer|solution|result|total|sum|value)\b/i;
+const DEFINITION = /^\s*(?:so\s+|and\s+|but\s+|ok(?:ay)?,?\s+)?what(?:'|’)?s?\s+(?:is|are)?\s*(?:a|an|the)\s+(\w.*)$/i;
+const MEANING = /\b(?:what does .+ mean|meaning of|definition of|define)\b/i;
+const EXAMPLE = /\b(?:example|show me|demonstrate|walk me through|work(?:ed)? (?:it |one )?out)\b/i;
+const CLARIFICATION = /^\s*(?:what|huh|sorry|eh|pardon|come again|i don(?:'|’)?t (?:get|follow|understand) (?:it|that|you))\s*[?!.]*\s*$/i;
+
+export function resolveIntent(
+  said: string,
+  proposed: ChatIntent,
+  hasActiveProblem: boolean,
+): ChatIntent {
+  if (proposed !== "answer") return proposed;
+
+  // No problem in front of the child means no answer to hold back, so a
+  // classifier that reached for one has misread the question.
+  if (!hasActiveProblem) return "explain";
+
+  if (CLARIFICATION.test(said)) return "clarify";
+  if (EXAMPLE.test(said)) return "example";
+
+  const defined = said.match(DEFINITION)?.[1];
+  if ((defined !== undefined && !ANSWER_NOUN.test(defined)) || MEANING.test(said)) {
+    return "explain";
+  }
+
+  return "answer";
+}

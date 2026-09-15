@@ -20,11 +20,17 @@ import { copy, sanitize, sanitizeDeep } from "../lib/copy";
 import { autonomyScore, countMoves } from "../lib/autonomy";
 import { detectors } from "../lib/misconception";
 import { evaluateMove, initialLiveState, LIVE_RULES } from "../lib/live/rules";
-import { computeAnswer, verifyAnswer } from "../lib/verify";
+import { computeAnswer, looksLikeProblem, verifyAnswer } from "../lib/verify";
 import { sanitizeSvg } from "../lib/svg";
 import { stripMetadata } from "../lib/exif";
 import { packetCacheKey } from "../lib/packet";
-import { currentProblem, revealsAnswer, threadTitle, threadTranscript } from "../lib/thread";
+import {
+  currentProblem,
+  resolveIntent,
+  revealsAnswer,
+  threadTitle,
+  threadTranscript,
+} from "../lib/thread";
 import { resolveAppUrl } from "../lib/app-url";
 import type { MoveLabelName } from "../lib/ai/schemas";
 
@@ -1093,6 +1099,141 @@ ok("every specified card trigger has its exact text",
 
 // ---------------------------------------------------------------------------
 
+section("A typed problem is a worksheet, not a remark");
+
+{
+  /* "4 * 4" came back as "here is the next one to try", which answers a
+     question nobody asked. Typed arithmetic now runs the pipeline a photo
+     runs. The risk in doing that is the opposite mistake, hijacking a
+     sentence that merely contains numbers, so both directions are checked. */
+  const problems: [string, string][] = [
+    ["4 * 4", "4 * 4"],
+    ["1/2 + 2/3 =", "1/2 + 2/3 ="],
+    ["1 + 1", "1 + 1"],
+    ["1/4 + 2/3", "1/4 + 2/3"],
+    ["20% of 60", "20% of 60"],
+    // The imperative a parent actually types, stripped back to the sum.
+    ["what is 4 * 4", "4 * 4"],
+    ["  calculate 12 / 4  ", "12 / 4"],
+  ];
+  for (const [typed, expected] of problems) {
+    eq(`"${typed}" is a problem`, looksLikeProblem(typed), expected);
+  }
+
+  const notProblems = [
+    "what is a denominator",
+    "what",
+    "huh",
+    "she got 3/7 again",
+    "she's getting frustrated",
+    "just tell me the answer",
+    "explain it like she's 9",
+    "how do i teach my kid calculus",
+    "what is the powerhouse of the cell",
+    "write me a python script",
+    // A bare number is not a sum, and a long remark is prose whatever is in it.
+    "2",
+    "I tried 12 + 5 with her and she said 18, but the real problem is that she is tired",
+  ];
+  for (const typed of notProblems) {
+    ok(`"${typed}" is not a problem`, looksLikeProblem(typed) === null);
+  }
+
+  const route = readFileSync(
+    path.join(process.cwd(), "app", "api", "thread", "turn", "route.ts"), "utf8");
+  const textCase = route.slice(route.indexOf('case "text":'));
+  ok("a typed problem runs the packet pipeline",
+    /looksLikeProblem\(said\)/.test(textCase) && /buildPacketFromText/.test(textCase));
+  ok("and emits the same cards a photograph does", /cardsForPacket\(bundle, null\)/.test(textCase));
+  /* No working was typed, so there is nothing to diagnose. matchMisconception
+     returns null on empty working by construction and cardsForPacket only
+     emits the card when there is one, so this is a comment on the call site
+     rather than a branch. */
+  ok("it supplies no child working, so no misconception is claimed",
+    /childWorkText: null/.test(textCase));
+
+  const packet = readFileSync(path.join(process.cwd(), "lib", "packet.ts"), "utf8");
+  ok("the pipeline can run without a stored row",
+    /export async function buildPacketFromText/.test(packet));
+  ok("and buildPacket is the wrapper that loads one",
+    /return buildPacketFromText\(\{/.test(packet));
+  /* Packet.problemId is required, so a one-off reads the cache and cannot
+     write it. Writing unconditionally would throw on the anonymous path. */
+  ok("nothing is written when there is no row", /if \(problemId\) \{/.test(packet));
+}
+
+// ---------------------------------------------------------------------------
+
+section("The answer card is offered only for the problem in front of the child");
+
+{
+  const schemas = readFileSync(path.join(process.cwd(), "lib", "ai", "schemas.ts"), "utf8");
+  const route = readFileSync(
+    path.join(process.cwd(), "app", "api", "thread", "turn", "route.ts"), "utf8");
+
+  /* A single "answer" bucket is what sent a parent asking for a definition to
+     the press and hold. Definitions, examples and clarifications each need
+     somewhere else to go, or the classifier has nowhere to put them. */
+  for (const intent of ["explain", "example", "strategy", "clarify"]) {
+    ok(`the classifier can return "${intent}"`, new RegExp(`"${intent}"`).test(schemas));
+  }
+
+  /* The server's own guard. Even a misclassification cannot reveal an answer
+     that does not exist, because there is no packet to take one from. */
+  ok("an answer intent with no active problem is demoted",
+    /if \(!hasActiveProblem\) return "explain";/.test(
+      readFileSync(path.join(process.cwd(), "lib", "thread.ts"), "utf8")));
+  ok("and the card is emitted only on the guarded intent",
+    /if \(intent === "answer" && bundle\)/.test(route));
+  ok("the answer still comes from the packet, never the reply",
+    /answer: bundle\.packet\.lockedAnswer/.test(route));
+  ok("and resolveIntent has the last word", /resolveIntent\(said, turn\.intent, bundle !== null\)/.test(route));
+
+  /* Every line below is from the transcript this round exists to fix. Each
+     one had the classifier return "answer" and each one is now impossible to
+     show a press and hold for, whatever the model says. */
+  const misread: [string, string][] = [
+    ["what is a denominator", "explain"],
+    ["what is an improper fraction", "explain"],
+    ["what's a numerator", "explain"],
+    ["so what is the lowest common denominator", "explain"],
+    ["what does regrouping mean", "explain"],
+    ["definition of a factor", "explain"],
+    ["can you show me with examples", "example"],
+    ["show me one", "example"],
+    ["walk me through it", "example"],
+    ["what", "clarify"],
+    ["what?", "clarify"],
+    ["huh", "clarify"],
+    ["sorry?", "clarify"],
+    ["i don't get it", "clarify"],
+  ];
+  for (const [said, expected] of misread) {
+    eq(`"${said}" cannot reach the answer card`, resolveIntent(said, "answer", true), expected);
+  }
+
+  /* The requests that genuinely are asking for it, which must still work. */
+  for (const said of [
+    "just tell me the answer",
+    "what is it",
+    "what's the answer",
+    "am I right that it's 11/12",
+    "I need to know if she's right",
+  ]) {
+    eq(`"${said}" still reaches the answer card`, resolveIntent(said, "answer", true), "answer");
+  }
+
+  // With nothing in front of the child there is nothing to hold back.
+  eq("no active problem means no answer to offer",
+    resolveIntent("just tell me the answer", "answer", false), "explain");
+  // And the guard only ever narrows: it never invents an answer intent.
+  for (const intent of ["coach", "explain", "example", "strategy", "clarify", "redirect"] as const) {
+    eq(`${intent} passes through untouched`, resolveIntent("anything at all", intent, true), intent);
+  }
+}
+
+// ---------------------------------------------------------------------------
+
 section("Live Mode is part of the thread rather than a screen beside it");
 
 {
@@ -1274,16 +1415,55 @@ section("Free text holds the thesis under conversational pressure");
   const thread = readFileSync(path.join(process.cwd(), "lib", "thread.ts"), "utf8");
   const schemas = readFileSync(path.join(process.cwd(), "lib", "ai", "schemas.ts"), "utf8");
 
-  // The four rules the brief names, each present in the file that enforces it.
   ok("the prompt writes the question, never the explanation to read aloud",
     /write the question the parent should ask, not the explanation/i.test(flat));
-  ok("the prompt forbids stating the answer in prose",
+  ok("the prompt forbids stating the active problem's answer in prose",
     /Do not write the answer/i.test(flat) && /not yours to write/i.test(flat));
-  ok("the prompt refuses to become a general tutor",
-    /outside what this product does/i.test(flat) && /redirect/i.test(flat));
-  ok("the prompt caps the reply at three sentences",
-    /Three sentences or fewer/i.test(flat));
-  ok("and says when depth is allowed instead", /asking for depth/i.test(flat));
+
+  /* The scope of that ban is the whole point of this round. It protects one
+     number, and it had been read as a reason to refuse a definition. */
+  ok("the ban is scoped to the active problem",
+    /Only these two, and only while ACTIVE_PROBLEM is not null/i.test(flat));
+  ok("definitions are explicitly not protected",
+    /"What is a denominator" gets a real answer/i.test(flat));
+  ok("worked examples on other numbers are explicitly allowed",
+    /Worked examples on different numbers/i.test(flat));
+  /* The single constraint that replaces the blanket refusal. */
+  ok("and the rule that makes them safe is stated",
+    /The rule that makes this safe is different numbers/i.test(flat));
+  ok("the child level version is allowed on request",
+    /Explain it the way you would to a nine year old/i.test(flat));
+
+  // Subject scope: any subject, with one honest limitation, stated once.
+  ok("any subject is in scope", /Any subject, any age, any level/i.test(flat));
+  ok("the structured tools name their real limit",
+    /kindergarten to grade eight/i.test(flat) && /Mention it once in a thread/i.test(flat));
+  ok("only requests unrelated to the child earn a redirect",
+    /The only thing that earns a redirect/i.test(flat) &&
+      /nothing to do with learning or with their child/i.test(flat));
+
+  // Length follows the question, which is why the cap is gone.
+  ok("there is no sentence cap", !/Three sentences or fewer/i.test(flat));
+  ok("length is said to follow the question", /Length follows the question/i.test(flat));
+
+  // The classifier, narrowed.
+  ok("the prompt says when answer must not fire", /`answer` is narrow/i.test(flat));
+  for (const phrase of [
+    'Any question of the form "what is a',
+    "Any request for an example",
+    'A bare "what"',
+    "Anything at all when ACTIVE_PROBLEM is null",
+  ]) {
+    ok(`answer is ruled out for: ${phrase}`, flat.includes(phrase));
+  }
+  ok("a bare what is a request to say it again", /`clarify`/.test(flat));
+
+  /* The voice. Every one of these appeared in the failing transcript. */
+  for (const phrase of ["this tool", "this product", "I can't assist with", "feel free to"]) {
+    ok(`the prompt bans "${phrase}"`, flat.includes(`"${phrase}"`));
+  }
+  ok("and the banned phrasing is logged when it slips through",
+    /HELP_DESK/.test(route) && /help desk phrasing/.test(route));
 
   /* The intent is separate from the prose so the answer can be emitted by the
      route from the packet. A single free-text field would have made "return
