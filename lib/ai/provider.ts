@@ -331,7 +331,9 @@ export interface TeacherNoteArgs {
   childName: string | null;
   printedText: string;
   standardPlain: string | null;
-  minutes: number;
+  /** Null where nothing timed the session. The prompt drops the beat rather
+   *  than inventing a figure for a note the parent sends under their name. */
+  minutes: number | null;
   misconception: string | null;
   register: RegisterName;
   language: string;

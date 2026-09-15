@@ -200,3 +200,72 @@ export function cardsForPacket(
 
   return cards;
 }
+
+/**
+ * What this thread is about.
+ *
+ * The printed problem, once one has been read. Empty until then rather than a
+ * placeholder, because an empty bar is honest and "New worksheet" in the rail
+ * and the bar at once is not information.
+ *
+ * It lives here rather than in the shell because a thread holds more than one
+ * problem once free text lands, and the question of what to call a thread that
+ * has worked three problems should have one home when it arrives.
+ */
+export function threadTitle(turns: Turn[]): string {
+  for (const turn of turns) {
+    for (const card of turn.cards) {
+      if (card.kind === "worksheet") return card.printedText;
+    }
+  }
+  return "";
+}
+
+/**
+ * The problem the thread is on right now, which is the most recent one read.
+ *
+ * Deliberately the newest rather than the first: a parent who has photographed
+ * a second page is working the second page, and the note they send a teacher
+ * is about where they actually stopped.
+ */
+export interface CurrentProblem {
+  problemId: string;
+  printedText: string;
+  standardPlain: string | null;
+  misconceptionName: string | null;
+}
+
+export function currentProblem(turns: Turn[]): CurrentProblem | null {
+  for (let i = turns.length - 1; i >= 0; i -= 1) {
+    const turn = turns[i];
+    if (!turn) continue;
+
+    const worksheet = turn.cards.find((card): card is WorksheetCard => card.kind === "worksheet");
+    if (!worksheet) continue;
+
+    const misconception = turn.cards.find(
+      (card): card is MisconceptionCard => card.kind === "misconception",
+    );
+
+    return {
+      problemId: worksheet.problemId,
+      printedText: worksheet.printedText,
+      standardPlain: worksheet.standardPlain,
+      misconceptionName: misconception?.plainName ?? null,
+    };
+  }
+  return null;
+}
+
+/** The rung currently showing for a problem, so "Still stuck" knows where it is. */
+export function lastRung(turns: Turn[], problemId: string): number {
+  for (let i = turns.length - 1; i >= 0; i -= 1) {
+    const turn = turns[i];
+    if (!turn) continue;
+    for (let j = turn.cards.length - 1; j >= 0; j -= 1) {
+      const card = turn.cards[j];
+      if (card && card.kind === "ask" && card.problemId === problemId) return card.rung;
+    }
+  }
+  return 0;
+}
