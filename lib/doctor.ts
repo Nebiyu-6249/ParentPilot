@@ -1,6 +1,6 @@
 import { authSecretIsDefault } from "@/lib/auth";
 import { prisma, hasDatabase } from "@/lib/db";
-import { emailStatus } from "@/lib/email";
+import { emailStatus, lastEmailFailure, type EmailFailure, type EmailStatus } from "@/lib/email";
 import { isConfigured, modelRouting, probeClassifyModel, probeEmbedding } from "@/lib/ai/provider";
 import { spendCeilingUsd, spendToday } from "@/lib/limits";
 
@@ -29,9 +29,23 @@ export interface DoctorFailure {
   message: string;
 }
 
+/**
+ * Email, reported in full rather than as one pass or fail.
+ *
+ * Delivery has four independent things that can be wrong and one line cannot
+ * name which: the key, the from address, the domain's verification state at
+ * Resend, and whatever the last POST actually came back with. Each is shown
+ * on its own, because the failure this section was built for was invisible
+ * with all four collapsed into the word "failed".
+ */
+export interface DoctorEmail extends EmailStatus {
+  lastFailure: EmailFailure | null;
+}
+
 export interface DoctorReport {
   checks: DoctorCheck[];
   failures: DoctorFailure[];
+  email: DoctorEmail;
   /** Set when something is broken badly enough that the product is degraded. */
   headline: string | null;
 }
@@ -209,13 +223,19 @@ export async function runDoctor(): Promise<DoctorReport> {
       : { name: "AUTH_SECRET", state: "ok", detail: "set" },
   );
 
+  // Configured and working are different claims. A deployment with both
+  // variables set and a 403 on its last send reported "ok" here, which is how
+  // a broken sign-in survived several rounds of looking at this page.
   const mail = emailStatus();
+  const mailFailure = await lastEmailFailure();
   checks.push({
     name: "Email (Resend)",
-    state: mail.configured ? "ok" : "warn",
-    detail: mail.configured
-      ? `sending as ${mail.from}, key ${mail.keyTail}`
-      : "not configured. Sign-in links go to the server log instead of an inbox.",
+    state: !mail.configured ? "warn" : mailFailure ? "fail" : "ok",
+    detail: !mail.configured
+      ? "not configured. Sign-in links go to the server log instead of an inbox."
+      : mailFailure
+        ? `sending as ${mail.from}, and the last attempt failed: ${mailFailure.detail}`
+        : `sending as ${mail.from}, key ${mail.keyTail}, no delivery failure recorded`,
   });
 
   // Live model calls, but only when there is a key to call with. Probing
@@ -252,5 +272,10 @@ export async function runDoctor(): Promise<DoctorReport> {
     ? "Standard retrieval is dead. The corpus is imported but nothing carries an embedding, so every problem falls back to no standard match. Re-run the seed with OPENAI_API_KEY set: npm run seed"
     : null;
 
-  return { checks, failures: await recentFailures(), headline };
+  return {
+    checks,
+    failures: await recentFailures(),
+    email: { ...mail, lastFailure: mailFailure },
+    headline,
+  };
 }
