@@ -852,14 +852,160 @@ hr {
   height: 100dvh;
 }
 
+/* The thread's top bar.
+
+   It takes the rail's ground rather than the thread's, so chrome wraps the
+   thread on two sides and the thread column is the only white in the surface.
+   That is the paper-on-a-desk idea the rest of the product already uses,
+   carried into the app layer. A border alone was what was here before and it
+   read as nothing; a translucent blur is the glassmorphism the brief bans.
+
+   Height is derived, not chosen: a 38px control with 7px above and below. It
+   is a variable because the bar, its buttons and the rail header all have to
+   agree, and three numbers that must match should be one number. */
 .pp-topbar {
+  --topbar-h: 52px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--topbar-h);
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--app-line);
+  background: var(--app-rail);
+  /* Never wraps. A bar that becomes two rows moves the thread down as the
+     title changes, and the title is the thing most likely to be long. */
+  flex-wrap: nowrap;
+}
+
+.pp-topbar-toggle {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-control);
+  flex-shrink: 0;
+}
+
+/* The right-hand group: a setting, then an action. The action is furthest
+   right because that is where every product this shell imitates puts it. */
+.pp-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.pp-topbar-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--app-border-interactive);
+  border-radius: var(--r-control);
+  background: transparent;
+  color: var(--app-text);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 120ms ease-out;
+}
+
+.pp-topbar-share:hover {
+  background: color-mix(in srgb, var(--app-text) 7%, transparent);
+}
+
+/* Two renderings of one control, one shown per breakpoint. `display: none`
+   takes the hidden one out of the tab order as well, so there is never a
+   second focusable copy. */
+.pp-register-select {
+  display: none;
+}
+
+.pp-register-segments {
+  display: flex;
+}
+
+/* Sending the thread on to the teacher. A native dialog, so the top layer,
+   focus trapping and Escape are the browser's job rather than mine. */
+.pp-dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(680px, calc(100dvh - 48px));
+  /* showModal() centres through the UA stylesheet's `inset: 0; margin: auto`.
+     Setting width and max-height here without restating the margin left the
+     dialog pinned to the top left corner. */
+  inset: 0;
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--app-line);
+  border-radius: var(--r-card);
+  background: var(--app-card);
+  color: var(--app-text);
+  font-family: var(--font-ui);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.22);
+  overflow: hidden;
+}
+
+.pp-dialog::backdrop {
+  background: rgb(0 0 0 / 0.42);
+}
+
+.pp-dialog-head {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 16px;
+  padding: 14px 14px 14px 18px;
   border-bottom: 1px solid var(--app-line);
+}
+
+.pp-dialog-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 600;
+}
+
+.pp-dialog-body {
+  padding: 16px 18px 20px;
+  overflow-y: auto;
+}
+
+/* The problem the note is about, labelling the draft. Small: it identifies
+   what this is, it is not the content. */
+.pp-dialog-label {
+  display: block;
+  font-size: 12.5px;
+  color: var(--app-text-dim);
+  margin-bottom: 6px;
+}
+
+/* A textarea, not a paragraph. The parent sends this under their own name, so
+   they have to be able to change a word of it first. */
+.pp-dialog-note {
+  width: 100%;
+  resize: vertical;
+  padding: 12px 13px;
+  border: 1px solid var(--app-border-interactive);
+  border-radius: var(--r-control);
   background: var(--app-bg);
-  flex-wrap: wrap;
+  color: var(--app-text);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.pp-dialog-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 15px;
+  border: 1px solid var(--accent);
+  border-radius: var(--r-control);
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
 }
 
 .pp-thread {
@@ -1077,9 +1223,43 @@ hr {
     transform: translateX(0);
   }
   /* At this width the title truncates to an ellipsis and buys nothing: the
-     worksheet card directly below carries the same text in full. */
+     worksheet card directly below carries the same text in full. It still
+     holds the space, so the actions stay pinned right and do not slide
+     leftward into the middle of the bar when the toggle appears. */
   .pp-topbar-title {
+    visibility: hidden;
+  }
+
+  /* Three segments need about 240px. The bar does not have them once the
+     toggle and Share are in it, so the control becomes the picker a phone
+     already knows how to render. */
+  .pp-register-segments {
     display: none;
+  }
+
+  .pp-register-select {
+    display: block;
+    height: 32px;
+    max-width: 148px;
+    padding: 0 8px;
+    border: 1px solid var(--app-border-interactive);
+    border-radius: var(--r-control);
+    background: transparent;
+    color: var(--app-text);
+    font: inherit;
+    font-size: 13.5px;
+  }
+
+  /* The icon alone. The accessible name comes from the label element, which
+     stays in the DOM for a screen reader. */
+  .pp-topbar-share-label {
+    display: none;
+  }
+
+  .pp-topbar-share {
+    padding: 0;
+    width: 32px;
+    justify-content: center;
   }
   .pp-app[data-rail="open"] .pp-scrim {
     display: block;

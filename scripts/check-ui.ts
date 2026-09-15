@@ -214,6 +214,179 @@ async function runAppSurface(browser: Browser): Promise<void> {
     fit !== null && fit.text <= fit.box);
 
   await context.close();
+
+  await runTopBar(browser);
+}
+
+/**
+ * The top bar, measured rather than described.
+ *
+ * Every defect this bar was built to fix was a layout fact: a control in an
+ * unpainted corner, a bar that wrapped, three segments in a 390px strip. None
+ * of them is visible from the source, so none of them is asserted there.
+ */
+async function runTopBar(browser: Browser): Promise<void> {
+  section("The thread's top bar at 1280x860");
+  let context = await browser.newContext({ viewport: { width: 1280, height: 860 } });
+  let page = await context.newPage();
+  await page.goto(`${BASE}/app`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(400);
+
+  /* The bar has to be a surface, not a strip of thread with a line under it.
+     Comparing the painted pixels is the only way that stays caught when a
+     token moves. */
+  const grounds = await page.evaluate(() => {
+    /* The thread column paints nothing of its own and shows the grid behind
+       it, so reading its own background returns rgba(0,0,0,0) and comparing
+       against that proves nothing. Walk up to whatever actually paints.
+
+       Written as a loop rather than a helper on purpose: esbuild adds a
+       __name call around a named function expression and that helper does not
+       exist inside the page, so a tidier version throws at runtime. */
+    const out: Record<string, string> = {};
+    for (const [key, selector] of [
+      ["bar", ".pp-topbar"],
+      ["thread", ".pp-thread"],
+      ["rail", ".pp-rail"],
+    ]) {
+      let at: Element | null = document.querySelector(selector as string);
+      if (!at) return null;
+      let found = "rgba(0, 0, 0, 0)";
+      while (at) {
+        const value = getComputedStyle(at).backgroundColor;
+        if (value && value !== "rgba(0, 0, 0, 0)" && value !== "transparent") {
+          found = value;
+          break;
+        }
+        at = at.parentElement;
+      }
+      out[key as string] = found;
+    }
+    return { bar: out.bar ?? "", thread: out.thread ?? "", rail: out.rail ?? "" };
+  });
+  ok(`the bar is not the same surface as the thread  (${grounds?.bar} on ${grounds?.thread})`,
+    grounds !== null && grounds.bar !== grounds.thread);
+  ok("the bar and the sidebar are one continuous chrome surface",
+    grounds !== null && grounds.bar === grounds.rail);
+
+  // One row. Two rows would move the thread down as the title changes.
+  const rows = await page.evaluate(() => {
+    const bar = document.querySelector(".pp-topbar");
+    if (!bar) return 99;
+    /* Centres, not tops: a 21px title and a 32px button share a row and do
+       not share a top edge. Rounded to 4px so sub-pixel layout does not read
+       as a second row. */
+    const kids = Array.from(bar.children).filter((el) => (el as HTMLElement).offsetParent !== null);
+    const centres = kids.map((el) => {
+      const box = el.getBoundingClientRect();
+      return Math.round((box.top + box.bottom) / 2 / 4);
+    });
+    return new Set(centres).size;
+  });
+  ok(`the bar is a single row  (${rows} distinct tops)`, rows === 1);
+
+  // Share is an offer, and there is nothing to offer before a worksheet.
+  ok("Share is absent on an empty thread",
+    (await page.locator(".pp-topbar-share").count()) === 0);
+
+  await page.locator("button:has-text('saved worksheet')").first().click();
+  await page.waitForSelector(".pp-card-ask", { timeout: 60000 });
+  await page.waitForTimeout(400);
+
+  ok("Share appears once there is a worksheet",
+    (await page.locator(".pp-topbar-share").count()) === 1);
+  ok("the bar names the thread",
+    (await page.locator(".pp-topbar-title").innerText()).trim().length > 0);
+
+  // The register control and Share must not collide with the title.
+  const fits = await page.evaluate(() => {
+    const title = document.querySelector(".pp-topbar-title");
+    const actions = document.querySelector(".pp-topbar-actions");
+    if (!title || !actions) return false;
+    return title.getBoundingClientRect().right <= actions.getBoundingClientRect().left + 1;
+  });
+  ok("the title never runs under the controls", fits);
+
+  /* The dialog is centred by the UA's own margin, which a rule that sets
+     width and max-height has to restate. It did not, and it opened pinned to
+     the top left corner of the window. */
+  await page.locator(".pp-topbar-share").click();
+  await page.waitForTimeout(600);
+  const centred = await page.evaluate(() => {
+    const el = document.querySelector(".pp-dialog");
+    if (!el) return null;
+    const box = el.getBoundingClientRect();
+    return {
+      dx: Math.abs((box.left + box.right) / 2 - window.innerWidth / 2),
+      dy: Math.abs((box.top + box.bottom) / 2 - window.innerHeight / 2),
+    };
+  });
+  ok(`the share sheet opens centred  (${Math.round(centred?.dx ?? 999)}px, ${Math.round(centred?.dy ?? 999)}px off)`,
+    centred !== null && centred.dx < 4 && centred.dy < 4);
+
+  // Escape closes it, which is the browser's job and is worth confirming.
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+  ok("Escape closes it", (await page.locator(".pp-dialog").count()) === 0);
+
+  await context.close();
+
+  section("The thread's top bar at 390x844");
+  context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  page = await context.newPage();
+  await page.goto(`${BASE}/app`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(400);
+
+  /* Three segments need about 240px. At this width the control is the picker
+     a phone already knows how to render, and the segments are gone from the
+     tab order rather than merely hidden. */
+  const narrow = await page.evaluate(() => {
+    const select = document.querySelector(".pp-register-select");
+    const segments = document.querySelector(".pp-register-segments");
+    return {
+      select: select ? getComputedStyle(select).display : "absent",
+      segments: segments ? getComputedStyle(segments).display : "absent",
+    };
+  });
+  ok(`the register control collapses to a picker  (select ${narrow.select}, segments ${narrow.segments})`,
+    narrow.select !== "none" && narrow.segments === "none");
+
+  const focusables = await page.evaluate(() =>
+    document.querySelectorAll(".pp-topbar [role='radio']:not([hidden])").length);
+  const reachable = await page.evaluate(() =>
+    Array.from(document.querySelectorAll(".pp-topbar [role='radio']"))
+      .filter((el) => (el as HTMLElement).offsetParent !== null).length);
+  ok(`the hidden variant is not a second set of tab stops  (${reachable} of ${focusables} reachable)`,
+    reachable === 0);
+
+  await page.locator("button:has-text('saved worksheet')").first().click();
+  await page.waitForSelector(".pp-card-ask", { timeout: 60000 });
+  await page.waitForTimeout(400);
+
+  // The label goes; the accessible name must not go with it.
+  const named = await page.locator(".pp-topbar-share").getAttribute("aria-label");
+  ok(`the Share button keeps a name when its label is hidden  (${named})`,
+    named !== null && named.length > 0);
+
+  const barRows = await page.evaluate(() => {
+    const bar = document.querySelector(".pp-topbar");
+    if (!bar) return 99;
+    /* Centres, not tops: a 21px title and a 32px button share a row and do
+       not share a top edge. Rounded to 4px so sub-pixel layout does not read
+       as a second row. */
+    const kids = Array.from(bar.children).filter((el) => (el as HTMLElement).offsetParent !== null);
+    const centres = kids.map((el) => {
+      const box = el.getBoundingClientRect();
+      return Math.round((box.top + box.bottom) / 2 / 4);
+    });
+    return new Set(centres).size;
+  });
+  ok(`the bar is still a single row on a phone  (${barRows} distinct tops)`, barRows === 1);
+
+  ok("nothing overflows sideways", !(await page.evaluate(() =>
+    document.documentElement.scrollWidth > document.documentElement.clientWidth)));
+
+  await context.close();
 }
 
 async function main(): Promise<void> {

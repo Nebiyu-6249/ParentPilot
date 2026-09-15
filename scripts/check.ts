@@ -24,6 +24,7 @@ import { computeAnswer, verifyAnswer } from "../lib/verify";
 import { sanitizeSvg } from "../lib/svg";
 import { stripMetadata } from "../lib/exif";
 import { packetCacheKey } from "../lib/packet";
+import { currentProblem, threadTitle } from "../lib/thread";
 import { resolveAppUrl } from "../lib/app-url";
 import type { MoveLabelName } from "../lib/ai/schemas";
 
@@ -1076,6 +1077,138 @@ ok("every specified card trigger has its exact text",
   copy.cards.TAKES_OVER === "You've been talking for 40 seconds. Ask something and wait." &&
     copy.cards.ESCALATION === "Take 20 seconds. Get a glass of water. Nothing is lost." &&
     copy.cards.PRODUCTIVE_WAIT === "Let her think. This silence is the work.");
+
+// ---------------------------------------------------------------------------
+
+section("The thread has a top bar, and it is a bar rather than a floating control");
+
+{
+  const css = readFileSync(path.join(process.cwd(), "app", "globals.css"), "utf8");
+  const bar = readFileSync(path.join(process.cwd(), "components", "app", "ThreadBar.tsx"), "utf8");
+  const sheet = readFileSync(path.join(process.cwd(), "components", "app", "ShareSheet.tsx"), "utf8");
+  const register = readFileSync(path.join(process.cwd(), "components", "RegisterControl.tsx"), "utf8");
+  const noteRoute = readFileSync(
+    path.join(process.cwd(), "app", "api", "thread", "note", "route.ts"), "utf8");
+  const provider = readFileSync(path.join(process.cwd(), "lib", "ai", "provider.ts"), "utf8");
+
+  const topbar = css.slice(css.indexOf(".pp-topbar {"), css.indexOf(".pp-topbar-toggle"));
+
+  /* The defect this section exists for: the register control sat in an
+     unpainted corner and the page had nothing to anchor it. A border alone is
+     not a surface. */
+  ok("the bar takes the rail's ground, not the thread's",
+    /background:\s*var\(--app-rail\)/.test(topbar));
+  ok("the bar still divides itself from the thread",
+    /border-bottom:\s*1px solid var\(--app-line\)/.test(topbar));
+  /* A bar that becomes two rows pushes the thread down as the title changes,
+     and the title is the thing most likely to be long. */
+  ok("the bar never wraps to a second row", /flex-wrap:\s*nowrap/.test(topbar));
+  ok("the bar's height is one number rather than three",
+    /--topbar-h:\s*\d+px/.test(topbar) && /min-height:\s*var\(--topbar-h\)/.test(topbar));
+
+  // Title left, setting then action right, which is where every product this
+  // shell imitates puts them.
+  // Scoped to the markup: the import list names the same components in a
+  // different order and would answer this question wrongly.
+  const markup = bar.slice(bar.indexOf("<header"));
+  const order = ["pp-topbar-title", "pp-topbar-actions", "RegisterControl", "pp-topbar-share"];
+  let at = -1;
+  let ordered = true;
+  for (const token of order) {
+    const found = markup.indexOf(token);
+    if (found <= at) ordered = false;
+    at = found;
+  }
+  ok("title on the left, then the setting, then the action", ordered);
+
+  /* Absent rather than disabled. A dead grey button is an offer the product
+     cannot keep, and there is nothing to tell a teacher before a worksheet. */
+  ok("Share does not appear on an empty thread", /\{problem && \(/.test(bar));
+  /* The visible label is display:none at phone width, which takes it out of
+     the accessibility tree along with the pixels. */
+  ok("the Share button is named on the button, not only by its visible label",
+    /aria-label=\{copy\.chat\.share\}/.test(bar));
+
+  // Three segments need about 240px and a 390px bar does not have them.
+  ok("the register control renders a narrow variant as well",
+    /pp-register-select/.test(register) && /pp-register-segments/.test(register));
+  ok("exactly one variant shows at a time, so neither is a second tab stop",
+    /\.pp-register-select\s*\{\s*display:\s*none/.test(css) &&
+      /\.pp-register-segments\s*\{\s*display:\s*none/.test(css.slice(css.indexOf("@media (max-width: 860px)"))));
+  ok("the narrow variant is a native control rather than a hand-written menu",
+    /<select/.test(register));
+
+  // A native dialog: top layer, focus trapping and Escape are the browser's.
+  ok("the share sheet is a real dialog", /<dialog/.test(sheet) && /showModal\(\)/.test(sheet));
+  /* showModal centres through the UA's `inset: 0; margin: auto`. Setting width
+     and max-height without restating the margin pinned it to the top left,
+     which no assertion caught and a screenshot did. */
+  const dialog = css.slice(css.indexOf(".pp-dialog {"), css.indexOf(".pp-dialog::backdrop"));
+  ok("the dialog is centred", /margin:\s*auto/.test(dialog) && /inset:\s*0/.test(dialog));
+  /* The parent sends this under their own name, so they have to be able to
+     change a word of it first. */
+  ok("the note is editable before it is sent", /<textarea/.test(sheet));
+  ok("nothing is sent and nothing is stored", /shareFooter/.test(sheet));
+
+  /* The teacher note is the only outward-facing thing a thread makes, so the
+     press-and-hold has to survive a parent forwarding one. The guarantee is
+     structural: there is no field to put an answer in. */
+  const args = provider.slice(provider.indexOf("interface TeacherNoteArgs"),
+    provider.indexOf("export async function generateTeacherNote"));
+  ok("the teacher note has nowhere to put an answer",
+    args.length > 0 && !/answer/i.test(args));
+  ok("and is never handed one", !/computedAnswer|lockedAnswer/.test(noteRoute));
+
+  /* Three refusals that are not the same thing. Telling a parent to retry in a
+     minute when this deployment has no key is a small lie. */
+  ok("an unconfigured deployment says so instead of asking for a retry",
+    /shareUnconfigured/.test(noteRoute) && /shareLimit/.test(noteRoute));
+  ok("a duration is never invented for a thread that nothing timed",
+    /minutes: null/.test(noteRoute));
+  ok("the prompt is told what to do with a missing duration",
+    /MINUTES_SPENT is the string `null`/.test(
+      readFileSync(path.join(process.cwd(), "prompts", "teacher-note.md"), "utf8")));
+}
+
+// ---------------------------------------------------------------------------
+
+section("What a thread is called, and which problem it is on");
+
+{
+  const turn = (id: string, cards: unknown[]) =>
+    ({ id, role: "ASSISTANT", body: null, cards, createdAt: "" }) as never;
+
+  const worksheet = (problemId: string, printedText: string) => ({
+    kind: "worksheet", problemId, printedText, childWorkText: null, childAnswer: null,
+    imageDataUrl: null, verification: "checked", standardCode: null,
+    standardPlain: "adding fractions", grade: 5,
+  });
+
+  eq("an empty thread has no title", threadTitle([]), "");
+  eq("the title is the first problem read",
+    threadTitle([turn("a", [worksheet("p1", "1/4 + 2/3 =")]), turn("b", [worksheet("p2", "2/5 + 1/2 =")])]),
+    "1/4 + 2/3 =");
+
+  ok("an empty thread is on no problem", currentProblem([]) === null);
+  /* The newest, not the first: a parent who has photographed a second page is
+     working the second page, and the note they send is about where they
+     actually stopped. */
+  eq("the current problem is the most recent one read",
+    currentProblem([
+      turn("a", [worksheet("p1", "1/4 + 2/3 =")]),
+      turn("b", [worksheet("p2", "2/5 + 1/2 =")]),
+    ])?.problemId,
+    "p2");
+  eq("it carries the misconception from its own turn",
+    currentProblem([
+      turn("a", [worksheet("p1", "1/4 + 2/3 ="),
+        { kind: "misconception", plainName: "whole number bias", note: null,
+          repairQuestion: "?", visualSvg: null }]),
+    ])?.misconceptionName,
+    "whole number bias");
+  ok("a turn with no worksheet is skipped",
+    currentProblem([turn("a", [{ kind: "text", body: "hello" }])]) === null);
+}
 
 // ---------------------------------------------------------------------------
 
