@@ -93,6 +93,24 @@ export const teacherNoteSchema = z.object({
   note: z.string().min(1),
 });
 
+/**
+ * One conversational turn.
+ *
+ * The intent is separate from the prose on purpose. `answer` means the parent
+ * asked for the answer, and the software reveals it behind the press and hold;
+ * the model writes the sentence around it and never the answer itself. There
+ * is no field here that could carry one.
+ */
+export const CHAT_INTENTS = ["coach", "next_question", "answer", "redirect"] as const;
+export type ChatIntent = (typeof CHAT_INTENTS)[number];
+
+export const chatTurnSchema = z.object({
+  intent: z.enum(CHAT_INTENTS),
+  reply: z.string().min(1),
+});
+
+export type ChatTurn = z.infer<typeof chatTurnSchema>;
+
 export const misconceptionJudgeSchema = z.object({
   misconceptionId: z.string().nullable(),
   confidence: z.number().min(0).max(1),

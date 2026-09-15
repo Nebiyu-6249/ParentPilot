@@ -1,4 +1,4 @@
-import type { MethodMatch, RegisterName, Script } from "@/lib/ai/schemas";
+import type { ChatIntent, MethodMatch, RegisterName, Script } from "@/lib/ai/schemas";
 import type { PacketBundle } from "@/lib/types";
 
 /**
@@ -100,6 +100,15 @@ export interface ParkItCard {
 export interface TextCard {
   kind: "text";
   body: string;
+  /**
+   * Why this reply exists, on the turns a model wrote.
+   *
+   * Absent on the ones this product writes itself. It is real information
+   * rather than a test hook: a redirect and a piece of coaching are different
+   * kinds of reply, and the thread renders the distinction so that "what does
+   * this product refuse to do" is answerable from the outside.
+   */
+  intent?: ChatIntent;
 }
 
 export type Card =
@@ -199,4 +208,159 @@ export function cardsForPacket(
   );
 
   return cards;
+}
+
+/**
+ * What this thread is about.
+ *
+ * The printed problem, once one has been read. Empty until then rather than a
+ * placeholder, because an empty bar is honest and "New worksheet" in the rail
+ * and the bar at once is not information.
+ *
+ * It lives here rather than in the shell because a thread holds more than one
+ * problem once free text lands, and the question of what to call a thread that
+ * has worked three problems should have one home when it arrives.
+ */
+export function threadTitle(turns: Turn[]): string {
+  for (const turn of turns) {
+    for (const card of turn.cards) {
+      if (card.kind === "worksheet") return card.printedText;
+    }
+  }
+  return "";
+}
+
+/**
+ * The problem the thread is on right now, which is the most recent one read.
+ *
+ * Deliberately the newest rather than the first: a parent who has photographed
+ * a second page is working the second page, and the note they send a teacher
+ * is about where they actually stopped.
+ */
+export interface CurrentProblem {
+  problemId: string;
+  printedText: string;
+  standardPlain: string | null;
+  misconceptionName: string | null;
+}
+
+export function currentProblem(turns: Turn[]): CurrentProblem | null {
+  for (let i = turns.length - 1; i >= 0; i -= 1) {
+    const turn = turns[i];
+    if (!turn) continue;
+
+    const worksheet = turn.cards.find((card): card is WorksheetCard => card.kind === "worksheet");
+    if (!worksheet) continue;
+
+    const misconception = turn.cards.find(
+      (card): card is MisconceptionCard => card.kind === "misconception",
+    );
+
+    return {
+      problemId: worksheet.problemId,
+      printedText: worksheet.printedText,
+      standardPlain: worksheet.standardPlain,
+      misconceptionName: misconception?.plainName ?? null,
+    };
+  }
+  return null;
+}
+
+/** The rung currently showing for a problem, so "Still stuck" knows where it is. */
+export function lastRung(turns: Turn[], problemId: string): number {
+  for (let i = turns.length - 1; i >= 0; i -= 1) {
+    const turn = turns[i];
+    if (!turn) continue;
+    for (let j = turn.cards.length - 1; j >= 0; j -= 1) {
+      const card = turn.cards[j];
+      if (card && card.kind === "ask" && card.problemId === problemId) return card.rung;
+    }
+  }
+  return 0;
+}
+
+/**
+ * One line of the conversation, as the model is shown it.
+ *
+ * Built on the client from the cards already rendered, then validated and
+ * rendered to a string on the server. Deliberately a narrow shape: the client
+ * supplies what was said, and the server supplies every fact about the problem
+ * from its own database, so a tampered request cannot change what the model is
+ * told about a child's working.
+ */
+export interface ThreadLine {
+  role: "PARENT" | "ASSISTANT";
+  text: string;
+}
+
+/** How many lines of history the model is shown. */
+export const TRANSCRIPT_LINES = 12;
+
+/**
+ * The conversation so far, for a free-text turn.
+ *
+ * The `answer` card is excluded by construction, and that is the important
+ * line in this function. Feeding a rendered thread back to a model would put
+ * the locked answer in its context on the second turn, and a parent who then
+ * asked "so what is it" would be told, which is the one thing the product
+ * exists to prevent.
+ */
+export function threadTranscript(turns: Turn[], limit = TRANSCRIPT_LINES): ThreadLine[] {
+  const lines: ThreadLine[] = [];
+
+  for (const turn of turns) {
+    if (turn.role === "PARENT") {
+      if (turn.body) lines.push({ role: "PARENT", text: turn.body });
+      continue;
+    }
+
+    for (const card of turn.cards) {
+      switch (card.kind) {
+        case "worksheet":
+          lines.push({ role: "ASSISTANT", text: `Read a page: ${card.printedText}` });
+          break;
+        case "ask":
+          lines.push({ role: "ASSISTANT", text: `Gave the question: ${card.question}` });
+          break;
+        case "misconception":
+          lines.push({ role: "ASSISTANT", text: `Named the misconception: ${card.plainName}` });
+          break;
+        case "text":
+          lines.push({ role: "ASSISTANT", text: card.body });
+          break;
+        // "answer" is never included. "notice" and the rest are about this
+        // deployment or about layout, and say nothing about the child.
+        default:
+          break;
+      }
+    }
+  }
+
+  return lines.slice(-limit);
+}
+
+/**
+ * Whether a reply gives the answer away.
+ *
+ * The prompt forbids it and this decides it, for the same reason the em-dash
+ * ban lives in `sanitize` as well as in every prompt file: a prompt is a
+ * request and this is a guarantee. The caller replaces the reply rather than
+ * editing it, because a sentence with the answer cut out of it is a sentence
+ * that no longer means anything.
+ *
+ * Matches on the computed value rather than the whole `lockedAnswer`, which is
+ * a sentence and would never appear verbatim. The boundaries are hand rolled
+ * because `\b` does not fire either side of a slash, so `11/12` inside
+ * `111/12` would otherwise count as a match.
+ *
+ * The trailing boundary has to let a full stop through while still rejecting a
+ * decimal point. "It is 11/12." is the commonest way a reply would give the
+ * answer away, and an earlier version of this missed exactly that sentence.
+ */
+export function revealsAnswer(reply: string, computedAnswer: string | null): boolean {
+  const needle = computedAnswer?.trim();
+  if (!needle) return false;
+
+  const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?<![\\w/.])${escaped}(?![\\w/]|\\.\\d)`).test(reply);
 }

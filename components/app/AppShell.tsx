@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import ThreadCard from "@/components/app/Cards";
-import RegisterControl from "@/components/RegisterControl";
+import ThreadBar from "@/components/app/ThreadBar";
 import ThemeToggle from "@/components/ThemeToggle";
 import Logo from "@/components/Logo";
 import {
@@ -17,7 +17,14 @@ import {
 } from "@/components/icons";
 import { copy } from "@/lib/copy";
 import type { RegisterName } from "@/lib/ai/schemas";
-import type { Card, Turn } from "@/lib/thread";
+import {
+  currentProblem,
+  lastRung,
+  threadTitle,
+  threadTranscript,
+  type Card,
+  type Turn,
+} from "@/lib/thread";
 
 const RAIL_KEY = "pp_rail";
 
@@ -53,6 +60,7 @@ export default function AppShell({
   const [status, setStatus] = useState<string | null>(null);
   const [register, setRegister] = useState<RegisterName>(initialRegister);
   const [text, setText] = useState("");
+  const [shareOpen, setShareOpen] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const threadRef = useRef<HTMLDivElement>(null);
@@ -199,11 +207,30 @@ export default function AppShell({
     post({ kind: "solved", problemId }, copy.packet.answeredIt);
   }
 
-  function submitText(): void {
-    const value = text.trim();
-    if (!value) return;
+  /**
+   * A typed turn.
+   *
+   * Carries the conversation and which problem it is about, so a thread stays
+   * continuous: photograph page two after working page one and the reply knows
+   * what came before. The server reads every fact about the problem from its
+   * own database, so what goes up is only what was said.
+   */
+  function submitText(value: string): void {
+    const said = value.trim();
+    if (!said) return;
     setText("");
-    post({ kind: "text", text: value }, value);
+
+    const problem = currentProblem(turns);
+    post(
+      {
+        kind: "text",
+        text: said,
+        problemId: problem?.problemId ?? null,
+        rung: problem ? lastRung(turns, problem.problemId) : 0,
+        transcript: threadTranscript(turns),
+      },
+      said,
+    );
   }
 
   const empty = turns.length === 0;
@@ -296,25 +323,17 @@ export default function AppShell({
       />
 
       <div className="pp-thread-wrap">
-        <header className="pp-topbar">
-          {!railOpen && (
-            <button
-              type="button"
-              onClick={toggleRail}
-              aria-label="Open sidebar"
-              className="pp-composer-btn"
-              style={{ width: 32, height: 32, borderRadius: "var(--r-control)" }}
-            >
-              <PanelIcon size={16} />
-            </button>
-          )}
-          {/* The subject of the thread, which is the problem once there is
-              one. Repeating the sidebar's "New worksheet" here said nothing
-              the parent could not already see. */}
-          <span className="pp-topbar-title">{title(turns)}</span>
-
-          <RegisterControl value={register} onChange={setRegister} compact />
-        </header>
+        <ThreadBar
+          title={threadTitle(turns)}
+          problem={currentProblem(turns)}
+          register={register}
+          onRegisterChange={setRegister}
+          railOpen={railOpen}
+          onToggleRail={toggleRail}
+          shareOpen={shareOpen}
+          onShareOpen={() => setShareOpen(true)}
+          onShareClose={() => setShareOpen(false)}
+        />
 
         <div className="pp-thread" ref={threadRef}>
           <div className="pp-thread-inner">
@@ -379,7 +398,7 @@ export default function AppShell({
                       key={suggestion}
                       type="button"
                       className="pp-chip"
-                      onClick={() => post({ kind: "text", text: suggestion }, suggestion)}
+                      onClick={() => submitText(suggestion)}
                     >
                       {suggestion}
                     </button>
@@ -463,7 +482,7 @@ export default function AppShell({
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
-                  submitText();
+                  submitText(text);
                 }
               }}
             />
@@ -477,7 +496,7 @@ export default function AppShell({
                 type="button"
                 className="pp-composer-btn pp-composer-send"
                 aria-label="Send"
-                onClick={submitText}
+                onClick={() => submitText(text)}
               >
                 <SendIcon size={18} />
               </button>
@@ -501,34 +520,6 @@ export default function AppShell({
       </div>
     </div>
   );
-}
-
-/**
- * What this thread is about: the printed problem, once one has been read.
- *
- * Empty until then rather than a placeholder, because an empty bar is honest
- * and "New worksheet" in two places at once is not information.
- */
-function title(turns: Turn[]): string {
-  for (const turn of turns) {
-    for (const card of turn.cards) {
-      if (card.kind === "worksheet") return card.printedText;
-    }
-  }
-  return "";
-}
-
-/** The rung currently showing for a problem, so "Still stuck" knows where it is. */
-function lastRung(turns: Turn[], problemId: string): number {
-  for (let i = turns.length - 1; i >= 0; i -= 1) {
-    const turn = turns[i];
-    if (!turn) continue;
-    for (let j = turn.cards.length - 1; j >= 0; j -= 1) {
-      const card = turn.cards[j];
-      if (card && card.kind === "ask" && card.problemId === problemId) return card.rung;
-    }
-  }
-  return 0;
 }
 
 /** Today / This week / Earlier, the grouping every history sidebar uses. */

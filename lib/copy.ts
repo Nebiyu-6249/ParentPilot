@@ -163,6 +163,9 @@ export const copy = {
     matching: "Matching it to what the class is teaching",
     writing: "Writing your primer",
     almost: "Almost there",
+    /* A typed turn reads the thread rather than the page, and saying
+       "Reading her working" while doing that would be a small lie. */
+    thinking: "Reading the thread",
   },
 
   transcription: {
@@ -330,15 +333,51 @@ export const copy = {
     threadsToday: "Today",
     threadsWeek: "This week",
     threadsEarlier: "Earlier",
-    /* Free-text turns arrive in step four. Saying so is better than a
-       composer that silently swallows what a parent typed. */
-    notYet:
-      "Answering in your own words is not switched on yet. For now, photograph the page or tap Still stuck for the next question.",
+    /* Free text needs a model, and a deployment without one says so rather
+       than swallowing what a parent typed. The buttons still work, so the
+       sentence names them. */
+    turnUnconfigured:
+      "This deployment cannot answer in your own words yet. Tap Still stuck for the next question, or photograph the next page.",
+    turnLimit:
+      "We have hit today's ceiling on replies. Still stuck and the saved example both still work.",
+    turnFailed: "That did not go through. Try saying it again.",
+    /* Said when the parent asks for the answer, and said again if a reply ever
+       comes back with the answer inside it. The card below it does the
+       revealing, behind the press and hold. */
+    answerBehindHold: "It is here, behind the hold.",
+    /* The thread's own turn label when a parent taps a suggestion chip rather
+       than typing. */
+    nextQuestion: "Here is the next one to try.",
     suggestions: [
       "she's getting frustrated",
       "she got it but I don't think she understands",
       "what should I not say",
     ],
+
+    /* The top bar. Two controls: how it writes to you, and sending this on to
+       the teacher. Both apply to the whole thread rather than to one card,
+       which is the reason they live up there and not inside it. */
+    share: "Share",
+    shareHeading: "Send this to the teacher",
+    shareHelp:
+      "A short note in your words, built from what happened tonight. Read it, change anything you like, then send it yourself.",
+    shareDrafting: "Drafting the note",
+    shareCopy: "Copy the note",
+    shareCopied: "Copied",
+    shareClose: "Close",
+    /* The note is the parent's to send. We never send it for them, and we
+       never publish it: a drafted note is not stored and never appears on a
+       shared link. */
+    shareFooter: "Nothing is sent for you and nothing is kept. The note exists in this window only.",
+    shareEmpty: "Photograph a worksheet first. There is nothing to tell a teacher about yet.",
+    /* Three situations that are not the same thing, so three sentences. The
+       first two cannot be fixed by waiting a minute, and telling a parent to
+       retry something that will not succeed is the kind of small lie this
+       product does not tell. */
+    shareUnconfigured:
+      "This deployment is not set up to draft notes yet. Everything else in the thread still works.",
+    shareLimit: "We have hit today's ceiling on drafting. The thread is unaffected.",
+    shareFailed: "The note could not be drafted just now. Try again in a minute.",
   },
 
   login: {

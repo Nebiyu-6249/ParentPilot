@@ -24,6 +24,7 @@ import { computeAnswer, verifyAnswer } from "../lib/verify";
 import { sanitizeSvg } from "../lib/svg";
 import { stripMetadata } from "../lib/exif";
 import { packetCacheKey } from "../lib/packet";
+import { currentProblem, revealsAnswer, threadTitle, threadTranscript } from "../lib/thread";
 import { resolveAppUrl } from "../lib/app-url";
 import type { MoveLabelName } from "../lib/ai/schemas";
 
@@ -1079,9 +1080,302 @@ ok("every specified card trigger has its exact text",
 
 // ---------------------------------------------------------------------------
 
+section("Free text holds the thesis under conversational pressure");
+
+{
+  const prompt = readFileSync(path.join(process.cwd(), "prompts", "chat-turn.md"), "utf8");
+  const flat = prompt.replace(/\s+/g, " ");
+  const route = readFileSync(
+    path.join(process.cwd(), "app", "api", "thread", "turn", "route.ts"), "utf8");
+  const thread = readFileSync(path.join(process.cwd(), "lib", "thread.ts"), "utf8");
+  const schemas = readFileSync(path.join(process.cwd(), "lib", "ai", "schemas.ts"), "utf8");
+
+  // The four rules the brief names, each present in the file that enforces it.
+  ok("the prompt writes the question, never the explanation to read aloud",
+    /write the question the parent should ask, not the explanation/i.test(flat));
+  ok("the prompt forbids stating the answer in prose",
+    /Do not write the answer/i.test(flat) && /not yours to write/i.test(flat));
+  ok("the prompt refuses to become a general tutor",
+    /outside what this product does/i.test(flat) && /redirect/i.test(flat));
+  ok("the prompt caps the reply at three sentences",
+    /Three sentences or fewer/i.test(flat));
+  ok("and says when depth is allowed instead", /asking for depth/i.test(flat));
+
+  /* The intent is separate from the prose so the answer can be emitted by the
+     route from the packet. A single free-text field would have made "return
+     the answer card" indistinguishable from "write the answer". */
+  ok("a turn carries an intent as well as a reply",
+    /chatTurnSchema/.test(schemas) && /intent: z\.enum\(CHAT_INTENTS\)/.test(schemas));
+  ok("the schema has no field an answer could travel in",
+    /chatTurnSchema = z\.object\(\{\s*intent[^}]*reply: z\.string\(\)\.min\(1\),\s*\}\)/.test(
+      schemas.replace(/\r/g, "")));
+
+  const textCase = route.slice(route.indexOf('case "text":'));
+  ok("the answer card is written from the packet, never from the reply",
+    /answer: bundle\.packet\.lockedAnswer/.test(textCase));
+  ok("a reply that names the answer is replaced rather than edited",
+    /revealsAnswer\(turn\.reply, computed\)/.test(textCase) &&
+      /leaked \? copy\.chat\.answerBehindHold : turn\.reply/.test(textCase));
+  ok("and the replacement is recorded, because it should never happen",
+    /logFailure\("thread-text", "A reply named the answer/.test(textCase));
+  ok("advancing the ladder from a typed turn still makes no second model call",
+    /intent === "next_question"/.test(textCase) && !/generatePacket/.test(textCase));
+  /* Facts come from this side. A request that could describe the child's
+     working would let anyone with the endpoint put words in the model's mouth
+     about a child they have never seen. */
+  ok("the request carries what was said and nothing else",
+    /transcript: z\s*\n?\s*\.array/.test(route) &&
+      !/childWorkText: parsed\.data/.test(route) &&
+      /childWorkText: bundle\?\.problem\.childWorkText/.test(textCase));
+
+  /* The one that matters most: the rendered thread must never be fed back to
+     a model, because it contains the locked answer. */
+  ok("the transcript excludes the answer card by construction",
+    /"answer" is never included/.test(thread));
+
+  eq("an empty thread renders an empty transcript", threadTranscript([]), []);
+
+  {
+    const turn = (role: "PARENT" | "ASSISTANT", body: string | null, cards: unknown[]) =>
+      ({ id: role + body, role, body, cards, createdAt: "" }) as never;
+
+    const lines = threadTranscript([
+      turn("ASSISTANT", null, [
+        { kind: "worksheet", problemId: "p1", printedText: "1/4 + 2/3 =", childWorkText: null,
+          childAnswer: null, imageDataUrl: null, verification: "checked", standardCode: null,
+          standardPlain: null, grade: 5 },
+        { kind: "ask", problemId: "p1", question: "How did you get to this one?", rung: 0, total: 5 },
+        { kind: "answer", answer: "11/12, because twelfths.", verification: "checked" },
+      ]),
+      turn("PARENT", "she's getting frustrated", []),
+    ]);
+
+    ok(`the transcript keeps what was said  (${lines.length} lines)`, lines.length === 3);
+    ok("and never the answer", !JSON.stringify(lines).includes("11/12"));
+    ok("the parent's own words are labelled as theirs",
+      lines[lines.length - 1]?.role === "PARENT");
+  }
+
+  // A reply requesting the answer must not contain the computed answer string.
+  ok("a reply naming the answer is caught", revealsAnswer("It is 11/12.", "11/12"));
+  ok("caught mid sentence too", revealsAnswer("She should get 11/12 once she converts.", "11/12"));
+  ok("caught in parentheses", revealsAnswer("The total (11/12) is what to check for.", "11/12"));
+  ok("a coaching reply passes",
+    !revealsAnswer("Ask her to draw a quarter and then two thirds.", "11/12"));
+  /* The problem's own numbers are not the answer, and a matcher that flagged
+     them would replace every legitimate reply on this worksheet. */
+  ok("the question's own fractions are not the answer",
+    !revealsAnswer("Start with 1/4 and 2/3 side by side.", "11/12"));
+  ok("a longer number containing it is not it", !revealsAnswer("Try 111/12 next.", "11/12"));
+  /* The boundary has to let a full stop through and still reject a decimal
+     point. An earlier version rejected both and missed "It is 11/12.", which
+     is the commonest way a reply would give it away. */
+  ok("a decimal answer at the end of a sentence is caught",
+    revealsAnswer("The total is 0.75.", "0.75"));
+  ok("but a longer decimal is not mistaken for it",
+    !revealsAnswer("The total is 0.755 exactly.", "0.75"));
+  ok("nothing is claimed when there is no computable answer",
+    !revealsAnswer("It is 11/12.", null));
+
+  /* Free text needs a model, and the three ways it can be refused are three
+     different situations, as with the teacher note. */
+  for (const name of ["turnUnconfigured", "turnLimit", "turnFailed"] as const) {
+    ok(`a refused turn says which refusal it was: ${name}`,
+      typeof copy.chat[name] === "string" && copy.chat[name].length > 0 &&
+        new RegExp(name).test(route));
+  }
+  ok("the old placeholder is gone",
+    !/not switched on yet/i.test(readFileSync(path.join(process.cwd(), "lib", "copy.ts"), "utf8")));
+}
+
+// ---------------------------------------------------------------------------
+
+section("The thread has a top bar, and it is a bar rather than a floating control");
+
+{
+  const css = readFileSync(path.join(process.cwd(), "app", "globals.css"), "utf8");
+  const bar = readFileSync(path.join(process.cwd(), "components", "app", "ThreadBar.tsx"), "utf8");
+  const sheet = readFileSync(path.join(process.cwd(), "components", "app", "ShareSheet.tsx"), "utf8");
+  const register = readFileSync(path.join(process.cwd(), "components", "RegisterControl.tsx"), "utf8");
+  const noteRoute = readFileSync(
+    path.join(process.cwd(), "app", "api", "thread", "note", "route.ts"), "utf8");
+  const provider = readFileSync(path.join(process.cwd(), "lib", "ai", "provider.ts"), "utf8");
+
+  const topbar = css.slice(css.indexOf(".pp-topbar {"), css.indexOf(".pp-topbar-toggle"));
+
+  /* The defect this section exists for: the register control sat in an
+     unpainted corner and the page had nothing to anchor it. A border alone is
+     not a surface. */
+  ok("the bar takes the rail's ground, not the thread's",
+    /background:\s*var\(--app-rail\)/.test(topbar));
+  ok("the bar still divides itself from the thread",
+    /border-bottom:\s*1px solid var\(--app-line\)/.test(topbar));
+  /* A bar that becomes two rows pushes the thread down as the title changes,
+     and the title is the thing most likely to be long. */
+  ok("the bar never wraps to a second row", /flex-wrap:\s*nowrap/.test(topbar));
+  ok("the bar's height is one number rather than three",
+    /--topbar-h:\s*\d+px/.test(topbar) && /min-height:\s*var\(--topbar-h\)/.test(topbar));
+
+  // Title left, setting then action right, which is where every product this
+  // shell imitates puts them.
+  // Scoped to the markup: the import list names the same components in a
+  // different order and would answer this question wrongly.
+  const markup = bar.slice(bar.indexOf("<header"));
+  const order = ["pp-topbar-title", "pp-topbar-actions", "RegisterControl", "pp-topbar-share"];
+  let at = -1;
+  let ordered = true;
+  for (const token of order) {
+    const found = markup.indexOf(token);
+    if (found <= at) ordered = false;
+    at = found;
+  }
+  ok("title on the left, then the setting, then the action", ordered);
+
+  /* Absent rather than disabled. A dead grey button is an offer the product
+     cannot keep, and there is nothing to tell a teacher before a worksheet. */
+  ok("Share does not appear on an empty thread", /\{problem && \(/.test(bar));
+  /* The visible label is display:none at phone width, which takes it out of
+     the accessibility tree along with the pixels. */
+  ok("the Share button is named on the button, not only by its visible label",
+    /aria-label=\{copy\.chat\.share\}/.test(bar));
+
+  // Three segments need about 240px and a 390px bar does not have them.
+  ok("the register control renders a narrow variant as well",
+    /pp-register-select/.test(register) && /pp-register-segments/.test(register));
+  ok("exactly one variant shows at a time, so neither is a second tab stop",
+    /\.pp-register-select\s*\{\s*display:\s*none/.test(css) &&
+      /\.pp-register-segments\s*\{\s*display:\s*none/.test(css.slice(css.indexOf("@media (max-width: 860px)"))));
+  ok("the narrow variant is a native control rather than a hand-written menu",
+    /<select/.test(register));
+
+  // A native dialog: top layer, focus trapping and Escape are the browser's.
+  ok("the share sheet is a real dialog", /<dialog/.test(sheet) && /showModal\(\)/.test(sheet));
+  /* showModal centres through the UA's `inset: 0; margin: auto`. Setting width
+     and max-height without restating the margin pinned it to the top left,
+     which no assertion caught and a screenshot did. */
+  const dialog = css.slice(css.indexOf(".pp-dialog {"), css.indexOf(".pp-dialog::backdrop"));
+  ok("the dialog is centred", /margin:\s*auto/.test(dialog) && /inset:\s*0/.test(dialog));
+  /* The parent sends this under their own name, so they have to be able to
+     change a word of it first. */
+  ok("the note is editable before it is sent", /<textarea/.test(sheet));
+  ok("nothing is sent and nothing is stored", /shareFooter/.test(sheet));
+
+  /* The teacher note is the only outward-facing thing a thread makes, so the
+     press-and-hold has to survive a parent forwarding one. The guarantee is
+     structural: there is no field to put an answer in. */
+  const args = provider.slice(provider.indexOf("interface TeacherNoteArgs"),
+    provider.indexOf("export async function generateTeacherNote"));
+  ok("the teacher note has nowhere to put an answer",
+    args.length > 0 && !/answer/i.test(args));
+  ok("and is never handed one", !/computedAnswer|lockedAnswer/.test(noteRoute));
+
+  /* Three refusals that are not the same thing. Telling a parent to retry in a
+     minute when this deployment has no key is a small lie. */
+  ok("an unconfigured deployment says so instead of asking for a retry",
+    /shareUnconfigured/.test(noteRoute) && /shareLimit/.test(noteRoute));
+  ok("a duration is never invented for a thread that nothing timed",
+    /minutes: null/.test(noteRoute));
+  ok("the prompt is told what to do with a missing duration",
+    /MINUTES_SPENT is the string `null`/.test(
+      readFileSync(path.join(process.cwd(), "prompts", "teacher-note.md"), "utf8")));
+}
+
+// ---------------------------------------------------------------------------
+
+section("What a thread is called, and which problem it is on");
+
+{
+  const turn = (id: string, cards: unknown[]) =>
+    ({ id, role: "ASSISTANT", body: null, cards, createdAt: "" }) as never;
+
+  const worksheet = (problemId: string, printedText: string) => ({
+    kind: "worksheet", problemId, printedText, childWorkText: null, childAnswer: null,
+    imageDataUrl: null, verification: "checked", standardCode: null,
+    standardPlain: "adding fractions", grade: 5,
+  });
+
+  eq("an empty thread has no title", threadTitle([]), "");
+  eq("the title is the first problem read",
+    threadTitle([turn("a", [worksheet("p1", "1/4 + 2/3 =")]), turn("b", [worksheet("p2", "2/5 + 1/2 =")])]),
+    "1/4 + 2/3 =");
+
+  ok("an empty thread is on no problem", currentProblem([]) === null);
+  /* The newest, not the first: a parent who has photographed a second page is
+     working the second page, and the note they send is about where they
+     actually stopped. */
+  eq("the current problem is the most recent one read",
+    currentProblem([
+      turn("a", [worksheet("p1", "1/4 + 2/3 =")]),
+      turn("b", [worksheet("p2", "2/5 + 1/2 =")]),
+    ])?.problemId,
+    "p2");
+  eq("it carries the misconception from its own turn",
+    currentProblem([
+      turn("a", [worksheet("p1", "1/4 + 2/3 ="),
+        { kind: "misconception", plainName: "whole number bias", note: null,
+          repairQuestion: "?", visualSvg: null }]),
+    ])?.misconceptionName,
+    "whole number bias");
+  ok("a turn with no worksheet is skipped",
+    currentProblem([turn("a", [{ kind: "text", body: "hello" }])]) === null);
+}
+
+// ---------------------------------------------------------------------------
+
+section("Email failures are surfaced rather than swallowed");
+
+{
+  const emailSource = readFileSync(path.join(process.cwd(), "lib", "email.ts"), "utf8");
+  const doctorSource = readFileSync(path.join(process.cwd(), "lib", "doctor.ts"), "utf8");
+  const doctorPage = readFileSync(
+    path.join(process.cwd(), "app", "(site)", "ops", "doctor", "page.tsx"),
+    "utf8",
+  );
+
+  // The bug this section exists for: `result.detail` held Resend's status and
+  // body, and the only thing written anywhere was `result.reason`, which is
+  // one of two words and names nothing.
+  const warnLine = emailSource.split("\n").find((line) => line.includes("[email] sign-in link"));
+  ok("the warn line carries the provider's detail, not just the reason",
+    warnLine !== undefined && warnLine.includes("${detail}"));
+
+  ok("a failed delivery is persisted, so the detail outlives the request",
+    /logFailure\(\s*FAILURE_SCOPE/.test(emailSource));
+  ok("the persisted record keeps the parent's address out of the operator board",
+    !/logFailure\([^)]*\$\{email\}/.test(emailSource));
+  ok("the key is redacted before any detail is written",
+    /function redactKey/.test(emailSource) && /redactKey\(result\.detail\)/.test(emailSource));
+
+  ok("the doctor report carries the email picture",
+    /interface DoctorEmail/.test(doctorSource) && /lastFailure/.test(doctorSource));
+  ok("a configured deployment whose last send failed does not report ok",
+    /mailFailure \? "fail"/.test(doctorSource));
+
+  for (const label of ["Configured", "RESEND_FROM", "RESEND_API_KEY", "Most recent failed delivery"]) {
+    ok(`/ops/doctor renders ${label}`, doctorPage.includes(`label: "${label}"`));
+  }
+
+  // Length and last four only. Anything that reaches for the value itself
+  // would put a live bearer token on a page behind one password.
+  ok("/ops/doctor never reaches for the key's value",
+    !/process\.env\.RESEND_API_KEY/.test(doctorPage) && !/process\.env\.RESEND_API_KEY/.test(doctorSource));
+  ok("emailStatus reports the key by length and tail, never in full",
+    /\$\{key\.length\} characters, ending \$\{key\.slice\(-4\)\}/.test(emailSource));
+}
+
+// The parent asking for a link learns nothing about the deployment's plumbing.
+// A status code or a provider name on /login is an operator's information
+// leaking onto a page anyone can load.
+for (const [name, text] of Object.entries(copy.login)) {
+  ok(`/login copy stays generic: ${name}`,
+    !/resend|\b4\d\d\b|\b5\d\d\b|api[ _-]?key|domain is not verified/i.test(text));
+}
+
+// ---------------------------------------------------------------------------
+
 section("Prompt files carry the four standing rules");
 
-for (const name of ["extract-worksheet", "generate-packet", "classify-move", "session-recap", "teacher-note"]) {
+for (const name of ["extract-worksheet", "generate-packet", "classify-move", "session-recap", "teacher-note", "chat-turn"]) {
   const text = readFileSync(path.join(process.cwd(), "prompts", `${name}.md`), "utf8");
   // The files are hard-wrapped, so a rule can straddle a line break.
   const flat = text.replace(/\s+/g, " ");

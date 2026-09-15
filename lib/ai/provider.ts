@@ -6,6 +6,7 @@ import { sanitizeDeep } from "@/lib/copy";
 import { recordSpend } from "@/lib/limits";
 import { loadPrompt } from "@/lib/ai/prompts";
 import {
+  chatTurnSchema,
   checkResultSchema,
   classificationSchema,
   extractionSchema,
@@ -13,6 +14,7 @@ import {
   packetSchema,
   recapSchema,
   teacherNoteSchema,
+  type ChatTurn,
   type CheckResult,
   type Classification,
   type Extraction,
@@ -331,7 +333,9 @@ export interface TeacherNoteArgs {
   childName: string | null;
   printedText: string;
   standardPlain: string | null;
-  minutes: number;
+  /** Null where nothing timed the session. The prompt drops the beat rather
+   *  than inventing a figure for a note the parent sends under their name. */
+  minutes: number | null;
   misconception: string | null;
   register: RegisterName;
   language: string;
@@ -360,6 +364,63 @@ export async function generateTeacherNote(args: TeacherNoteArgs): Promise<string
   });
 
   return result.note;
+}
+
+export interface ChatTurnArgs {
+  printedText: string | null;
+  childWorkText: string | null;
+  standardPlain: string | null;
+  misconception: string | null;
+  rungsUsed: number;
+  rungsTotal: number;
+  /** The conversation so far, already trimmed and labelled by the caller. */
+  transcript: string;
+  register: RegisterName;
+  language: string;
+}
+
+/**
+ * One conversational reply to the parent.
+ *
+ * Deliberately the only place in the product where a model writes free prose
+ * into the thread, and the most constrained: three sentences, addressed to the
+ * adult, and no route by which the answer can reach the page. The prompt says
+ * so and the schema enforces it, since `chatTurnSchema` has one text field and
+ * the caller strips the computed answer out of it before rendering.
+ *
+ * Routed to the classify model rather than the packet model. This fires on
+ * every typed line, so it is the highest frequency call in the product, and
+ * the task is short reasoning over supplied facts rather than generation.
+ */
+export async function chatTurn(args: ChatTurnArgs): Promise<ChatTurn> {
+  const system = await loadPrompt("chat-turn", {
+    REGISTER: args.register,
+    LANGUAGE: args.language,
+    PRINTED_TEXT: args.printedText,
+    CHILD_WORK: args.childWorkText,
+    STANDARD_PLAIN: args.standardPlain,
+    MISCONCEPTION: args.misconception,
+    RUNGS_USED: args.rungsUsed,
+    RUNGS_TOTAL: args.rungsTotal,
+  });
+
+  return complete({
+    task: "classify",
+    schema: chatTurnSchema,
+    temperature: 0.4,
+    maxTokens: 400,
+    /* The conversation goes in the user message, not the system prompt. It is
+       the thing being acted on rather than an instruction, and putting it in
+       the prompt left it above the worked examples, so the last line that
+       looked like a parent speaking was an example rather than the parent. */
+    messages: [
+      { role: "system", content: system },
+      {
+        role: "user",
+        content: `The conversation so far:\n${args.transcript}\n\nReply to the parent's most recent line.`,
+      },
+    ],
+  });
 }
 
 export interface MisconceptionJudgeArgs {
