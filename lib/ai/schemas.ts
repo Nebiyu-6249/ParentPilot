@@ -97,11 +97,27 @@ export const teacherNoteSchema = z.object({
  * One conversational turn.
  *
  * The intent is separate from the prose on purpose. `answer` means the parent
- * asked for the answer, and the software reveals it behind the press and hold;
- * the model writes the sentence around it and never the answer itself. There
- * is no field here that could carry one.
+ * asked for the solution to the problem in front of the child, and the
+ * software reveals it behind the press and hold; the model writes the sentence
+ * around it and never the answer itself. There is no field here that could
+ * carry one.
+ *
+ * The other intents exist because collapsing them into `answer` is what broke
+ * this. "What is a denominator" is a definition, "show me an example" is a
+ * worked example on different numbers, and a bare "what" is a request to say
+ * the last thing again more simply. None of them is a request for the child's
+ * answer, and all three were getting the press and hold.
  */
-export const CHAT_INTENTS = ["coach", "next_question", "answer", "redirect"] as const;
+export const CHAT_INTENTS = [
+  "coach",
+  "next_question",
+  "answer",
+  "explain",
+  "example",
+  "strategy",
+  "clarify",
+  "redirect",
+] as const;
 export type ChatIntent = (typeof CHAT_INTENTS)[number];
 
 export const chatTurnSchema = z.object({

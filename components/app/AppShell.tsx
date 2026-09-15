@@ -223,11 +223,28 @@ export default function AppShell({
   /** "Still stuck" advances the ladder. No model call: the rungs already exist. */
   function advance(problemId: string): void {
     const rung = lastRung(turns, problemId);
-    post({ kind: "advance", problemId, rung }, copy.packet.stillStuck);
+    post({ kind: "advance", problemId, rung, printedText: printedTextFor(problemId) }, copy.packet.stillStuck);
   }
 
   function solved(problemId: string): void {
-    post({ kind: "solved", problemId }, copy.packet.answeredIt);
+    post({ kind: "solved", problemId, printedText: printedTextFor(problemId) }, copy.packet.answeredIt);
+  }
+
+  /**
+   * The problem's own text, for the turns that need it.
+   *
+   * A typed problem is not always stored, so the server cannot always look one
+   * up by id. Sending the text back lets it rebuild the same packet instead of
+   * falling through to the saved example, which would answer "Still stuck"
+   * with a question about a different problem.
+   */
+  function printedTextFor(problemId: string): string | undefined {
+    for (let i = turns.length - 1; i >= 0; i -= 1) {
+      for (const card of turns[i]?.cards ?? []) {
+        if (card.kind === "worksheet" && card.problemId === problemId) return card.printedText;
+      }
+    }
+    return undefined;
   }
 
   /**

@@ -393,6 +393,106 @@ async function runTopBar(browser: Browser): Promise<void> {
   await runLiveToggle(browser);
   await runMarketing(browser);
   await runSettledScreens(browser);
+  await runTranscript(browser);
+}
+
+/**
+ * The failing transcript, replayed.
+ *
+ * Every line here returned the wrong thing before this round. They are driven
+ * through the real endpoint rather than the pure functions, because the bug
+ * was never in one function: it was the prompt, the classifier and the router
+ * disagreeing about what a question was.
+ *
+ * What this cannot check is the prose, which is the model's half. It checks
+ * the half that is code: which cards come back, and whether the answer to the
+ * problem in front of the child is among them.
+ */
+async function runTranscript(browser: Browser): Promise<void> {
+  section("The failing transcript, line by line");
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await context.newPage();
+  await page.goto(`${BASE}/app`, { waitUntil: "networkidle" });
+
+  const say = async (text: string, problemId: string | null) =>
+    page.evaluate(
+      async ([said, active]) => {
+        const response = await fetch("/api/thread/turn", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            kind: "text",
+            text: said,
+            problemId: active,
+            rung: 0,
+            register: "STANDARD",
+            transcript: [],
+          }),
+        });
+        const lines = (await response.text()).trim().split("\n").filter(Boolean);
+        const final = JSON.parse(lines[lines.length - 1] ?? "{}") as {
+          cards?: { kind: string; intent?: string; body?: string }[];
+        };
+        const cards = final.cards ?? [];
+        return {
+          kinds: cards.map((c) => c.kind),
+          intent: cards.find((c) => c.kind === "text")?.intent ?? null,
+          prose: cards.filter((c) => c.kind === "text").map((c) => c.body ?? "").join(" "),
+        };
+      },
+      [text, problemId] as const,
+    );
+
+  // With a problem in front of the child, so the press and hold is live.
+  const denominator = await say("what is a denominator", "demo");
+  ok(`"what is a denominator" is a definition, not the answer  (${denominator.intent})`,
+    denominator.intent === "explain" && !denominator.kinds.includes("answer"));
+
+  const bare = await say("what", "demo");
+  ok(`a bare "what" asks for it again, not for the answer  (${bare.intent})`,
+    bare.intent === "clarify" && !bare.kinds.includes("answer"));
+
+  const example = await say("can you show me with examples", "demo");
+  ok(`"can you show me with examples" is an example  (${example.intent})`,
+    example.intent === "example" && !example.kinds.includes("answer"));
+
+  // The one case that must still reach it.
+  const wanted = await say("just tell me the answer", "demo");
+  ok(`"just tell me the answer" still returns the answer card  (${wanted.intent})`,
+    wanted.intent === "answer" && wanted.kinds.includes("answer"));
+
+  /* The invariant, restated against every reply above: none of them may name
+     the demo problem's computed answer. */
+  const proseSoFar = [denominator, bare, example, wanted].map((r) => r.prose).join(" ");
+  ok("no reply named the active problem's answer", !proseSoFar.includes("11/12"));
+
+  // With nothing in front of the child, nothing is held back and nothing
+  // is refused for being off topic.
+  for (const [said, label] of [
+    ["how do i teach my kid calculus", "calculus"],
+    ["what is the powerhouse of the cell", "biology"],
+  ] as const) {
+    const out = await say(said, null);
+    ok(`"${said}" is answered  (${out.intent})`,
+      out.intent !== "redirect" && !out.kinds.includes("answer") && out.prose.length > 20);
+    ok(`and the ${label} reply is not a help desk line`,
+      !/this tool|this product|i can'?t assist|feel free to/i.test(out.prose));
+  }
+
+  const offTopic = await say("write me a python script that scrapes a website", null);
+  ok(`an unrelated request is redirected  (${offTopic.intent})`, offTopic.intent === "redirect");
+
+  /* Typed arithmetic is a worksheet. This is pure routing, so it does not
+     depend on how the model behind it classifies anything. */
+  for (const sum of ["4 * 4", "1/2 + 2/3 =", "1 + 1"]) {
+    const out = await say(sum, null);
+    ok(`"${sum}" runs the problem pipeline  (${out.kinds.join("+") || "nothing"})`,
+      out.kinds.includes("worksheet") && out.kinds.includes("ask"));
+    ok(`"${sum}" claims no misconception, since no working was typed`,
+      !out.kinds.includes("misconception"));
+  }
+
+  await context.close();
 }
 
 /**
