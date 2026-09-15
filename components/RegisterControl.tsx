@@ -27,16 +27,25 @@ export default function RegisterControl({
   onChange,
   busy = false,
   compact = false,
+  surface = "sheet",
 }: {
   value: RegisterName;
   onChange: (next: RegisterName) => void;
   busy?: boolean;
   compact?: boolean;
+  /**
+   * Which token family to wear. `compact` implies the product surface, since
+   * the only compact instance is the thread's top bar; `surface` is for the
+   * full size control on Settings, which lives on the product surface too and
+   * was otherwise the one thing on that screen still coloured like the site.
+   */
+  surface?: "sheet" | "app";
 }) {
-  const activeBg = compact ? "var(--accent-ink)" : "var(--action)";
-  const activeFg = compact ? "var(--app-card)" : "var(--action-label)";
-  const idleFg = compact ? "var(--app-text-dim)" : "var(--muted)";
-  const line = compact ? "var(--app-line)" : "var(--border-interactive)";
+  const onApp = compact || surface === "app";
+  const activeBg = onApp ? "var(--accent-fill)" : "var(--action)";
+  const activeFg = onApp ? "#ffffff" : "var(--action-label)";
+  const idleFg = onApp ? "var(--app-text-dim)" : "var(--muted)";
+  const line = onApp ? "var(--app-border-interactive)" : "var(--border-interactive)";
 
   return (
     <div>
@@ -49,7 +58,7 @@ export default function RegisterControl({
           style={{
             display: "block",
             fontSize: 13,
-            color: "var(--muted)",
+            color: onApp ? "var(--app-text-dim)" : "var(--muted)",
             marginBottom: 8,
           }}
         >
@@ -78,13 +87,13 @@ export default function RegisterControl({
         aria-label={copy.register.heading}
         className={compact ? "pp-register-segments" : undefined}
         style={{
+          borderRadius: onApp ? "var(--r-control)" : undefined,
+          overflow: onApp ? "hidden" : undefined,
           /* Compact takes its display from the stylesheet. An inline display
              beats any rule that does not shout, so setting it here left both
              variants rendered at 390px with the segments spilling out of the
              bar and sitting in the tab order twice. */
           display: compact ? undefined : "flex",
-          borderRadius: compact ? "var(--r-control)" : undefined,
-          overflow: compact ? "hidden" : undefined,
         }}
       >
         {copy.register.options.map((option, index) => {

@@ -686,6 +686,9 @@ export const copy = {
     cancel: "Cancel",
     continue: "Continue",
     loading: "Working",
+    /* Every settled screen on the product surface leads back to the one place
+       a parent was actually working. */
+    backToThread: "Back to the thread",
   },
 } as const;
 

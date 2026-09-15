@@ -190,8 +190,8 @@ export default function ThreadCard({
                 style={{
                   padding: "11px 18px",
                   borderRadius: "var(--r-control)",
-                  border: "1px solid var(--accent)",
-                  background: "var(--accent)",
+                  border: "1px solid var(--accent-fill)",
+                  background: "var(--accent-fill)",
                   color: "#ffffff",
                   fontSize: 14.5,
                   fontWeight: 500,

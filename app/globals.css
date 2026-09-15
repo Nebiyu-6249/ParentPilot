@@ -163,6 +163,12 @@
   --accent: #00a878;
   /* The accent as text has to clear AA, which brand emerald does not on white. */
   --accent-ink: #00664a;
+  /* The accent as a fill behind a white label, which is a different problem
+     again. White on brand emerald measures 3.06:1, enough for a mark and not
+     enough for the words on a button. This is the darkest emerald that still
+     reads as the brand and clears AA at 5.41:1, and it is the same value in
+     both modes because the pair does not involve the surface. */
+  --accent-fill: #00795a;
   /* Degradation has to be visible without being alarming: this is "we did not
      read your page", not "something broke". Amber rather than the red the
      site surface uses for a real error. */
@@ -237,6 +243,8 @@
     --app-text-dim: #a8a49b;
     --accent: #00a878;
     --accent-ink: #3fd0a2;
+  --accent-fill: #00795a;
+    --accent-fill: #00795a;
     --app-alert-bg: #2a2314;
     --app-alert-line: #57492a;
     --app-alert-ink: #e8c66b;
@@ -289,6 +297,7 @@
   --app-text-dim: #a8a49b;
   --accent: #00a878;
   --accent-ink: #3fd0a2;
+  --accent-fill: #00795a;
   --app-alert-bg: #2a2314;
   --app-alert-line: #57492a;
   --app-alert-ink: #e8c66b;
@@ -959,6 +968,99 @@ hr {
   }
 }
 
+/* ---- A settled page on the product surface ---------------------------
+
+   Account, Settings, History, Sign in, Check. The thread's chrome with the
+   composer taken out: same bar, same column, same tokens. They are somewhere
+   a parent goes to change one thing and come straight back, so the only
+   navigation is the way back. */
+
+.pp-appview {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: var(--font-ui);
+}
+
+.pp-appview-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 16px 64px;
+}
+
+.pp-appview-inner {
+  max-width: 740px;
+  margin: 0 auto;
+}
+
+.pp-appview-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(1.6rem, 4vw, 2.1rem);
+  letter-spacing: -0.012em;
+  margin: 34px 0 6px;
+}
+
+.pp-appview-section {
+  padding: 26px 0;
+  border-top: 1px solid var(--app-line);
+}
+
+.pp-appview-section:first-of-type {
+  border-top: 0;
+  padding-top: 14px;
+}
+
+.pp-appview-h2 {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  margin: 0 0 10px;
+}
+
+.pp-appview-note {
+  margin: 0 0 14px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--app-text-dim);
+  max-width: 62ch;
+}
+
+/* The way back. A chevron and a label, which collapses to the chevron alone
+   when the bar is tight. */
+.pp-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 11px 0 8px;
+  border: 1px solid var(--app-border-interactive);
+  border-radius: var(--r-control);
+  background: transparent;
+  color: var(--app-text);
+  font-size: 13.5px;
+  font-weight: 500;
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: background 120ms ease-out;
+}
+
+.pp-back:hover {
+  background: color-mix(in srgb, var(--app-text) 7%, transparent);
+}
+
+@media (max-width: 560px) {
+  .pp-back-label {
+    display: none;
+  }
+  .pp-back {
+    padding: 0;
+    width: 32px;
+    justify-content: center;
+  }
+}
+
 /* ---- /app: the chat shell -------------------------------------------
 
    Deliberately conventional. Sidebar left, thread centred, composer sticky at
@@ -1180,9 +1282,9 @@ hr {
   align-items: center;
   gap: 8px;
   padding: 9px 15px;
-  border: 1px solid var(--accent);
+  border: 1px solid var(--accent-fill);
   border-radius: var(--r-control);
-  background: var(--accent);
+  background: var(--accent-fill);
   color: #ffffff;
   font-size: 14px;
   font-weight: 500;
@@ -1316,8 +1418,8 @@ hr {
 }
 
 .pp-composer-send {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-fill);
+  border-color: var(--accent-fill);
   color: #ffffff;
 }
 
@@ -1325,8 +1427,8 @@ hr {
    waveform would be a picture of audio being captured, which is the opposite
    of what this product wants a parent to believe about the microphone. */
 .pp-composer-live {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-fill);
+  border-color: var(--accent-fill);
   color: #ffffff;
 }
 
