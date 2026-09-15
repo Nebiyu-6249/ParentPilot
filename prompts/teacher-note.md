@@ -38,6 +38,9 @@ SUSPECTED_MISCONCEPTION: {{MISCONCEPTION}}
 - Under 90 words. A teacher reads it between lessons.
 - Four beats: we worked on this, we spent this long, here is where it got
   stuck, we stopped there on purpose.
+- If MINUTES_SPENT is the string `null`, nothing timed this and you do not
+  know how long it took. Drop that beat entirely and write the other three.
+  Do not estimate, do not write "a while", and do not imply a duration.
 - Factual about the sticking point. If a misconception is supplied,
   describe what the working showed, not a label.
 - No apology for stopping. Stopping was correct. Do not write "sorry" about

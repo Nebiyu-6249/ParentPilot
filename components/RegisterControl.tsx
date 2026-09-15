@@ -13,6 +13,14 @@ import type { RegisterName } from "@/lib/ai/schemas";
  * `compact` is for the /app top bar, where this is a setting rather than a
  * step: no heading, app tokens, and small enough that it does not outweigh
  * the thread it sits above.
+ *
+ * Compact renders twice and shows one. Three segments need about 240px and a
+ * 390px bar does not have them once the sidebar toggle and Share are in it, so
+ * below the drawer breakpoint the control collapses to a native `<select>`
+ * carrying its current value. Native because a phone renders it as the picker
+ * the parent already knows, and because `display: none` on the other variant
+ * takes it out of the tab order as well as out of sight, which a hand-written
+ * popover would not do for free.
  */
 export default function RegisterControl({
   value,
@@ -49,11 +57,32 @@ export default function RegisterControl({
         </span>
       )}
 
+      {compact && (
+        <select
+          className="pp-register-select"
+          aria-label={copy.register.heading}
+          value={value}
+          disabled={busy}
+          onChange={(event) => onChange(event.target.value as RegisterName)}
+        >
+          {copy.register.options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      )}
+
       <div
         role="radiogroup"
         aria-label={copy.register.heading}
+        className={compact ? "pp-register-segments" : undefined}
         style={{
-          display: "flex",
+          /* Compact takes its display from the stylesheet. An inline display
+             beats any rule that does not shout, so setting it here left both
+             variants rendered at 390px with the segments spilling out of the
+             bar and sitting in the tab order twice. */
+          display: compact ? undefined : "flex",
           borderRadius: compact ? "var(--r-control)" : undefined,
           overflow: compact ? "hidden" : undefined,
         }}
