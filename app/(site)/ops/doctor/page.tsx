@@ -4,7 +4,7 @@ import Link from "next/link";
 import OpsGate from "@/components/OpsGate";
 import { AlertIcon, CheckIcon } from "@/components/icons";
 import { Page, Section } from "@/components/ui";
-import { runDoctor, type CheckState } from "@/lib/doctor";
+import { runDoctor, type CheckState, type DoctorEmail } from "@/lib/doctor";
 import { isOperator, opsConfigured } from "@/lib/ops";
 
 export const metadata: Metadata = { title: "Doctor" };
@@ -96,6 +96,52 @@ export default async function DoctorPage() {
         </ul>
       </Section>
 
+      {/* Its own section rather than one more row in the list above. The
+          failure this was built for was a 403 from Resend that the product
+          discarded, so every part of the picture is named separately: what is
+          configured, what it is configured as, and what actually came back. */}
+      <Section title="Email delivery">
+        <dl style={{ margin: 0 }}>
+          {emailFacts(report.email).map((fact) => (
+            <div
+              key={fact.label}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(0, 1fr)",
+                gap: 2,
+                padding: "12px 0",
+                borderBottom: "1px solid var(--rule-on-sheet)",
+              }}
+            >
+              <dt style={{ fontSize: "var(--type-micro)", color: "var(--text-on-sheet-muted)" }}>
+                {fact.label}
+              </dt>
+              <dd
+                style={{
+                  margin: 0,
+                  fontSize: "var(--type-small)",
+                  color: fact.alarming ? "var(--alert-fg)" : "var(--text-on-sheet)",
+                  wordBreak: "break-word",
+                }}
+              >
+                {fact.when && (
+                  <span
+                    style={{
+                      display: "block",
+                      fontSize: "var(--type-micro)",
+                      color: "var(--text-on-sheet-muted)",
+                    }}
+                  >
+                    {fact.when}
+                  </span>
+                )}
+                {fact.value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </Section>
+
       <Section title="Last 10 failures">
         {report.failures.length === 0 ? (
           <p style={{ color: "var(--text-on-sheet-muted)" }}>No failures recorded.</p>
@@ -123,4 +169,47 @@ export default async function DoctorPage() {
       </div>
     </Page>
   );
+}
+
+/**
+ * The four facts about email delivery, flattened for rendering.
+ *
+ * The key itself is never one of them. Its length and last four characters
+ * are enough to tell a stale key from a current one, which is the only
+ * question anyone actually asks of it.
+ */
+interface EmailFact {
+  label: string;
+  value: string;
+  /** Rendered as a muted line above the value, where there is a timestamp. */
+  when?: string;
+  alarming: boolean;
+}
+
+function emailFacts(email: DoctorEmail): EmailFact[] {
+  return [
+    {
+      label: "Configured",
+      value: email.configured
+        ? "true. Both RESEND_API_KEY and RESEND_FROM are set."
+        : "false. Sign-in links are written to the server log instead of sent.",
+      alarming: !email.configured,
+    },
+    {
+      label: "RESEND_FROM",
+      value: email.from ?? "not set",
+      alarming: email.from === null,
+    },
+    {
+      label: "RESEND_API_KEY",
+      value: email.keyTail ?? "not set",
+      alarming: email.keyTail === null,
+    },
+    {
+      label: "Most recent failed delivery",
+      value: email.lastFailure ? email.lastFailure.detail : "None recorded.",
+      when: email.lastFailure?.at,
+      alarming: email.lastFailure !== null,
+    },
+  ];
 }

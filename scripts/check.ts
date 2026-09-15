@@ -1079,6 +1079,57 @@ ok("every specified card trigger has its exact text",
 
 // ---------------------------------------------------------------------------
 
+section("Email failures are surfaced rather than swallowed");
+
+{
+  const emailSource = readFileSync(path.join(process.cwd(), "lib", "email.ts"), "utf8");
+  const doctorSource = readFileSync(path.join(process.cwd(), "lib", "doctor.ts"), "utf8");
+  const doctorPage = readFileSync(
+    path.join(process.cwd(), "app", "(site)", "ops", "doctor", "page.tsx"),
+    "utf8",
+  );
+
+  // The bug this section exists for: `result.detail` held Resend's status and
+  // body, and the only thing written anywhere was `result.reason`, which is
+  // one of two words and names nothing.
+  const warnLine = emailSource.split("\n").find((line) => line.includes("[email] sign-in link"));
+  ok("the warn line carries the provider's detail, not just the reason",
+    warnLine !== undefined && warnLine.includes("${detail}"));
+
+  ok("a failed delivery is persisted, so the detail outlives the request",
+    /logFailure\(\s*FAILURE_SCOPE/.test(emailSource));
+  ok("the persisted record keeps the parent's address out of the operator board",
+    !/logFailure\([^)]*\$\{email\}/.test(emailSource));
+  ok("the key is redacted before any detail is written",
+    /function redactKey/.test(emailSource) && /redactKey\(result\.detail\)/.test(emailSource));
+
+  ok("the doctor report carries the email picture",
+    /interface DoctorEmail/.test(doctorSource) && /lastFailure/.test(doctorSource));
+  ok("a configured deployment whose last send failed does not report ok",
+    /mailFailure \? "fail"/.test(doctorSource));
+
+  for (const label of ["Configured", "RESEND_FROM", "RESEND_API_KEY", "Most recent failed delivery"]) {
+    ok(`/ops/doctor renders ${label}`, doctorPage.includes(`label: "${label}"`));
+  }
+
+  // Length and last four only. Anything that reaches for the value itself
+  // would put a live bearer token on a page behind one password.
+  ok("/ops/doctor never reaches for the key's value",
+    !/process\.env\.RESEND_API_KEY/.test(doctorPage) && !/process\.env\.RESEND_API_KEY/.test(doctorSource));
+  ok("emailStatus reports the key by length and tail, never in full",
+    /\$\{key\.length\} characters, ending \$\{key\.slice\(-4\)\}/.test(emailSource));
+}
+
+// The parent asking for a link learns nothing about the deployment's plumbing.
+// A status code or a provider name on /login is an operator's information
+// leaking onto a page anyone can load.
+for (const [name, text] of Object.entries(copy.login)) {
+  ok(`/login copy stays generic: ${name}`,
+    !/resend|\b4\d\d\b|\b5\d\d\b|api[ _-]?key|domain is not verified/i.test(text));
+}
+
+// ---------------------------------------------------------------------------
+
 section("Prompt files carry the four standing rules");
 
 for (const name of ["extract-worksheet", "generate-packet", "classify-move", "session-recap", "teacher-note"]) {
