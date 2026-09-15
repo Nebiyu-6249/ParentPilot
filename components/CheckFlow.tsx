@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 
 import StatusLine from "@/components/StatusLine";
-import { Banner, buttonStyle, Label, Page, Section } from "@/components/ui";
+import { AppBanner, appButton, AppLabel, AppPage, AppSection } from "@/components/app/AppPage";
 import { copy } from "@/lib/copy";
 import { LIMITS } from "@/lib/limits.client";
 import type { CheckResponse } from "@/app/api/check/route";
@@ -44,24 +44,21 @@ export default function CheckFlow() {
 
   if (busy) {
     return (
-      <Page>
+      <AppPage title={copy.check.heading}>
         <StatusLine step={copy.status.reading} />
-      </Page>
+      </AppPage>
     );
   }
 
   return (
-    <Page>
-      <header style={{ padding: "36px 0 20px" }}>
-        <h1 style={{ fontSize: "clamp(1.7rem, 6vw, 2.2rem)" }}>{copy.check.heading}</h1>
-        <p style={{ marginTop: 12, color: "var(--muted)", fontSize: 16 }}>{copy.check.help}</p>
-      </header>
+    <AppPage title={copy.check.heading}>
+      <p className="pp-appview-note" style={{ marginBottom: 20 }}>{copy.check.help}</p>
 
-      {error && <Banner tone="alert" text={error} />}
-      {result?.notice && <Banner text={result.notice} />}
+      {error && <AppBanner tone="alert" text={error} />}
+      {result?.notice && <AppBanner text={result.notice} />}
 
       {result && (
-        <Section title={copy.check.resultHeading}>
+        <AppSection title={copy.check.resultHeading}>
           {result.findings.length === 0 ? (
             <p style={{ fontSize: 17 }}>{copy.check.clean}</p>
           ) : (
@@ -69,24 +66,24 @@ export default function CheckFlow() {
               {result.findings.map((finding) => (
                 <li
                   key={`${finding.problemIndex}-${finding.errorType}`}
-                  style={{ padding: "20px 0", borderBottom: "1px solid var(--rule)" }}
+                  style={{ padding: "20px 0", borderBottom: "1px solid var(--app-line)" }}
                 >
-                  <Label>{`Question ${finding.problemIndex + 1}`}</Label>
+                  <AppLabel>{`Question ${finding.problemIndex + 1}`}</AppLabel>
                   <h3 style={{ marginBottom: 10 }}>{finding.plainName}</h3>
-                  <p style={{ fontSize: 16, color: "var(--muted)", marginBottom: 12 }}>
+                  <p style={{ fontSize: 16, color: "var(--app-text-dim)", marginBottom: 12 }}>
                     {finding.errorType}
                   </p>
-                  <Label>{copy.packet.misconceptionRepair}</Label>
+                  <AppLabel>{copy.packet.misconceptionRepair}</AppLabel>
                   <p style={{ fontSize: 17 }}>{finding.repairQuestion}</p>
                 </li>
               ))}
             </ul>
           )}
-          <p style={{ marginTop: 22, fontSize: 14, color: "var(--muted)" }}>{copy.check.noAnswers}</p>
-        </Section>
+          <p style={{ marginTop: 22, fontSize: 14, color: "var(--app-text-dim)" }}>{copy.check.noAnswers}</p>
+        </AppSection>
       )}
 
-      <div style={{ borderTop: "1px solid var(--rule)", paddingTop: 26 }}>
+      <div style={{ borderTop: "1px solid var(--app-line)", paddingTop: 26 }}>
         <input
           ref={fileRef}
           type="file"
@@ -98,10 +95,10 @@ export default function CheckFlow() {
           }}
           style={{ display: "none" }}
         />
-        <button type="button" onClick={() => fileRef.current?.click()} style={buttonStyle("primary", true)}>
+        <button type="button" onClick={() => fileRef.current?.click()} style={appButton("primary", true)}>
           {copy.check.submit}
         </button>
       </div>
-    </Page>
+    </AppPage>
   );
 }

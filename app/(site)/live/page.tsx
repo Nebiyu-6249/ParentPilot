@@ -1,14 +1,13 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import LiveMode from "@/components/LiveMode";
-import { currentParent } from "@/lib/session";
-
-// Reads the parent's language and anxiety band, so it must never be prerendered.
-export const dynamic = "force-dynamic";
-
-export const metadata: Metadata = { title: "Live Mode" };
-
-export default async function LivePage() {
-  const parent = await currentParent();
-  return <LiveMode language={parent.language} />;
+/**
+ * Live Mode used to be its own screen. It is a toggle in the thread's composer
+ * now, so this route exists only to keep old links and bookmarks working.
+ *
+ * Folding it in was the point rather than a tidy-up: on the separate screen a
+ * parent had to leave the worksheet they were working on, and the recap that
+ * came back had no relationship to the thread it came from.
+ */
+export default function LivePage() {
+  redirect("/app");
 }

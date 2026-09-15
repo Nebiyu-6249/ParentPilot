@@ -1,17 +1,26 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { buildPacket, STEP_TEXT, type PacketStep } from "@/lib/packet";
-import { cardsForPacket, revealsAnswer, TRANSCRIPT_LINES, type Card, type ThreadLine } from "@/lib/thread";
+import { buildPacket, buildPacketFromText, STEP_TEXT, type PacketStep } from "@/lib/packet";
+import {
+  cardsForPacket,
+  resolveIntent,
+  revealsAnswer,
+  TRANSCRIPT_LINES,
+  type Card,
+  type ThreadLine,
+} from "@/lib/thread";
 import { clientIp, consume, logFailure, validateUpload } from "@/lib/limits";
 import { copy } from "@/lib/copy";
 import { demoBundle } from "@/lib/demo";
-import { chatTurn, extractWorksheet, isConfigured, ModelError } from "@/lib/ai/provider";
+import { chatTurnStreaming, extractWorksheet, isConfigured, ModelError } from "@/lib/ai/provider";
 import { prisma, hasDatabase } from "@/lib/db";
 import { toDataUrl } from "@/lib/exif";
 import { currentParent, ensureParent } from "@/lib/session";
+import type { ChatIntent } from "@/lib/ai/schemas";
+import type { PacketBundle } from "@/lib/types";
 import { REGISTERS } from "@/lib/ai/schemas";
-import { verifyAnswer } from "@/lib/verify";
+import { looksLikeProblem, verifyAnswer } from "@/lib/verify";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
@@ -36,6 +45,11 @@ const bodySchema = z.object({
   rung: z.number().int().min(0).max(10).optional(),
   text: z.string().max(2000).optional(),
   register: z.enum(REGISTERS).optional(),
+  /* The problem a one-off turn is about. A typed problem is not always stored,
+     because an assignment needs a child profile, so "Still stuck" has to be
+     able to say which problem it means. No new exposure: this is text the
+     parent typed in the first place. */
+  printedText: z.string().max(600).optional(),
   /* What was said, from the client, bounded on both axes. Every fact about
      the problem is read from the database on this side instead, so the worst
      a tampered transcript can do is confuse the reply it gets back. */
@@ -51,6 +65,18 @@ const bodySchema = z.object({
 });
 
 type Emit = (payload: unknown) => void;
+
+/** Phrasing the prompt bans. Seeing it means the prompt is losing. */
+const HELP_DESK = [
+  "this tool",
+  "this product",
+  "this app",
+  "i can't assist",
+  "i cannot assist",
+  "i am unable to",
+  "feel free to",
+  "as an ai",
+];
 
 function stream(run: (send: Emit) => Promise<void>): Response {
   const encoder = new TextEncoder();
@@ -208,15 +234,7 @@ export async function POST(request: Request): Promise<Response> {
         const problemId = parsed.data.problemId ?? "demo";
         const rung = (parsed.data.rung ?? 0) + 1;
 
-        const bundle =
-          problemId === "demo" || !hasDatabase()
-            ? await demoBundle(register)
-            : await buildPacket({
-                problemId,
-                register,
-                language: parent.language,
-                grade: parent.child?.grade ?? null,
-              });
+        const bundle = await bundleFor(problemId, parsed.data.printedText, register, parent);
 
         const ladder = bundle.packet.hintLadder;
         const at = Math.min(rung, ladder.length - 1);
@@ -245,15 +263,7 @@ export async function POST(request: Request): Promise<Response> {
             .catch(() => undefined);
         }
 
-        const bundle =
-          problemId === "demo" || !hasDatabase()
-            ? await demoBundle(register)
-            : await buildPacket({
-                problemId,
-                register,
-                language: parent.language,
-                grade: parent.child?.grade ?? null,
-              });
+        const bundle = await bundleFor(problemId, parsed.data.printedText, register, parent);
 
         const isomorph = bundle.packet.isomorphs[0];
         send({
@@ -297,6 +307,46 @@ export async function POST(request: Request): Promise<Response> {
           return;
         }
 
+        /* A typed problem is a worksheet that arrived through the composer,
+           so it runs the pipeline a photograph runs rather than being read as
+           conversation. "4 * 4" used to come back as "here is the next one to
+           try", which is an answer to a question nobody asked. */
+        const typed = looksLikeProblem(said);
+        if (typed) {
+          const owner = await ensureParent();
+          const rowId =
+            hasDatabase() && owner.child
+              ? await prisma.assignment
+                  .create({
+                    data: {
+                      childId: owner.child.id,
+                      source: "TEXT",
+                      pageUrls: [],
+                      problems: { create: [{ index: 0, printedText: typed, ocrConfidence: 1 }] },
+                    },
+                    include: { problems: true },
+                  })
+                  .then((a) => a.problems[0]?.id ?? null)
+                  .catch(() => null)
+              : null;
+
+          const bundle = await buildPacketFromText({
+            problemId: rowId,
+            printedText: typed,
+            // Typed problems carry no working, so there is nothing to
+            // diagnose and `cardsForPacket` emits no misconception card.
+            childWorkText: null,
+            childAnswer: null,
+            register,
+            language: owner.language,
+            grade: owner.child?.grade ?? null,
+            onStep: (step: PacketStep) => send({ type: "status", text: STEP_TEXT[step] }),
+          });
+
+          send({ type: "cards", cards: cardsForPacket(bundle, null), notice: bundle.notice });
+          return;
+        }
+
         const problemId = parsed.data.problemId ?? null;
         send({ type: "status", text: copy.status.thinking });
 
@@ -316,7 +366,12 @@ export async function POST(request: Request): Promise<Response> {
 
         let turn;
         try {
-          turn = await chatTurn({
+          /* Streamed. The reply arrives as it is written, which is the single
+             biggest difference between this and a two second blank screen.
+             The cards are built from the structured half once it validates. */
+          turn = await chatTurnStreaming(
+            {
+            childName: parent.child?.firstName ?? null,
             printedText: bundle?.problem.printedText ?? null,
             childWorkText: bundle?.problem.childWorkText ?? null,
             standardPlain: bundle?.standard?.plainLanguage ?? null,
@@ -326,7 +381,9 @@ export async function POST(request: Request): Promise<Response> {
             transcript: renderTranscript(parsed.data.transcript ?? [], said),
             register,
             language: parent.language,
-          });
+            },
+            (text: string) => send({ type: "delta", text }),
+          );
         } catch (error) {
           await logFailure("thread-text", error instanceof Error ? error.message : String(error));
           send({ type: "cards", cards: [{ kind: "text", body: copy.chat.turnFailed }] });
@@ -342,9 +399,52 @@ export async function POST(request: Request): Promise<Response> {
         const reply = leaked ? copy.chat.answerBehindHold : turn.reply;
         if (leaked) await logFailure("thread-text", "A reply named the answer and was replaced.");
 
-        const cards: Card[] = [{ kind: "text", body: reply, intent: turn.intent }];
+        /* A worked example on the active problem's own numbers is the one way
+           the new cards could give it away, so the guard covers the structured
+           half too. Dropping the card rather than editing it: a walkthrough
+           with a step removed teaches the wrong method. */
+        const structured = { explainer: turn.explainer, workedExample: turn.workedExample, strategy: turn.strategy };
+        const cardLeak = revealsAnswer(JSON.stringify(structured), computed);
+        if (cardLeak) {
+          await logFailure("thread-text", "A card named the answer and was dropped.");
+          turn.explainer = null;
+          turn.workedExample = null;
+          turn.strategy = null;
+        }
 
-        if (turn.intent === "answer" && bundle) {
+        /* Logged, not rewritten. "this tool" and "I can't assist with" are the
+           voice this prompt exists to get rid of, and a reply carrying one is
+           worth seeing on /ops; editing the sentence around it would leave
+           something worse than what the model wrote. */
+        const helpDesk = HELP_DESK.filter((phrase) => reply.toLowerCase().includes(phrase));
+        if (helpDesk.length > 0) {
+          await logFailure("thread-text", `A reply used help desk phrasing: ${helpDesk.join(", ")}`);
+        }
+
+        /* The press and hold is for the problem in front of the child, and
+           `resolveIntent` is the last word on whether it is offered. A
+           classifier that reaches for it on a definition, an example or a
+           bare "what" has misread the question, and those are exactly the
+           lines that broke. */
+        const intent: ChatIntent = resolveIntent(said, turn.intent, bundle !== null);
+
+        const cards: Card[] = [{ kind: "text", body: reply, intent }];
+
+        /* The structured half. A definition, a worked example and a teaching
+           strategy are different objects and rendering all three as a
+           paragraph is why this side of the thread read as dead next to the
+           card side. Prose only turns stay prose: the model returns null. */
+        if (turn.explainer) {
+          cards.push({ kind: "explainer", ...turn.explainer });
+        }
+        if (turn.workedExample) {
+          cards.push({ kind: "worked_example", ...turn.workedExample });
+        }
+        if (turn.strategy) {
+          cards.push({ kind: "strategy", ...turn.strategy });
+        }
+
+        if (intent === "answer" && bundle) {
           // Written here, from the packet, and never by the model.
           cards.push({
             kind: "answer",
@@ -353,12 +453,14 @@ export async function POST(request: Request): Promise<Response> {
           });
         }
 
-        if (turn.intent === "next_question" && ladder.length > 0 && problemId) {
+        if (intent === "next_question" && ladder.length > 0 && problemId) {
           const at = Math.min(rung + 1, ladder.length - 1);
           cards.push({ kind: "ask", problemId, question: ladder[at] ?? "", rung: at, total: ladder.length });
         }
 
-        send({ type: "cards", cards });
+        /* Two or three next moves, written for this turn. They post as normal
+           parent turns, so a tap is the same thing as typing it. */
+        send({ type: "cards", cards, chips: cardLeak ? [] : turn.chips });
       });
 
     default:
@@ -381,4 +483,42 @@ function renderTranscript(lines: ThreadLine[], said: string): string {
 
   rendered.push(`Parent: ${said}`);
   return rendered.join("\n");
+}
+
+/**
+ * The packet a follow-up turn is about.
+ *
+ * Three cases. A stored problem is looked up. The demo is the fixture. A
+ * one-off typed problem has no row, so it is rebuilt from its text, which
+ * reads the packet cache and is therefore usually free. Without this last
+ * case, "Still stuck" on a typed problem served the demo's ladder, which is a
+ * different problem's question presented as the next step on this one.
+ */
+async function bundleFor(
+  problemId: string,
+  printedText: string | undefined,
+  register: (typeof REGISTERS)[number],
+  parent: Awaited<ReturnType<typeof currentParent>>,
+): Promise<PacketBundle> {
+  if (problemId === "demo") return demoBundle(register);
+
+  if (problemId === "typed" || !hasDatabase()) {
+    if (!printedText) return demoBundle(register, copy.limits.demoBanner);
+    return buildPacketFromText({
+      problemId: null,
+      printedText,
+      childWorkText: null,
+      childAnswer: null,
+      register,
+      language: parent.language,
+      grade: parent.child?.grade ?? null,
+    });
+  }
+
+  return buildPacket({
+    problemId,
+    register,
+    language: parent.language,
+    grade: parent.child?.grade ?? null,
+  });
 }

@@ -18,7 +18,11 @@ export type CardKind =
   | "answer"
   | "teaching"
   | "live_summary"
+  | "live_coach"
   | "park_it"
+  | "explainer"
+  | "worked_example"
+  | "strategy"
   | "text";
 
 /**
@@ -83,6 +87,25 @@ export interface TeachingCard {
   register: RegisterName;
 }
 
+/**
+ * A coaching interruption raised while Live Mode is listening.
+ *
+ * It is a turn in the thread rather than an overlay, which is the whole of
+ * folding Live Mode in: what the product said at 8:14pm sits above what it
+ * said at 8:15pm, and a parent who missed one can scroll back to it. The
+ * overlay it replaces was dismissable and then gone.
+ *
+ * Carries the label that triggered it and the second it fired, which is
+ * exactly what the `Move` table stores. There is no text of what was said
+ * here, because there is nowhere in the product that holds that.
+ */
+export interface LiveCoachCard {
+  kind: "live_coach";
+  triggerLabel: string;
+  body: string;
+  tOffset: number;
+}
+
 export interface LiveSummaryCard {
   kind: "live_summary";
   autonomyScore: number;
@@ -95,6 +118,42 @@ export interface ParkItCard {
   kind: "park_it";
   reason: "time" | "escalation";
   teacherNote: string | null;
+}
+
+/**
+ * A definition, as an object.
+ *
+ * The term, the one line that answers it, and an expansion the parent can open
+ * if they want it. The child-level version sits behind a toggle rather than
+ * replacing the answer, because a parent often wants both: one to understand
+ * it, one to say out loud.
+ */
+export interface ExplainerCard {
+  kind: "explainer";
+  term: string;
+  short: string;
+  more: string;
+  forNineYearOld: string;
+}
+
+/**
+ * A method worked through, on numbers that are not the child's.
+ *
+ * `problem` is shown at the top and is the point of the card: a parent can see
+ * at a glance that this is not their child's question, which is what makes
+ * showing the whole method safe.
+ */
+export interface WorkedExampleCard {
+  kind: "worked_example";
+  problem: string;
+  steps: { move: string; working: string }[];
+  point: string;
+}
+
+export interface StrategyCard {
+  kind: "strategy";
+  moves: { title: string; body: string }[];
+  avoid: string;
 }
 
 export interface TextCard {
@@ -120,7 +179,11 @@ export type Card =
   | AnswerCard
   | TeachingCard
   | LiveSummaryCard
+  | LiveCoachCard
   | ParkItCard
+  | ExplainerCard
+  | WorkedExampleCard
+  | StrategyCard
   | TextCard;
 
 export interface Turn {
@@ -328,6 +391,22 @@ export function threadTranscript(turns: Turn[], limit = TRANSCRIPT_LINES): Threa
         case "text":
           lines.push({ role: "ASSISTANT", text: card.body });
           break;
+        case "live_coach":
+          lines.push({ role: "ASSISTANT", text: `Raised a coaching card: ${card.triggerLabel}` });
+          break;
+        case "explainer":
+          lines.push({ role: "ASSISTANT", text: `Explained ${card.term}: ${card.short}` });
+          break;
+        case "worked_example":
+          // The numbers it used, so the next turn does not repeat them.
+          lines.push({ role: "ASSISTANT", text: `Worked an example on ${card.problem}` });
+          break;
+        case "strategy":
+          lines.push({
+            role: "ASSISTANT",
+            text: `Suggested: ${card.moves.map((m) => m.title).join("; ")}`,
+          });
+          break;
         // "answer" is never included. "notice" and the rest are about this
         // deployment or about layout, and say nothing about the child.
         default:
@@ -363,4 +442,48 @@ export function revealsAnswer(reply: string, computedAnswer: string | null): boo
 
   const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(`(?<![\\w/.])${escaped}(?![\\w/]|\\.\\d)`).test(reply);
+}
+
+/**
+ * The last word on whether the press and hold is offered.
+ *
+ * The prompt tells the classifier when `answer` may fire. This decides it, for
+ * the same reason `sanitize` exists next to the em-dash rule in every prompt
+ * file: a prompt is a request and this is a guarantee.
+ *
+ * Every case below is a line from the transcript this was written to fix. A
+ * parent typing "what is a denominator" was shown "Here it is, behind the
+ * hold", which tells them a reasonable question is off limits. That is the
+ * worst failure the product has, and it is cheap to make impossible.
+ */
+/* "what is a denominator" is a definition. "what is the answer" is not, and
+   an earlier version of this caught both, which would have broken the one
+   case the press and hold exists for. The nouns below name the thing being
+   worked out rather than a term to define. */
+const ANSWER_NOUN = /^(?:answer|solution|result|total|sum|value)\b/i;
+const DEFINITION = /^\s*(?:so\s+|and\s+|but\s+|ok(?:ay)?,?\s+)?what(?:'|’)?s?\s+(?:is|are)?\s*(?:a|an|the)\s+(\w.*)$/i;
+const MEANING = /\b(?:what does .+ mean|meaning of|definition of|define)\b/i;
+const EXAMPLE = /\b(?:example|show me|demonstrate|walk me through|work(?:ed)? (?:it |one )?out)\b/i;
+const CLARIFICATION = /^\s*(?:what|huh|sorry|eh|pardon|come again|i don(?:'|’)?t (?:get|follow|understand) (?:it|that|you))\s*[?!.]*\s*$/i;
+
+export function resolveIntent(
+  said: string,
+  proposed: ChatIntent,
+  hasActiveProblem: boolean,
+): ChatIntent {
+  if (proposed !== "answer") return proposed;
+
+  // No problem in front of the child means no answer to hold back, so a
+  // classifier that reached for one has misread the question.
+  if (!hasActiveProblem) return "explain";
+
+  if (CLARIFICATION.test(said)) return "clarify";
+  if (EXAMPLE.test(said)) return "example";
+
+  const defined = said.match(DEFINITION)?.[1];
+  if ((defined !== undefined && !ANSWER_NOUN.test(defined)) || MEANING.test(said)) {
+    return "explain";
+  }
+
+  return "answer";
 }

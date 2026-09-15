@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import HistoryList from "@/components/HistoryList";
-import { Page, Section } from "@/components/ui";
+import { AppPage, AppSection } from "@/components/app/AppPage";
 import { copy } from "@/lib/copy";
 import { prisma, hasDatabase } from "@/lib/db";
 import { currentParent } from "@/lib/session";
@@ -52,17 +52,13 @@ export default async function HistoryPage() {
   }
 
   return (
-    <Page>
-      <header style={{ paddingBottom: 18 }}>
-        <h1 style={{ fontSize: "var(--type-h1)" }}>{copy.history.heading}</h1>
-      </header>
-
+    <AppPage title={copy.history.heading}>
       {parent.id === "anonymous" ? (
-        <Section title={copy.history.anonymous}>
+        <AppSection title={copy.history.anonymous}>
           <Link href="/login" style={{ fontSize: 17 }}>
             {copy.account.signIn}
           </Link>
-        </Section>
+        </AppSection>
       ) : (
         <HistoryList
           sessions={sessions.map((s) => ({
@@ -78,6 +74,6 @@ export default async function HistoryPage() {
           }))}
         />
       )}
-    </Page>
+    </AppPage>
   );
 }
