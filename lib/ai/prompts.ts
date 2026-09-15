@@ -18,7 +18,8 @@ export type PromptName =
   | "generate-packet"
   | "classify-move"
   | "session-recap"
-  | "teacher-note";
+  | "teacher-note"
+  | "chat-turn";
 
 const cache = new Map<PromptName, string>();
 

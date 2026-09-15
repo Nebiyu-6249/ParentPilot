@@ -2,15 +2,16 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { buildPacket, STEP_TEXT, type PacketStep } from "@/lib/packet";
-import { cardsForPacket, type Card } from "@/lib/thread";
+import { cardsForPacket, revealsAnswer, TRANSCRIPT_LINES, type Card, type ThreadLine } from "@/lib/thread";
 import { clientIp, consume, logFailure, validateUpload } from "@/lib/limits";
 import { copy } from "@/lib/copy";
 import { demoBundle } from "@/lib/demo";
-import { extractWorksheet, isConfigured, ModelError } from "@/lib/ai/provider";
+import { chatTurn, extractWorksheet, isConfigured, ModelError } from "@/lib/ai/provider";
 import { prisma, hasDatabase } from "@/lib/db";
 import { toDataUrl } from "@/lib/exif";
 import { currentParent, ensureParent } from "@/lib/session";
 import { REGISTERS } from "@/lib/ai/schemas";
+import { verifyAnswer } from "@/lib/verify";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
@@ -22,9 +23,10 @@ export const runtime = "nodejs";
  * the same contract /api/packet already uses. The final line carries the cards
  * the thread should append.
  *
- * Step three of the round four brief covers photo, demo and the ladder. Free
- * text is step four and returns the scoped redirect until then, rather than
- * silently doing nothing.
+ * Four kinds of turn: a photograph, the demo, a rung of the ladder, and free
+ * text. The first three need no model beyond the packet they already have.
+ * Free text is the only one that calls a model per message, and it is the most
+ * constrained call in the product.
  */
 
 const bodySchema = z.object({
@@ -34,6 +36,18 @@ const bodySchema = z.object({
   rung: z.number().int().min(0).max(10).optional(),
   text: z.string().max(2000).optional(),
   register: z.enum(REGISTERS).optional(),
+  /* What was said, from the client, bounded on both axes. Every fact about
+     the problem is read from the database on this side instead, so the worst
+     a tampered transcript can do is confuse the reply it gets back. */
+  transcript: z
+    .array(
+      z.object({
+        role: z.enum(["PARENT", "ASSISTANT"]),
+        text: z.string().max(1200),
+      }),
+    )
+    .max(TRANSCRIPT_LINES)
+    .optional(),
 });
 
 type Emit = (payload: unknown) => void;
@@ -255,16 +269,116 @@ export async function POST(request: Request): Promise<Response> {
         });
       });
 
-    /** Free text is step four. Until then it says so rather than doing nothing. */
+    /**
+     * A parent typing.
+     *
+     * The one place a model writes prose into the thread, so it is the one
+     * place the product's whole claim can be talked out of. Three things hold
+     * it: the prompt, an intent that is separate from the prose, and the
+     * answer being emitted by this route from the packet rather than written
+     * by the model at all.
+     */
     case "text":
       return stream(async (send) => {
-        send({
-          type: "cards",
-          cards: [{ kind: "text", body: copy.chat.notYet } satisfies Card],
-        });
+        const said = (parsed.data.text ?? "").trim();
+        if (!said) {
+          send({ type: "cards", cards: [{ kind: "text", body: copy.chat.turnFailed }] });
+          return;
+        }
+
+        if (!isConfigured()) {
+          send({ type: "cards", cards: [{ kind: "text", body: copy.chat.turnUnconfigured }] });
+          return;
+        }
+
+        const verdict = await consume(clientIp(request.headers), "packet");
+        if (!verdict.allowed) {
+          send({ type: "cards", cards: [{ kind: "text", body: copy.chat.turnLimit }] });
+          return;
+        }
+
+        const problemId = parsed.data.problemId ?? null;
+        send({ type: "status", text: copy.status.thinking });
+
+        // Every fact below comes from this side. The request carries what was
+        // said and nothing else.
+        const bundle = problemId
+          ? await buildPacket({
+              problemId,
+              register,
+              language: parent.language,
+              grade: parent.child?.grade ?? null,
+            }).catch(() => null)
+          : null;
+
+        const ladder = bundle?.packet.hintLadder ?? [];
+        const rung = parsed.data.rung ?? 0;
+
+        let turn;
+        try {
+          turn = await chatTurn({
+            printedText: bundle?.problem.printedText ?? null,
+            childWorkText: bundle?.problem.childWorkText ?? null,
+            standardPlain: bundle?.standard?.plainLanguage ?? null,
+            misconception: bundle?.misconception?.plainName ?? null,
+            rungsUsed: Math.min(rung + 1, ladder.length),
+            rungsTotal: ladder.length,
+            transcript: renderTranscript(parsed.data.transcript ?? [], said),
+            register,
+            language: parent.language,
+          });
+        } catch (error) {
+          await logFailure("thread-text", error instanceof Error ? error.message : String(error));
+          send({ type: "cards", cards: [{ kind: "text", body: copy.chat.turnFailed }] });
+          return;
+        }
+
+        /* The guarantee, not the request. The prompt forbids stating the
+           answer; this decides it. A reply with the answer in it is replaced
+           rather than edited, because a sentence with the answer cut out of it
+           no longer means anything. */
+        const computed = bundle ? verifyAnswer(bundle.problem.printedText, null).computedAnswer : null;
+        const leaked = revealsAnswer(turn.reply, computed);
+        const reply = leaked ? copy.chat.answerBehindHold : turn.reply;
+        if (leaked) await logFailure("thread-text", "A reply named the answer and was replaced.");
+
+        const cards: Card[] = [{ kind: "text", body: reply, intent: turn.intent }];
+
+        if (turn.intent === "answer" && bundle) {
+          // Written here, from the packet, and never by the model.
+          cards.push({
+            kind: "answer",
+            answer: bundle.packet.lockedAnswer,
+            verification: bundle.verification,
+          });
+        }
+
+        if (turn.intent === "next_question" && ladder.length > 0 && problemId) {
+          const at = Math.min(rung + 1, ladder.length - 1);
+          cards.push({ kind: "ask", problemId, question: ladder[at] ?? "", rung: at, total: ladder.length });
+        }
+
+        send({ type: "cards", cards });
       });
 
     default:
       return NextResponse.json({ error: "bad request" }, { status: 400 });
   }
+}
+
+/**
+ * The conversation, as the model is shown it.
+ *
+ * Labelled by speaker so the model can tell what it already said from what the
+ * parent said, and capped so a long evening cannot grow the prompt without
+ * bound. The parent's newest line is appended here rather than trusted from
+ * the array, so it is always last and always present.
+ */
+function renderTranscript(lines: ThreadLine[], said: string): string {
+  const rendered = lines
+    .slice(-TRANSCRIPT_LINES)
+    .map((line) => `${line.role === "PARENT" ? "Parent" : "ParentPilot"}: ${line.text}`);
+
+  rendered.push(`Parent: ${said}`);
+  return rendered.join("\n");
 }

@@ -17,7 +17,14 @@ import {
 } from "@/components/icons";
 import { copy } from "@/lib/copy";
 import type { RegisterName } from "@/lib/ai/schemas";
-import { currentProblem, lastRung, threadTitle, type Card, type Turn } from "@/lib/thread";
+import {
+  currentProblem,
+  lastRung,
+  threadTitle,
+  threadTranscript,
+  type Card,
+  type Turn,
+} from "@/lib/thread";
 
 const RAIL_KEY = "pp_rail";
 
@@ -200,11 +207,30 @@ export default function AppShell({
     post({ kind: "solved", problemId }, copy.packet.answeredIt);
   }
 
-  function submitText(): void {
-    const value = text.trim();
-    if (!value) return;
+  /**
+   * A typed turn.
+   *
+   * Carries the conversation and which problem it is about, so a thread stays
+   * continuous: photograph page two after working page one and the reply knows
+   * what came before. The server reads every fact about the problem from its
+   * own database, so what goes up is only what was said.
+   */
+  function submitText(value: string): void {
+    const said = value.trim();
+    if (!said) return;
     setText("");
-    post({ kind: "text", text: value }, value);
+
+    const problem = currentProblem(turns);
+    post(
+      {
+        kind: "text",
+        text: said,
+        problemId: problem?.problemId ?? null,
+        rung: problem ? lastRung(turns, problem.problemId) : 0,
+        transcript: threadTranscript(turns),
+      },
+      said,
+    );
   }
 
   const empty = turns.length === 0;
@@ -372,7 +398,7 @@ export default function AppShell({
                       key={suggestion}
                       type="button"
                       className="pp-chip"
-                      onClick={() => post({ kind: "text", text: suggestion }, suggestion)}
+                      onClick={() => submitText(suggestion)}
                     >
                       {suggestion}
                     </button>
@@ -456,7 +482,7 @@ export default function AppShell({
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
-                  submitText();
+                  submitText(text);
                 }
               }}
             />
@@ -470,7 +496,7 @@ export default function AppShell({
                 type="button"
                 className="pp-composer-btn pp-composer-send"
                 aria-label="Send"
-                onClick={submitText}
+                onClick={() => submitText(text)}
               >
                 <SendIcon size={18} />
               </button>
