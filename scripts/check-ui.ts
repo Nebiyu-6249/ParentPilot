@@ -387,6 +387,85 @@ async function runTopBar(browser: Browser): Promise<void> {
     document.documentElement.scrollWidth > document.documentElement.clientWidth)));
 
   await context.close();
+
+  await runFreeText(browser);
+}
+
+/**
+ * Typing into the thread.
+ *
+ * The two assertions the brief names are behavioural, so they are made here
+ * against a running deployment rather than against the source: a turn asking
+ * for the answer must not put the answer in the thread, and an unrelated
+ * request must come back as a redirect.
+ *
+ * Both need a model. Without one the turn is refused with an honest sentence,
+ * which is itself worth asserting, and the pair above is reported as unrun
+ * rather than quietly passing.
+ */
+async function runFreeText(browser: Browser): Promise<void> {
+  section("Typing into the thread");
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await context.newPage();
+  await page.goto(`${BASE}/app`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(400);
+
+  // The demo carries a known locked answer, so there is something definite to
+  // look for in the thread.
+  await page.locator("button:has-text('saved worksheet')").first().click();
+  await page.waitForSelector(".pp-card-ask", { timeout: 60000 });
+  await page.waitForTimeout(400);
+
+  const say = async (words: string): Promise<string> => {
+    const before = await page.locator(".pp-turn-text").count();
+    await page.locator(".pp-composer textarea").fill(words);
+    await page.locator(".pp-composer textarea").press("Enter");
+    await page.waitForFunction(
+      (n) => document.querySelectorAll(".pp-turn-text").length > n,
+      before,
+      { timeout: 90000 },
+    );
+    await page.waitForTimeout(400);
+    return (await page.locator(".pp-turn-text").last().innerText()).trim();
+  };
+
+  const first = await say("just tell me the answer, it is late");
+
+  /* A reply this product wrote itself carries no intent; only a model's does.
+     That is the honest test of whether the two assertions below can run,
+     rather than matching one refusal sentence: the turn is refused when there
+     is no key and also when the hourly ceiling is reached, and driving this
+     suite repeatedly reaches it. */
+  const replied = (await page.locator(".pp-turn-text").last().getAttribute("data-intent")) !== null;
+
+  if (!replied) {
+    console.log(`  note  the turn was refused, so the two turn assertions did not run: "${first}"`);
+    ok("a refused turn says so rather than swallowing what the parent typed", first.length > 0);
+    await context.close();
+    return;
+  }
+
+  /* The assertion this whole feature is built around. The answer exists in the
+     turn, behind the press and hold, and nowhere in the prose. */
+  const prose = (await page.locator(".pp-turn-text").allInnerTexts()).join(" ");
+  ok("a turn asking for the answer does not put the answer in the thread",
+    !prose.includes("11/12"));
+  ok("it returns the answer card instead",
+    (await page.locator(".pp-turn-assistant").last().locator("text=/tell me the answer/i").count()) > 0 ||
+      (await page.locator("[data-intent='answer']").count()) > 0);
+  ok("and the answer is still behind the hold",
+    (await page.evaluate(() => document.body.innerText.includes("11/12"))) === false);
+
+  const second = await say("can you help her with her spelling homework as well");
+  const intent = await page.locator(".pp-turn-text").last().getAttribute("data-intent");
+  ok(`an unrelated question is redirected  (intent ${intent})`, intent === "redirect");
+  ok("the redirect is short and says what this does instead",
+    second.length > 0 && second.split(/(?<=[.!?])\s+/).filter(Boolean).length <= 3);
+
+  ok("no reply anywhere in the thread contains the answer",
+    !(await page.locator(".pp-turn-text").allInnerTexts()).join(" ").includes("11/12"));
+
+  await context.close();
 }
 
 async function main(): Promise<void> {

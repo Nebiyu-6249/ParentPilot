@@ -24,7 +24,7 @@ import { computeAnswer, verifyAnswer } from "../lib/verify";
 import { sanitizeSvg } from "../lib/svg";
 import { stripMetadata } from "../lib/exif";
 import { packetCacheKey } from "../lib/packet";
-import { currentProblem, threadTitle } from "../lib/thread";
+import { currentProblem, revealsAnswer, threadTitle, threadTranscript } from "../lib/thread";
 import { resolveAppUrl } from "../lib/app-url";
 import type { MoveLabelName } from "../lib/ai/schemas";
 
@@ -1080,6 +1080,116 @@ ok("every specified card trigger has its exact text",
 
 // ---------------------------------------------------------------------------
 
+section("Free text holds the thesis under conversational pressure");
+
+{
+  const prompt = readFileSync(path.join(process.cwd(), "prompts", "chat-turn.md"), "utf8");
+  const flat = prompt.replace(/\s+/g, " ");
+  const route = readFileSync(
+    path.join(process.cwd(), "app", "api", "thread", "turn", "route.ts"), "utf8");
+  const thread = readFileSync(path.join(process.cwd(), "lib", "thread.ts"), "utf8");
+  const schemas = readFileSync(path.join(process.cwd(), "lib", "ai", "schemas.ts"), "utf8");
+
+  // The four rules the brief names, each present in the file that enforces it.
+  ok("the prompt writes the question, never the explanation to read aloud",
+    /write the question the parent should ask, not the explanation/i.test(flat));
+  ok("the prompt forbids stating the answer in prose",
+    /Do not write the answer/i.test(flat) && /not yours to write/i.test(flat));
+  ok("the prompt refuses to become a general tutor",
+    /outside what this product does/i.test(flat) && /redirect/i.test(flat));
+  ok("the prompt caps the reply at three sentences",
+    /Three sentences or fewer/i.test(flat));
+  ok("and says when depth is allowed instead", /asking for depth/i.test(flat));
+
+  /* The intent is separate from the prose so the answer can be emitted by the
+     route from the packet. A single free-text field would have made "return
+     the answer card" indistinguishable from "write the answer". */
+  ok("a turn carries an intent as well as a reply",
+    /chatTurnSchema/.test(schemas) && /intent: z\.enum\(CHAT_INTENTS\)/.test(schemas));
+  ok("the schema has no field an answer could travel in",
+    /chatTurnSchema = z\.object\(\{\s*intent[^}]*reply: z\.string\(\)\.min\(1\),\s*\}\)/.test(
+      schemas.replace(/\r/g, "")));
+
+  const textCase = route.slice(route.indexOf('case "text":'));
+  ok("the answer card is written from the packet, never from the reply",
+    /answer: bundle\.packet\.lockedAnswer/.test(textCase));
+  ok("a reply that names the answer is replaced rather than edited",
+    /revealsAnswer\(turn\.reply, computed\)/.test(textCase) &&
+      /leaked \? copy\.chat\.answerBehindHold : turn\.reply/.test(textCase));
+  ok("and the replacement is recorded, because it should never happen",
+    /logFailure\("thread-text", "A reply named the answer/.test(textCase));
+  ok("advancing the ladder from a typed turn still makes no second model call",
+    /intent === "next_question"/.test(textCase) && !/generatePacket/.test(textCase));
+  /* Facts come from this side. A request that could describe the child's
+     working would let anyone with the endpoint put words in the model's mouth
+     about a child they have never seen. */
+  ok("the request carries what was said and nothing else",
+    /transcript: z\s*\n?\s*\.array/.test(route) &&
+      !/childWorkText: parsed\.data/.test(route) &&
+      /childWorkText: bundle\?\.problem\.childWorkText/.test(textCase));
+
+  /* The one that matters most: the rendered thread must never be fed back to
+     a model, because it contains the locked answer. */
+  ok("the transcript excludes the answer card by construction",
+    /"answer" is never included/.test(thread));
+
+  eq("an empty thread renders an empty transcript", threadTranscript([]), []);
+
+  {
+    const turn = (role: "PARENT" | "ASSISTANT", body: string | null, cards: unknown[]) =>
+      ({ id: role + body, role, body, cards, createdAt: "" }) as never;
+
+    const lines = threadTranscript([
+      turn("ASSISTANT", null, [
+        { kind: "worksheet", problemId: "p1", printedText: "1/4 + 2/3 =", childWorkText: null,
+          childAnswer: null, imageDataUrl: null, verification: "checked", standardCode: null,
+          standardPlain: null, grade: 5 },
+        { kind: "ask", problemId: "p1", question: "How did you get to this one?", rung: 0, total: 5 },
+        { kind: "answer", answer: "11/12, because twelfths.", verification: "checked" },
+      ]),
+      turn("PARENT", "she's getting frustrated", []),
+    ]);
+
+    ok(`the transcript keeps what was said  (${lines.length} lines)`, lines.length === 3);
+    ok("and never the answer", !JSON.stringify(lines).includes("11/12"));
+    ok("the parent's own words are labelled as theirs",
+      lines[lines.length - 1]?.role === "PARENT");
+  }
+
+  // A reply requesting the answer must not contain the computed answer string.
+  ok("a reply naming the answer is caught", revealsAnswer("It is 11/12.", "11/12"));
+  ok("caught mid sentence too", revealsAnswer("She should get 11/12 once she converts.", "11/12"));
+  ok("caught in parentheses", revealsAnswer("The total (11/12) is what to check for.", "11/12"));
+  ok("a coaching reply passes",
+    !revealsAnswer("Ask her to draw a quarter and then two thirds.", "11/12"));
+  /* The problem's own numbers are not the answer, and a matcher that flagged
+     them would replace every legitimate reply on this worksheet. */
+  ok("the question's own fractions are not the answer",
+    !revealsAnswer("Start with 1/4 and 2/3 side by side.", "11/12"));
+  ok("a longer number containing it is not it", !revealsAnswer("Try 111/12 next.", "11/12"));
+  /* The boundary has to let a full stop through and still reject a decimal
+     point. An earlier version rejected both and missed "It is 11/12.", which
+     is the commonest way a reply would give it away. */
+  ok("a decimal answer at the end of a sentence is caught",
+    revealsAnswer("The total is 0.75.", "0.75"));
+  ok("but a longer decimal is not mistaken for it",
+    !revealsAnswer("The total is 0.755 exactly.", "0.75"));
+  ok("nothing is claimed when there is no computable answer",
+    !revealsAnswer("It is 11/12.", null));
+
+  /* Free text needs a model, and the three ways it can be refused are three
+     different situations, as with the teacher note. */
+  for (const name of ["turnUnconfigured", "turnLimit", "turnFailed"] as const) {
+    ok(`a refused turn says which refusal it was: ${name}`,
+      typeof copy.chat[name] === "string" && copy.chat[name].length > 0 &&
+        new RegExp(name).test(route));
+  }
+  ok("the old placeholder is gone",
+    !/not switched on yet/i.test(readFileSync(path.join(process.cwd(), "lib", "copy.ts"), "utf8")));
+}
+
+// ---------------------------------------------------------------------------
+
 section("The thread has a top bar, and it is a bar rather than a floating control");
 
 {
@@ -1265,7 +1375,7 @@ for (const [name, text] of Object.entries(copy.login)) {
 
 section("Prompt files carry the four standing rules");
 
-for (const name of ["extract-worksheet", "generate-packet", "classify-move", "session-recap", "teacher-note"]) {
+for (const name of ["extract-worksheet", "generate-packet", "classify-move", "session-recap", "teacher-note", "chat-turn"]) {
   const text = readFileSync(path.join(process.cwd(), "prompts", `${name}.md`), "utf8");
   // The files are hard-wrapped, so a rule can straddle a line break.
   const flat = text.replace(/\s+/g, " ");

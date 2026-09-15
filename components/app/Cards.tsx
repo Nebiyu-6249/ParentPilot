@@ -87,7 +87,15 @@ export default function ThreadCard({
       );
 
     case "text":
-      return <p style={{ fontSize: 15, lineHeight: 1.6, maxWidth: "68ch" }}>{card.body}</p>;
+      return (
+        <p
+          className="pp-turn-text"
+          data-intent={card.intent}
+          style={{ fontSize: 15, lineHeight: 1.6, maxWidth: "68ch" }}
+        >
+          {card.body}
+        </p>
+      );
 
     case "worksheet":
       return (

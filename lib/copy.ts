@@ -163,6 +163,9 @@ export const copy = {
     matching: "Matching it to what the class is teaching",
     writing: "Writing your primer",
     almost: "Almost there",
+    /* A typed turn reads the thread rather than the page, and saying
+       "Reading her working" while doing that would be a small lie. */
+    thinking: "Reading the thread",
   },
 
   transcription: {
@@ -330,10 +333,21 @@ export const copy = {
     threadsToday: "Today",
     threadsWeek: "This week",
     threadsEarlier: "Earlier",
-    /* Free-text turns arrive in step four. Saying so is better than a
-       composer that silently swallows what a parent typed. */
-    notYet:
-      "Answering in your own words is not switched on yet. For now, photograph the page or tap Still stuck for the next question.",
+    /* Free text needs a model, and a deployment without one says so rather
+       than swallowing what a parent typed. The buttons still work, so the
+       sentence names them. */
+    turnUnconfigured:
+      "This deployment cannot answer in your own words yet. Tap Still stuck for the next question, or photograph the next page.",
+    turnLimit:
+      "We have hit today's ceiling on replies. Still stuck and the saved example both still work.",
+    turnFailed: "That did not go through. Try saying it again.",
+    /* Said when the parent asks for the answer, and said again if a reply ever
+       comes back with the answer inside it. The card below it does the
+       revealing, behind the press and hold. */
+    answerBehindHold: "It is here, behind the hold.",
+    /* The thread's own turn label when a parent taps a suggestion chip rather
+       than typing. */
+    nextQuestion: "Here is the next one to try.",
     suggestions: [
       "she's getting frustrated",
       "she got it but I don't think she understands",
