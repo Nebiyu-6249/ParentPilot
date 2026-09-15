@@ -11,10 +11,12 @@ import {
   CameraIcon,
   CheckIcon,
   MicrophoneIcon,
+  MicrophoneOffIcon,
   PanelIcon,
   SendIcon,
   TypeIcon,
 } from "@/components/icons";
+import { useLiveSession } from "@/lib/live/useLiveSession";
 import { copy } from "@/lib/copy";
 import type { RegisterName } from "@/lib/ai/schemas";
 import {
@@ -50,10 +52,12 @@ export default function AppShell({
   register: initialRegister,
   threads,
   signedIn,
+  language,
 }: {
   register: RegisterName;
   threads: ThreadSummary[];
   signedIn: boolean;
+  language: string;
 }) {
   const [railOpen, setRailOpen] = useState(true);
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -93,6 +97,25 @@ export default function AppShell({
       return next;
     });
   }
+
+  /**
+   * Live Mode's turns.
+   *
+   * Appended the same way a reply is, so a coaching card raised at 8:14 sits
+   * above the question asked at 8:15 and the whole evening reads in order.
+   */
+  const emitLive = useCallback((cards: Card[]) => {
+    setTurns((current) => [
+      ...current,
+      { id: `l-${Date.now()}`, role: "ASSISTANT", body: null, cards, createdAt: new Date().toISOString() },
+    ]);
+    window.requestAnimationFrame(() => {
+      const el = threadRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    });
+  }, []);
+
+  const live = useLiveSession(language, emitLive);
 
   const scrollToEnd = useCallback(() => {
     window.requestAnimationFrame(() => {
@@ -501,21 +524,34 @@ export default function AppShell({
                 <SendIcon size={18} />
               </button>
             ) : (
+              /* Live Mode, in place. It used to navigate to its own screen,
+                 which meant leaving the thread mid-session and coming back to
+                 a recap that had no relationship to it. */
               <button
                 type="button"
-                className="pp-composer-btn"
-                aria-label={copy.live.micPrompt}
-                title={copy.live.micPrompt}
-                onClick={() => {
-                  window.location.href = "/live";
-                }}
+                className={live.listening ? "pp-composer-btn pp-composer-live" : "pp-composer-btn"}
+                aria-label={live.listening ? copy.live.stopShort : copy.live.startShort}
+                aria-pressed={live.listening}
+                title={live.listening ? copy.live.stopShort : copy.live.startShort}
+                onClick={() => void (live.listening ? live.stop() : live.start())}
               >
-                <MicrophoneIcon size={19} />
+                {live.listening ? <MicrophoneOffIcon size={19} /> : <MicrophoneIcon size={19} />}
               </button>
             )}
           </div>
 
-          <p className="pp-composer-note">{copy.chat.note}</p>
+          {live.listening ? (
+            <p className="pp-composer-note pp-listening" role="status" aria-live="polite">
+              <span className="pp-listening-dot" aria-hidden="true" />
+              {copy.live.listeningInThread} {formatClock(live.elapsed)}
+            </p>
+          ) : live.error === "denied" ? (
+            <p className="pp-composer-note" role="status">
+              {copy.live.micDenied}
+            </p>
+          ) : (
+            <p className="pp-composer-note">{copy.chat.note}</p>
+          )}
         </div>
       </div>
     </div>
@@ -531,4 +567,10 @@ function groupThreads(threads: ThreadSummary[]): Record<string, ThreadSummary[]>
     out[thread.group] = list;
   }
   return out;
+}
+
+/** mm:ss, for the listening indicator. */
+function formatClock(seconds: number): string {
+  const m = String(Math.floor(seconds / 60)).padStart(2, "0");
+  return `${m}:${String(seconds % 60).padStart(2, "0")}`;
 }

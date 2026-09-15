@@ -286,6 +286,7 @@ enum MessageKind {
   TEACHING
   LIVE_SUMMARY
   PARK_IT
+  LIVE_COACH
 }
 
 enum Register {
