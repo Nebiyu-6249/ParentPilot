@@ -17,6 +17,7 @@ import {
   type IconProps,
 } from "@/components/icons";
 import { copy } from "@/lib/copy";
+import { Markdown } from "@/lib/markdown";
 import { sanitizeSvg } from "@/lib/svg";
 import type { Card } from "@/lib/thread";
 
@@ -87,15 +88,66 @@ export default function ThreadCard({
         </article>
       );
 
+    /* A definition. The one line answer is always visible; the expansion and
+       the child level version are each one tap, because a parent asking what a
+       denominator is may want to understand it, or may want a sentence to say
+       out loud, and those are different things. */
+    case "explainer":
+      return <Explainer card={card} />;
+
+    /* A method worked through on numbers that are not the child's. The problem
+       is stated at the top and styled as the heading, so a parent can see at a
+       glance that this is not their child's question. That visibility is what
+       makes showing the whole method safe. */
+    case "worked_example":
+      return (
+        <article className="pp-card">
+          <div className="pp-card-body" style={{ paddingTop: 15 }}>
+            <p className="pp-example-label">{copy.chat.exampleLabel}</p>
+            <p className="pp-example-problem">{card.problem}</p>
+            <ol className="pp-example-steps">
+              {card.steps.map((step, i) => (
+                <li key={`${step.move}-${i}`}>
+                  <span className="pp-example-move">{step.move}</span>
+                  {step.working && <span className="pp-example-working">{step.working}</span>}
+                </li>
+              ))}
+            </ol>
+            {card.point && <p className="pp-example-point">{card.point}</p>}
+          </div>
+        </article>
+      );
+
+    case "strategy":
+      return (
+        <article className="pp-card">
+          <div className="pp-card-body" style={{ paddingTop: 15 }}>
+            <ol className="pp-strategy">
+              {card.moves.map((move, i) => (
+                <li key={`${move.title}-${i}`}>
+                  <p className="pp-strategy-title">{move.title}</p>
+                  <p className="pp-strategy-body">{move.body}</p>
+                </li>
+              ))}
+            </ol>
+            {card.avoid && (
+              <p className="pp-strategy-avoid">
+                <span>{copy.chat.avoidLabel}</span> {card.avoid}
+              </p>
+            )}
+          </div>
+        </article>
+      );
+
     case "text":
       return (
-        <p
+        <div
           className="pp-turn-text"
           data-intent={card.intent}
           style={{ fontSize: 15, lineHeight: 1.6, maxWidth: "68ch" }}
         >
-          {card.body}
-        </p>
+          <Markdown source={card.body} />
+        </div>
       );
 
     case "worksheet":
@@ -373,4 +425,51 @@ function countsLine(counts: Record<string, number>): string {
     .map(([label, words]) => `${counts[label]} ${words}`);
 
   return parts.length > 0 ? `, ${parts.join(", ")}` : "";
+}
+
+/**
+ * The definition card.
+ *
+ * Its own component because it holds state: which of the two expansions is
+ * open. A parent who wants to understand the idea and a parent who wants a
+ * sentence to say to a nine year old are asking for different things, and
+ * making the second one a toggle rather than another turn is the difference
+ * between one tap and waiting again.
+ */
+function Explainer({ card }: { card: Extract<Card, { kind: "explainer" }> }) {
+  const [child, setChild] = useState(false);
+  const [more, setMore] = useState(false);
+
+  return (
+    <article className="pp-card pp-card-explainer">
+      <div className="pp-card-body" style={{ paddingTop: 15 }}>
+        <p className="pp-explainer-term">{card.term}</p>
+        <p className="pp-explainer-short">{child && card.forNineYearOld ? card.forNineYearOld : card.short}</p>
+
+        {!child && more && card.more && (
+          <div className="pp-explainer-more">
+            <Markdown source={card.more} />
+          </div>
+        )}
+
+        <div className="pp-explainer-actions">
+          {card.more && !child && (
+            <button type="button" className="pp-chip pp-chip-quiet" onClick={() => setMore((v) => !v)}>
+              {more ? copy.chat.explainerLess : copy.chat.explainerMore}
+            </button>
+          )}
+          {card.forNineYearOld && (
+            <button
+              type="button"
+              className="pp-chip pp-chip-quiet"
+              aria-pressed={child}
+              onClick={() => setChild((v) => !v)}
+            >
+              {child ? copy.chat.explainerAdult : copy.chat.explainerChild}
+            </button>
+          )}
+        </div>
+      </div>
+    </article>
+  );
 }

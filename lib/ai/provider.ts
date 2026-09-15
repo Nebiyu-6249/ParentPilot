@@ -394,6 +394,29 @@ export interface ChatTurnArgs {
  * the task is short reasoning over supplied facts rather than generation.
  */
 export async function chatTurn(args: ChatTurnArgs): Promise<ChatTurn> {
+  return chatTurnCall(args, undefined);
+}
+
+/**
+ * The same turn, streamed.
+ *
+ * `onDelta` receives the reply as it arrives, so the thread can type it out
+ * the way every product this shell imitates does. The structured payload is
+ * validated at the end exactly as the non-streaming path validates it, and a
+ * malformed response throws after the preview rather than leaving half a
+ * sentence on screen: the caller replaces the preview with what it emits.
+ */
+export async function chatTurnStreaming(
+  args: ChatTurnArgs,
+  onDelta: (reply: string) => void,
+): Promise<ChatTurn> {
+  return chatTurnCall(args, onDelta);
+}
+
+async function chatTurnCall(
+  args: ChatTurnArgs,
+  onDelta: ((reply: string) => void) | undefined,
+): Promise<ChatTurn> {
   const system = await loadPrompt("chat-turn", {
     REGISTER: args.register,
     LANGUAGE: args.language,
@@ -406,26 +429,135 @@ export async function chatTurn(args: ChatTurnArgs): Promise<ChatTurn> {
     RUNGS_TOTAL: args.rungsTotal,
   });
 
-  return complete({
-    task: "classify",
-    schema: chatTurnSchema,
+  const messages: ChatCompletionMessageParam[] = [
+    { role: "system", content: system },
+    {
+      role: "user",
+      content: `The conversation so far:\n${args.transcript}\n\nReply to the parent's most recent line.`,
+    },
+  ];
+
+  if (!onDelta) {
+    return complete({
+      task: "classify",
+      schema: chatTurnSchema,
+      temperature: 0.4,
+      maxTokens: 1400,
+      messages,
+    });
+  }
+
+  const model = MODELS.classify;
+  const openai = getClient();
+
+  const stream = await openai.chat.completions.create({
+    model,
+    messages,
     temperature: 0.4,
-    /* Room for a worked example. The cap was 400 while replies were capped at
-       three sentences; an eight step walkthrough with its arithmetic shown
-       does not fit in that, and a truncated one is worse than none. */
-    maxTokens: 1400,
-    /* The conversation goes in the user message, not the system prompt. It is
-       the thing being acted on rather than an instruction, and putting it in
-       the prompt left it above the worked examples, so the last line that
-       looked like a parent speaking was an example rather than the parent. */
-    messages: [
-      { role: "system", content: system },
-      {
-        role: "user",
-        content: `The conversation so far:\n${args.transcript}\n\nReply to the parent's most recent line.`,
-      },
-    ],
+    max_tokens: 1400,
+    response_format: { type: "json_object" },
+    stream: true,
+    // Usage arrives in a final chunk. Without asking for it the ledger would
+    // silently stop counting the most frequent call in the product.
+    stream_options: { include_usage: true },
   });
+
+  let raw = "";
+  let sent = "";
+  let promptTokens = 0;
+  let completionTokens = 0;
+
+  for await (const chunk of stream) {
+    if (chunk.usage) {
+      promptTokens = chunk.usage.prompt_tokens ?? 0;
+      completionTokens = chunk.usage.completion_tokens ?? 0;
+    }
+
+    const piece = chunk.choices[0]?.delta?.content;
+    if (!piece) continue;
+    raw += piece;
+
+    const soFar = partialReply(raw);
+    if (soFar !== null && soFar.length > sent.length) {
+      onDelta(soFar.slice(sent.length));
+      sent = soFar;
+    }
+  }
+
+  // Every model call increments the ledger. A streamed response that reported
+  // no usage is estimated from its own length rather than recorded as free.
+  await recordSpend(
+    estimateUsd(
+      model,
+      promptTokens || Math.ceil(JSON.stringify(messages).length / 4),
+      completionTokens || Math.ceil(raw.length / 4),
+    ),
+  );
+
+  const parsed = chatTurnSchema.safeParse(parseJson(raw));
+  if (!parsed.success) {
+    throw new ModelError("malformed", `Model response failed validation: ${parsed.error.message}`);
+  }
+
+  return sanitizeDeep(parsed.data);
+}
+
+
+/**
+ * The `reply` field as it stands in a partial JSON document.
+ *
+ * Streaming a structured response means nothing can be validated until the
+ * last token, but a parent should not watch a blank screen for two seconds
+ * while a card is written. `reply` is declared first in `chatTurnSchema`, so
+ * it is complete long before the rest, and this reads it out of the fragment.
+ *
+ * Recomputed from the whole buffer on each chunk rather than kept as a cursor.
+ * The buffer is a few kilobytes and the cursor version has to handle an escape
+ * sequence split across two chunks, which is a bug waiting rather than a
+ * saving worth having.
+ */
+export function partialReply(raw: string): string | null {
+  const at = raw.indexOf('"reply"');
+  if (at === -1) return null;
+
+  const colon = raw.indexOf(":", at + 7);
+  if (colon === -1) return null;
+
+  let i = colon + 1;
+  while (i < raw.length && /\s/.test(raw[i] ?? "")) i += 1;
+  if (raw[i] !== '"') return null;
+  i += 1;
+
+  let out = "";
+  while (i < raw.length) {
+    const ch = raw[i] ?? "";
+
+    if (ch === "\\") {
+      const next = raw[i + 1];
+      // An escape cut in half by a chunk boundary. Stop here; the next chunk
+      // recomputes from the start and picks it up whole.
+      if (next === undefined) break;
+      if (next === "u") {
+        const hex = raw.slice(i + 2, i + 6);
+        if (hex.length < 4) break;
+        out += String.fromCharCode(parseInt(hex, 16));
+        i += 6;
+        continue;
+      }
+      const simple: Record<string, string> = {
+        n: "\n", t: "\t", r: "\r", b: "\b", f: "\f", '"': '"', "\\": "\\", "/": "/",
+      };
+      out += simple[next] ?? next;
+      i += 2;
+      continue;
+    }
+
+    if (ch === '"') break;
+    out += ch;
+    i += 1;
+  }
+
+  return out;
 }
 
 export interface MisconceptionJudgeArgs {

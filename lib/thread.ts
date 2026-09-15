@@ -20,6 +20,9 @@ export type CardKind =
   | "live_summary"
   | "live_coach"
   | "park_it"
+  | "explainer"
+  | "worked_example"
+  | "strategy"
   | "text";
 
 /**
@@ -117,6 +120,42 @@ export interface ParkItCard {
   teacherNote: string | null;
 }
 
+/**
+ * A definition, as an object.
+ *
+ * The term, the one line that answers it, and an expansion the parent can open
+ * if they want it. The child-level version sits behind a toggle rather than
+ * replacing the answer, because a parent often wants both: one to understand
+ * it, one to say out loud.
+ */
+export interface ExplainerCard {
+  kind: "explainer";
+  term: string;
+  short: string;
+  more: string;
+  forNineYearOld: string;
+}
+
+/**
+ * A method worked through, on numbers that are not the child's.
+ *
+ * `problem` is shown at the top and is the point of the card: a parent can see
+ * at a glance that this is not their child's question, which is what makes
+ * showing the whole method safe.
+ */
+export interface WorkedExampleCard {
+  kind: "worked_example";
+  problem: string;
+  steps: { move: string; working: string }[];
+  point: string;
+}
+
+export interface StrategyCard {
+  kind: "strategy";
+  moves: { title: string; body: string }[];
+  avoid: string;
+}
+
 export interface TextCard {
   kind: "text";
   body: string;
@@ -142,6 +181,9 @@ export type Card =
   | LiveSummaryCard
   | LiveCoachCard
   | ParkItCard
+  | ExplainerCard
+  | WorkedExampleCard
+  | StrategyCard
   | TextCard;
 
 export interface Turn {
@@ -351,6 +393,19 @@ export function threadTranscript(turns: Turn[], limit = TRANSCRIPT_LINES): Threa
           break;
         case "live_coach":
           lines.push({ role: "ASSISTANT", text: `Raised a coaching card: ${card.triggerLabel}` });
+          break;
+        case "explainer":
+          lines.push({ role: "ASSISTANT", text: `Explained ${card.term}: ${card.short}` });
+          break;
+        case "worked_example":
+          // The numbers it used, so the next turn does not repeat them.
+          lines.push({ role: "ASSISTANT", text: `Worked an example on ${card.problem}` });
+          break;
+        case "strategy":
+          lines.push({
+            role: "ASSISTANT",
+            text: `Suggested: ${card.moves.map((m) => m.title).join("; ")}`,
+          });
           break;
         // "answer" is never included. "notice" and the rest are about this
         // deployment or about layout, and say nothing about the child.
