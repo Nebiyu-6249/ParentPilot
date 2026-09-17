@@ -1,0 +1,105 @@
+name: Demo video
+
+# Manual only, and deliberately so. A recording drives the live deployment end
+# to end: it reads the saved worksheet, asks for both methods, holds to reveal
+# the answer, types a message and drafts a note for the teacher. Every one of
+# those is a real model call against real spend, which is not something to do
+# on every push to a branch.
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Site to record. Leave blank to use the DEMO_URL repository variable."
+        required: false
+        type: string
+
+# Two recordings at once would race for the same artifact name and double the
+# spend for one usable video.
+concurrency:
+  group: demo-video
+  cancel-in-progress: false
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Resolved before anything is installed, so a missing URL fails in ten
+      # seconds rather than after a browser download.
+      #
+      # There is no baked-in default on purpose. A default that has drifted
+      # from the real deployment does not fail: it records whatever is at that
+      # address, and the first anyone knows is when they watch the video.
+      - name: Resolve the target
+        id: target
+        env:
+          INPUT_URL: ${{ inputs.url }}
+          VAR_URL: ${{ vars.DEMO_URL }}
+        run: |
+          URL="${INPUT_URL:-$VAR_URL}"
+          if [ -z "$URL" ]; then
+            echo "::error::Nothing to record. Either fill in the url input when you run this workflow, or set a DEMO_URL repository variable to the production URL (Settings, Secrets and variables, Actions, Variables)."
+            exit 1
+          fi
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Recording $URL"
+
+      # postinstall runs `prisma generate`, which reads the datasource block
+      # and wants DATABASE_URL to exist. Nothing here connects to a database,
+      # so a placeholder is enough and keeps a schema concern out of a video
+      # job.
+      - name: Install dependencies
+        run: npm ci
+        env:
+          DATABASE_URL: postgresql://unused:unused@localhost:5432/unused
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Record
+        env:
+          DEMO_URL: ${{ steps.target.outputs.url }}
+        run: node scripts/record-demo.mjs
+
+      # webm plays in browsers and in not much else. The mp4 is the copy that
+      # can be dropped into a deck, a Slack message or a phone.
+      #
+      # Runs even when the recording failed, because the script writes what it
+      # got before it rethrows, and a partial video is usually how you find out
+      # which scene broke.
+      - name: Convert to mp4
+        if: always()
+        run: |
+          if [ ! -s recordings/demo.webm ]; then
+            echo "::warning::No video was written, so there is nothing to convert."
+            exit 0
+          fi
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          # yuv420p rather than the default, or QuickTime and most phones show
+          # a black frame. faststart puts the index first so it streams.
+          ffmpeg -nostdin -v error -y -i recordings/demo.webm \
+            -c:v libx264 -preset slow -crf 20 -pix_fmt yuv420p \
+            -movflags +faststart \
+            recordings/demo.mp4
+          ls -lh recordings/
+
+      - name: Upload the recording
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-video
+          path: recordings/
+          # A warning rather than an error: when a scene fails, the scene
+          # failure is the thing to read, not a second one about an empty
+          # upload.
+          if-no-files-found: warn
+          retention-days: 30
