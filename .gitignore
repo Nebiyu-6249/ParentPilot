@@ -11,3 +11,6 @@ next-env.d.ts
 
 # Local screenshot scaffolding for verifying by looking.
 .shots/
+
+# Recorded by scripts/record-demo.mjs. The video is a CI artifact, not source.
+recordings/
