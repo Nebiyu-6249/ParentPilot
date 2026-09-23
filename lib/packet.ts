@@ -10,7 +10,7 @@ import { nearestStandards, standardByCode } from "@/lib/standards";
 import { verifyAnswer } from "@/lib/verify";
 import { logFailure } from "@/lib/limits";
 import type { PacketPayload, RegisterName } from "@/lib/ai/schemas";
-import type { PacketBundle, PacketSource, ProblemView } from "@/lib/types";
+import type { PacketBundle, PacketSource, ProblemView, StandardCandidate } from "@/lib/types";
 
 /**
  * Capture to packet, orchestrated.
@@ -22,6 +22,7 @@ import type { PacketBundle, PacketSource, ProblemView } from "@/lib/types";
  */
 
 export type PacketStep = "checking" | "matching" | "writing";
+
 
 export const STEP_TEXT: Record<PacketStep, string> = {
   checking: copy.status.checking,
@@ -63,6 +64,7 @@ function toProblemView(problem: {
   childAnswer: string | null;
   ocrConfidence: number | null;
   standardCode: string | null;
+  standardSimilarity: number | null;
   expectedMethod: string | null;
   verified: boolean;
   computedAnswer: string | null;
@@ -77,6 +79,7 @@ function toProblemView(problem: {
     childAnswer: problem.childAnswer,
     ocrConfidence: problem.ocrConfidence,
     standardCode: problem.standardCode,
+    standardSimilarity: problem.standardSimilarity,
     expectedMethod: problem.expectedMethod,
     verified: problem.verified,
     computedAnswer: problem.computedAnswer,
@@ -170,6 +173,7 @@ export async function buildPacketFromText(args: BuildFromTextArgs): Promise<Pack
     childAnswer,
     ocrConfidence: problemId ? null : 1,
     standardCode: null as string | null,
+    standardSimilarity: null as number | null,
     expectedMethod: null as string | null,
     verified: false,
     computedAnswer: null as string | null,
@@ -192,19 +196,25 @@ export async function buildPacketFromText(args: BuildFromTextArgs): Promise<Pack
      right one is not. */
   let curriculumFellBack = false;
 
+  /* The three nearest, held until generation, which picks one. Retrieval
+     orders by how close the wording is; which standard a teacher files a
+     problem under is a different question, and the top hit answers it usually
+     rather than always. Empty when the problem already carries a code, which
+     is the second view of a problem and needs no search at all. */
+  let candidates: StandardCandidate[] = [];
+  let similarity = problem.standardSimilarity;
+
   if (!standardCode) {
-    const match = await nearestStandards(printedText, grade, 1, args.curriculum ?? null).catch(
+    const match = await nearestStandards(printedText, grade, 3, args.curriculum ?? null).catch(
       () => null,
     );
-    standardCode = match?.standards[0]?.code ?? null;
+    candidates = match?.standards ?? [];
     curriculumFellBack = match?.fellBack ?? false;
-    if (standardCode && problemId) {
-      await prisma.problem
-        .update({ where: { id: problemId }, data: { standardCode } })
-        .catch(() => undefined);
-    }
+    // The nearest, as a provisional answer. Generation may pick another.
+    standardCode = candidates[0]?.code ?? null;
+    similarity = candidates[0]?.similarity ?? null;
   }
-  const standard = await standardByCode(standardCode);
+  let standard = await standardByCode(standardCode);
 
   let misconceptionId = problem.misconceptionId;
   if (misconceptionId === null && problem.childWorkText) {
@@ -222,6 +232,18 @@ export async function buildPacketFromText(args: BuildFromTextArgs): Promise<Pack
     }
   }
   const misconception = await misconceptionById(misconceptionId);
+
+  /* The stand-in row is what `toProblemView` reads, and on the one-off path
+     there is no database row to read back from, so the resolved match is
+     written onto it here. Without this an anonymous parent's chip always read
+     as certain, which is exactly the wrong way round: the path with no
+     profile, no grade and no curriculum is the one most likely to have
+     matched weakly. */
+  const settle = (): void => {
+    problem.standardCode = standardCode;
+    problem.standardSimilarity = similarity;
+  };
+  settle();
 
   // Step 3: the packet itself, from cache if we have it.
   onStep?.("writing");
@@ -263,10 +285,7 @@ export async function buildPacketFromText(args: BuildFromTextArgs): Promise<Pack
       printedText,
       childWorkText: problem.childWorkText,
       childAnswer: problem.childAnswer,
-      standardCode,
-      standardPlain: standard?.plainLanguage ?? null,
-      expectedMethods: standard?.expectedMethods ?? [],
-      parentMethod: standard?.parentMethod ?? null,
+      candidates,
       computedAnswer: verification.computedAnswer,
       misconception: misconception?.signature ?? misconception?.plainName ?? null,
       register,
@@ -304,6 +323,34 @@ export async function buildPacketFromText(args: BuildFromTextArgs): Promise<Pack
     } as unknown as PacketPayload;
 
     return assemble(problem, standard, misconception, genericPayload, register, language, notice, "generic");
+  }
+
+  /* The model's choice, checked against what it was actually offered.
+     A code that is not one of the three is a hallucinated citation, and a
+     citation on screen for a standard that does not exist is worse than the
+     nearest match, so an unrecognised code falls back rather than being
+     shown. */
+  const chosen = candidates.find((c) => c.code === payload.standardCode);
+  if (payload.standardCode && !chosen && candidates.length > 0) {
+    await logFailure(
+      "packet-standard",
+      `model returned ${payload.standardCode}, which was not among ${candidates.map((c) => c.code).join(", ")}`,
+    );
+  }
+  if (chosen) {
+    standardCode = chosen.code;
+    similarity = chosen.similarity;
+    standard = chosen;
+  }
+  settle();
+
+  /* Persisted after the choice rather than before it, so a second view of the
+     same problem reads back the standard that was actually written about
+     rather than the one the search happened to put first. */
+  if (problemId && standardCode) {
+    await prisma.problem
+      .update({ where: { id: problemId }, data: { standardCode, standardSimilarity: similarity } })
+      .catch(() => undefined);
   }
 
   // Verify the model's answer against our own arithmetic, independently.

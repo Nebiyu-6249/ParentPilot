@@ -1,0 +1,12 @@
+-- How close the standard match actually was.
+--
+-- Retrieval now returns three candidates and generation picks one, so a
+-- packet can be about a standard that was not the nearest. The score is kept
+-- so the chip can say "closest match" rather than asserting a citation when
+-- the search was weak, and so the threshold for that can be moved later
+-- without re-embedding every problem.
+--
+-- Null on existing rows, which is honest: those were matched by a top-1
+-- search that recorded no score, and a backfilled guess would be worse than
+-- an absent one. A null reads as "not known" and the chip stays plain.
+ALTER TABLE "Problem" ADD COLUMN IF NOT EXISTS "standardSimilarity" DOUBLE PRECISION;

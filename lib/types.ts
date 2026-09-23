@@ -11,11 +11,57 @@ export interface ProblemView {
   childAnswer: string | null;
   ocrConfidence: number | null;
   standardCode: string | null;
+  /** How close the search that chose `standardCode` was, 0 to 1, or null for
+   *  a problem matched before scores were recorded. */
+  standardSimilarity: number | null;
   expectedMethod: string | null;
   verified: boolean;
   computedAnswer: string | null;
   misconceptionId: string | null;
   status: "OPEN" | "SOLVED" | "PARKED";
+}
+
+/**
+ * Below this, the standard chip says "closest match" instead of asserting one.
+ *
+ * Chosen from what the corpus actually returns rather than from a round
+ * number: a problem that is plainly about a seeded standard comes back in the
+ * high 0.7s and above, and the tail below 0.6 is where the search is matching
+ * on shape rather than on subject. It is a starting line, and it is stored
+ * per problem so it can be moved without re-embedding anything.
+ *
+ * The distinction matters because the chip is a claim about a child's
+ * classroom. "This is what your class is doing" and "this is the nearest
+ * thing we found" are different sentences, and a product that only knows how
+ * to say the first one says it when it is not true.
+ */
+export const STANDARD_CERTAIN_AT = 0.6;
+
+/** True when the chip should hedge rather than assert. */
+export function standardIsUncertain(similarity: number | null): boolean {
+  // Null is a problem matched before scores were recorded. Not known is not
+  // the same as low, and a backfilled hedge would be a guess on screen.
+  return similarity !== null && similarity < STANDARD_CERTAIN_AT;
+}
+
+/**
+ * A retrieval candidate: a standard, and how close it was.
+ *
+ * Separate from `StandardView` because most of the product holds a standard it
+ * already knows is the right one. Similarity is a fact about a search, not
+ * about a standard, and putting it on the shared type would mean every
+ * `standardByCode` result carrying a number that means nothing.
+ */
+export interface StandardCandidate extends StandardView {
+  /**
+   * Cosine similarity to the problem text, from 0 to 1.
+   *
+   * pgvector's `<=>` returns cosine *distance*, so this is `1 - distance`,
+   * clamped. Worth knowing when reading a low number: an embedding model puts
+   * almost everything in a fairly narrow band, so 0.4 is not "40% right", it
+   * is "further away than anything we would normally act on".
+   */
+  similarity: number;
 }
 
 export interface StandardView {

@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { ChevronIcon } from "@/components/icons";
+import { useMessages } from "@/components/LocaleProvider";
 
 /**
  * A standard code that opens in place.
@@ -11,7 +12,25 @@ import { ChevronIcon } from "@/components/icons";
  * to leave the screen they are working on to find out, and should not have to
  * lose their place in the ladder to satisfy a small curiosity.
  */
-export default function Citation({ code, plainLanguage }: { code: string; plainLanguage: string | null }) {
+export default function Citation({
+  code,
+  plainLanguage,
+  uncertain = false,
+}: {
+  code: string;
+  plainLanguage: string | null;
+  /**
+   * The search that found this was weak.
+   *
+   * The chip then hedges instead of asserting, because it is a claim about a
+   * child's classroom. "This is what your class is doing" and "this is the
+   * nearest thing we found" are different sentences, and saying the first
+   * when only the second is true is the kind of confident wrongness this
+   * product exists to avoid.
+   */
+  uncertain?: boolean;
+}) {
+  const t = useMessages();
   const [open, setOpen] = useState(false);
 
   if (!plainLanguage) {
@@ -33,11 +52,16 @@ export default function Citation({ code, plainLanguage }: { code: string; plainL
           padding: "3px 7px",
           fontSize: "var(--type-micro)",
           background: "transparent",
-          color: "var(--action)",
-          border: "1px solid var(--border-interactive)",
+          color: uncertain ? "var(--text-on-sheet-muted)" : "var(--action)",
+          /* Dashed rather than a different colour alone, so the hedge survives
+             a screenshot in greyscale and a parent who does not distinguish
+             the two greens. */
+          border: uncertain
+            ? "1px dashed var(--border-interactive)"
+            : "1px solid var(--border-interactive)",
         }}
       >
-        {code}
+        {uncertain ? `${t.packet.standardClosest} ${code}` : code}
         <ChevronIcon size={13} direction={open ? "up" : "down"} />
       </button>
 
@@ -55,6 +79,18 @@ export default function Citation({ code, plainLanguage }: { code: string; plainL
           }}
         >
           {plainLanguage}
+          {uncertain && (
+            <span
+              style={{
+                display: "block",
+                marginTop: 8,
+                fontSize: "var(--type-small)",
+                color: "var(--text-on-sheet-muted)",
+              }}
+            >
+              {t.packet.standardUncertainHelp}
+            </span>
+          )}
         </span>
       )}
     </span>

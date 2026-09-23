@@ -38,6 +38,7 @@ import {
   extractWorksheet,
   generatePacket,
   generateTeacherNote,
+  identifyLanguage,
   isConfigured,
   voiceTurn,
 } from "../lib/ai/provider";
@@ -49,7 +50,7 @@ import { computeAnswer } from "../lib/verify";
 import { hasDatabase } from "../lib/db";
 import { spendToday } from "../lib/limits";
 import type { PacketPayload, RegisterName } from "../lib/ai/schemas";
-import type { StandardView } from "../lib/types";
+import type { StandardCandidate, StandardView } from "../lib/types";
 
 // ---------------------------------------------------------------------------
 // Reporting
@@ -269,11 +270,12 @@ function mentionsDuration(text: string): string | null {
 /**
  * The line a run has to clear on top-1 retrieval.
  *
- * A starting line rather than a measured target. It is set where it is because
- * the packet pipeline takes the top result and nothing else, so a top-1 miss
- * is a parent reading a primer about the wrong standard, and four in five is
- * the least that is worth shipping. Move it up as the golden set fills, not
- * down when a run goes red.
+ * A starting line rather than a measured target. It applies to the *selected*
+ * standard, which is what a parent is shown: retrieval now hands the model
+ * three candidates and it picks one, so a miss here is a parent reading a
+ * primer about the wrong standard however well the search did. Four in five
+ * is the least that is worth shipping. Move it up as the golden set fills,
+ * not down when a run goes red.
  */
 const RETRIEVAL_FLOOR = 0.8;
 
@@ -294,7 +296,15 @@ interface Miss {
 }
 
 async function runRetrieval(): Promise<void> {
-  section("Standard retrieval", "five probes per domain, against the seeded corpus");
+  section(
+    "Standard retrieval",
+    "five probes per domain, retrieved as three candidates and chosen between",
+  );
+  console.log(
+    "  This section generates a packet per probe, because the number that matters is\n" +
+      "  which standard a parent is actually shown, not which one the vector search\n" +
+      "  put first. That is one packet call per probe: the most expensive section here.",
+  );
 
   const probes = readJson<ProbeFile>("probes.json");
   if (!probes) {
@@ -306,16 +316,18 @@ async function runRetrieval(): Promise<void> {
     return;
   }
 
-  const misses: Miss[] = [];
-  let hits = 0;
-  let inTopThree = 0;
-  let total = 0;
+  interface Outcome {
+    topic: string;
+    probe: Probe;
+    candidates: StandardCandidate[];
+    /** What the model picked, or null when generation failed. */
+    selected: string | null;
+  }
+
+  const outcomes: Outcome[] = [];
 
   for (const [topic, list] of Object.entries(probes.topics)) {
-    let topicHits = 0;
-
     for (const probe of list) {
-      total += 1;
       /* Grade is deliberately null. A parent photographing a page has often
          not told us a year group, and the filter in `nearestStandards` is
          skipped entirely in that case, which is the harder retrieval and the
@@ -323,57 +335,115 @@ async function runRetrieval(): Promise<void> {
       const match = await counted("embedding", () =>
         nearestStandards(probe.text, null, 3, CURRICULUM),
       );
-      const got = match.standards;
+      const candidates = match.standards;
 
-      const top = got[0];
-      const hit = top !== undefined && probe.expect.includes(top.code);
-      if (hit) {
-        hits += 1;
-        topicHits += 1;
-      } else {
-        misses.push({ topic, text: probe.text, expected: probe.expect, got });
+      let selected: string | null = null;
+      if (candidates.length > 0) {
+        try {
+          const packet = await counted("packet", () =>
+            generatePacket({
+              printedText: probe.text,
+              childWorkText: null,
+              childAnswer: null,
+              candidates,
+              computedAnswer: computeAnswer(probe.text),
+              misconception: null,
+              register: REGISTER,
+              language: LANGUAGE,
+              schoolLanguage: null,
+              grade: null,
+            }),
+          );
+          /* The same validation the product does. A code that was not offered
+             is a hallucinated citation and the pipeline falls back to the
+             nearest, so the eval scores it the same way rather than crediting
+             a code that would never reach a screen. */
+          selected = candidates.some((c) => c.code === packet.standardCode)
+            ? packet.standardCode
+            : (candidates[0]?.code ?? null);
+        } catch (error) {
+          verdict("fail", `${topic}: generation failed for ${JSON.stringify(probe.text)}`,
+            error instanceof Error ? error.message : String(error));
+          selected = candidates[0]?.code ?? null;
+        }
       }
-      if (got.some((s) => probe.expect.includes(s.code))) inTopThree += 1;
+
+      outcomes.push({ topic, probe, candidates, selected });
     }
 
-    /* Per topic counts, not verdicts. The assertion is on the overall rate,
-       and a tag here that nothing tallies reads like a result that was
-       counted somewhere. */
-    console.log(`    ${topic.padEnd(5)} ${topicHits}/${list.length}`);
+    const topicOutcomes = outcomes.filter((o) => o.topic === topic);
+    const topicHits = topicOutcomes.filter((o) => o.selected && o.probe.expect.includes(o.selected)).length;
+    console.log(`    ${topic.padEnd(5)} ${topicHits}/${topicOutcomes.length} selected`);
   }
 
+  const total = outcomes.length;
   if (total === 0) {
     skipSection("retrieval", "eval/probes.json contains no probes.");
     return;
   }
 
-  const rate = hits / total;
-  const recall = inTopThree / total;
+  const topOne = outcomes.filter((o) => o.candidates[0] && o.probe.expect.includes(o.candidates[0].code)).length;
+  const topThree = outcomes.filter((o) => o.candidates.some((c) => o.probe.expect.includes(c.code))).length;
+  const chosen = outcomes.filter((o) => o.selected && o.probe.expect.includes(o.selected)).length;
+
+  const pct = (n: number): string => `${n}/${total}  ${((n / total) * 100).toFixed(1)}%`;
 
   console.log("");
-  console.log(`  top-1 hit rate  ${hits}/${total}  ${(rate * 100).toFixed(1)}%`);
-  console.log(`  top-3 recall    ${inTopThree}/${total}  ${(recall * 100).toFixed(1)}%`);
+  console.log(`  top-1 retrieved   ${pct(topOne)}   the nearest by wording`);
+  console.log(`  top-3 retrieved   ${pct(topThree)}   the right answer was somewhere in the shortlist`);
+  console.log(`  selected          ${pct(chosen)}   what a parent is actually shown`);
 
+  /* The gap between top-3 and selected is the only number here that is about
+     the model rather than the embedding. A wide gap means the shortlist was
+     right and the choice was not, which is a prompt problem; a narrow one
+     under a low top-3 means the corpus or the embedding is the limit. */
+  if (topThree > 0) {
+    console.log(
+      `  chose correctly when the shortlist contained the answer: ${chosen}/${topThree}  ` +
+        `${((chosen / topThree) * 100).toFixed(1)}%`,
+    );
+  }
+
+  const misses = outcomes.filter((o) => !o.selected || !o.probe.expect.includes(o.selected));
   if (misses.length > 0) {
-    console.log("\n  Every miss, with what came back instead:");
+    console.log("\n  Every miss, with the shortlist it chose from:");
     for (const miss of misses) {
-      console.log(`\n    ${miss.topic}  ${JSON.stringify(miss.text)}`);
-      console.log(`      wanted   ${miss.expected.join(" or ")}`);
-      if (miss.got.length === 0) {
-        console.log("      got      nothing");
+      console.log(`\n    ${miss.topic}  ${JSON.stringify(miss.probe.text)}`);
+      console.log(`      wanted    ${miss.probe.expect.join(" or ")}`);
+      console.log(`      selected  ${miss.selected ?? "nothing"}`);
+      if (miss.candidates.length === 0) {
+        console.log("      shortlist nothing");
       } else {
-        miss.got.forEach((s, i) => {
-          console.log(`      got ${i + 1}    ${s.code}  (grade ${s.grade})  ${truncate(s.plainLanguage, 90)}`);
+        miss.candidates.forEach((c, i) => {
+          const mark = c.code === miss.selected ? "<-" : "  ";
+          console.log(
+            `      ${i + 1}. ${mark} ${c.code}  sim ${c.similarity.toFixed(2)}  (grade ${c.grade})  ` +
+              truncate(c.plainLanguage, 74),
+          );
         });
       }
     }
     console.log("");
   }
 
+  /* The assertion is on what a parent is shown. Top-1 and top-3 are reported
+     because they say where a failure lives, but a product that retrieves the
+     right standard third and then picks the wrong one is not a product that
+     retrieves well. */
   assert(
-    `top-1 hit rate at or above ${(RETRIEVAL_FLOOR * 100).toFixed(0)}%`,
-    rate >= RETRIEVAL_FLOOR,
-    `${(rate * 100).toFixed(1)}% over ${total} probes, ${misses.length} missed.`,
+    `selected standard correct in at least ${(RETRIEVAL_FLOOR * 100).toFixed(0)}% of probes`,
+    chosen / total >= RETRIEVAL_FLOOR,
+    `${((chosen / total) * 100).toFixed(1)}% over ${total} probes, ${misses.length} missed.`,
+  );
+
+  /* Selection must not make things worse than the search it is choosing from.
+     A model that reorders a correct top-1 into a wrong answer has taken a
+     working retrieval and broken it, and that is a distinct failure from a
+     search that never found the standard. */
+  assert(
+    `choosing does not lose ground the search had found  (top-1 ${topOne}, selected ${chosen})`,
+    chosen >= topOne,
+    "The model picked worse than taking the nearest candidate unread would have.",
   );
 }
 
@@ -540,6 +610,26 @@ const FALLBACK_PACKET_PROBLEMS = [
   { printedText: "0.4 x 0.3 =", standardCode: "CCSS.MATH.5.NBT.B.7" },
 ];
 
+/**
+ * A single candidate, for the sections that are not testing selection.
+ *
+ * The packet and locale sections care about prose, not about which standard
+ * was chosen, so they hand generation one candidate and it has nothing to
+ * choose between. The retrieval section is where selection is measured, and
+ * it passes the real three.
+ */
+function candidateFor(code: string): StandardCandidate {
+  return {
+    code,
+    curriculum: CURRICULUM,
+    grade: 5,
+    plainLanguage: "Adding and subtracting fractions with different denominators.",
+    expectedMethods: [],
+    parentMethod: "",
+    similarity: 1,
+  };
+}
+
 /** Every field of a packet that a parent reads before deciding to reveal. */
 function prosePieces(packet: PacketPayload): { label: string; text: string }[] {
   const pieces: { label: string; text: string }[] = [
@@ -588,10 +678,9 @@ async function runPacket(): Promise<void> {
         printedText: problem.printedText,
         childWorkText: null,
         childAnswer: null,
-        standardCode: problem.standardCode,
-        standardPlain: null,
-        expectedMethods: [],
-        parentMethod: null,
+        candidates: problem.standardCode
+          ? [candidateFor(problem.standardCode)]
+          : [],
         computedAnswer: answer,
         misconception: null,
         register: REGISTER,
@@ -782,24 +871,22 @@ async function runNote(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 /**
- * Does this text actually use the script the locale is written in?
+ * Does this text use the script the locale is written in?
  *
- * The commonest multilingual failure is not a bad translation. It is a model
- * that is asked for Arabic, agrees, and answers in English. That failure is
- * invisible to every assertion about content and obvious to one about script,
- * so this is the check that earns its place.
+ * A pre-filter now, not the assertion. It is kept because it is free, exact
+ * for the two non-Latin locales, and fails fast: a packet that was asked for
+ * in Amharic and came back in Latin letters is wrong, and there is no reason
+ * to pay a model call to be told so.
+ *
+ * What it cannot do is the reason it is no longer the check. Spanish shares a
+ * script with English, so an English packet passes this perfectly. The
+ * language-identification call below closes that, and this runs first for the
+ * locales where it can save the call.
  *
  * A threshold rather than a presence test, because a legitimate Arabic packet
  * contains Latin characters: the problem is `1/4 + 2/3` and a bilingual term
  * carries an English word in parentheses on purpose. What it cannot be is
  * mostly Latin.
- *
- * **This cannot detect the failure for Spanish**, which shares a script with
- * English, so `es` passes this assertion on an English packet. That is a real
- * hole and it is left open rather than papered over with a word list: the
- * thing that closes it is a human reading one Spanish packet, which is the
- * same person the copy is waiting on anyway. For Arabic and Amharic the check
- * is exact.
  */
 const SCRIPT_RANGES: Record<string, RegExp> = {
   arabic: /[\u0600-\u06ff\u0750-\u077f]/g,
@@ -872,10 +959,7 @@ async function runLocales(): Promise<void> {
         printedText: LOCALE_PROBLEM,
         childWorkText: "1 + 2 = 3\n4 + 3 = 7\nso 3/7",
         childAnswer: "3/7",
-        standardCode: "CCSS.MATH.5.NF.A.1",
-        standardPlain: "Adding and subtracting fractions with different denominators.",
-        expectedMethods: [],
-        parentMethod: null,
+        candidates: [candidateFor("CCSS.MATH.5.NF.A.1")],
         computedAnswer: answer,
         // Canonical English, which the prompt is told to render in LANGUAGE.
         misconception: "Numerators added together and denominators added together.",
@@ -887,16 +971,60 @@ async function runLocales(): Promise<void> {
     );
 
     const prose = prosePieces(packet).map((p) => p.text).join(" ");
+
+    /* Two stages, cheapest first.
+       For Arabic and Amharic the script test is exact and free, so a packet
+       that came back in Latin letters fails here without a model call. For
+       Spanish there is nothing to pre-filter: it shares a script with
+       English, which is the whole reason the second stage exists. */
+    const nonLatin = locale.script !== "latin";
     const share = scriptShare(prose, locale.script);
-    assert(
-      `${locale.code}: the packet is written in ${locale.script} (${(share * 100).toFixed(0)}%)`,
-      share >= SCRIPT_FLOOR,
-      [
-        `Less than ${(SCRIPT_FLOOR * 100).toFixed(0)}% of the letters are in this locale's script,`,
-        "which usually means the model agreed to the language and answered in English.",
-        `primer: ${truncate(packet.primer, 260)}`,
-      ].join("\n"),
-    );
+    const scriptFailed = nonLatin && share < SCRIPT_FLOOR;
+
+    if (scriptFailed) {
+      assert(
+        `${locale.code}: the packet is written in ${locale.script} (${(share * 100).toFixed(0)}%)`,
+        false,
+        [
+          `Less than ${(SCRIPT_FLOOR * 100).toFixed(0)}% of the letters are in this locale's script,`,
+          "which means the model agreed to the language and answered in another one.",
+          "Skipping the language check: there is nothing left for it to tell us.",
+          `primer: ${truncate(packet.primer, 260)}`,
+        ].join("\n"),
+      );
+    } else {
+      if (nonLatin) {
+        console.log(`  pass  ${locale.code}: script pre-filter (${(share * 100).toFixed(0)}% ${locale.script})`);
+        tally.pass += 1;
+      }
+
+      /* The real check. A model asked for Spanish that answers in English
+         passes every script test ever written, and that was the hole this
+         closes. Judged on the prose rather than the notation, because a maths
+         packet in any language is full of Latin digits. */
+      const id = await counted("classify", () => identifyLanguage(prose));
+      const base = (code: string): string => code.split(/[-_]/)[0]?.toLowerCase() ?? code;
+
+      assert(
+        `${locale.code}: a model reads the packet as ${id.language} (confidence ${id.confidence.toFixed(2)})`,
+        base(id.language) === base(locale.code),
+        [
+          `Asked for ${locale.code}, identified as ${id.language}.`,
+          `primer: ${truncate(packet.primer, 260)}`,
+        ].join("\n"),
+      );
+
+      /* Mixed is its own failure and a different one. A packet that is half
+         English is not a packet in the wrong language, it is a packet that
+         gave up part way, and a parent reads the English half as the bit that
+         mattered. The bilingual key term the prompt asks for is one quoted
+         word and the classifier is told not to count it. */
+      assert(
+        `${locale.code}: and as one language rather than two`,
+        !id.mixed,
+        `The classifier reports substantial prose in more than one language.\nprimer: ${truncate(packet.primer, 260)}`,
+      );
+    }
 
     /* The guarantee does not weaken in translation. This is the assertion
        that would catch a locale where the prompt's constraints were lost. */

@@ -26,6 +26,27 @@ their child's school. An invented one is worse than none.
 | `expectedMethods` | Two to four strings. How the classroom teaches it. The right-hand column of Method Match. |
 | `parentMethod` | One string. How an adult was most likely taught the same thing. The left-hand column. Not a worse method, a different one. |
 
+### It is matched in two steps, not one
+
+Retrieval returns the **three** nearest standards, and the packet generation
+call picks one of them and says which. The search orders by how close the
+wording is, which is not the same question as which standard a teacher would
+file a problem under: `6 x 40` is worded like a times table fact and belongs
+under multiplying by a multiple of ten, and a word problem about sharing
+sweets is worded like a story and belongs under division.
+
+Two consequences for anyone filling these files in.
+
+- **A standard is worth adding even if a near neighbour already covers the
+  wording.** It will reach the shortlist and the model can tell them apart.
+- **`plainLanguage` is doing two jobs**: it decides whether a standard reaches
+  the shortlist, and it is what the model reads when choosing between three.
+  A vague one gets retrieved and then passed over.
+
+When the best similarity is below a threshold, the chip in the thread says
+"Closest match" rather than asserting the standard, so a weak corpus degrades
+into an honest hedge rather than a confident wrong citation.
+
 ### Writing `plainLanguage` well
 
 The embedding is built from this field, and probes are worksheet lines. So
