@@ -28,7 +28,7 @@ export default function SettingsScreen({
   register: RegisterName;
   language: string;
   anxietyBand: number;
-  child: { id: string; firstName: string | null; grade: number; curriculum: string } | null;
+  child: { id: string; firstName: string | null; grade: number | null; curriculum: string } | null;
 }) {
   const router = useRouter();
   const [register, setRegister] = useState(initialRegister);

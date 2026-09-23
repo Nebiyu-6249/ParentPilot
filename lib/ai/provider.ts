@@ -201,7 +201,9 @@ export interface ExtractArgs {
   imageDataUrl: string;
   register: RegisterName;
   language: string;
-  grade: number;
+  /** Null when nobody has said. The prompt is told so, rather than being
+   *  handed a year group the parent never gave. */
+  grade: number | null;
 }
 
 export async function extractWorksheet(args: ExtractArgs): Promise<Extraction> {
@@ -243,7 +245,8 @@ export interface PacketArgs {
   misconception: string | null;
   register: RegisterName;
   language: string;
-  grade: number;
+  /** Null when nobody has said and no standard matched. */
+  grade: number | null;
 }
 
 export async function generatePacket(args: PacketArgs): Promise<PacketPayload> {
@@ -618,7 +621,7 @@ export interface CheckArgs {
   imageDataUrl: string;
   register: RegisterName;
   language: string;
-  grade: number;
+  grade: number | null;
 }
 
 /**
@@ -638,7 +641,9 @@ export async function analyseFinishedWork(args: CheckArgs): Promise<CheckResult>
     `3. Register: ${args.register}. PLAIN is short everyday sentences, STANDARD is a school newsletter, TECHNICAL may use correct mathematical vocabulary.`,
     `4. Language: ${args.language}.`,
     "5. Never guess. An empty findings list is a valid and common answer.",
-    `Grade: ${args.grade}.`,
+    args.grade === null
+      ? "Grade: not known. Read what is on the page and do not assume a year group."
+      : `Grade: ${args.grade}.`,
     "",
     "**You must never state a correct answer, and never state what the child should have written as a final value.**",
     "Name the kind of mistake and give one question the parent can ask that would surface it.",

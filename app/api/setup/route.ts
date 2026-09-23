@@ -14,7 +14,10 @@ const bodySchema = z.object({
   child: z
     .object({
       firstName: z.string().max(40).nullable(),
-      grade: z.number().int().min(0).max(8),
+      /* Nullable, because a parent who does not know the year group should
+         not have to invent one to finish setup. Null is read downstream as
+         "infer it", never as a default year. */
+      grade: z.number().int().min(0).max(8).nullable().default(null),
       curriculum: z.string().max(20),
       subjects: z.array(z.string().max(40)).max(12),
     })

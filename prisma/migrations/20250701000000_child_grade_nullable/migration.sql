@@ -1,0 +1,11 @@
+-- Child.grade becomes nullable.
+--
+-- It was NOT NULL, so every path that had no profile substituted grade 4 on
+-- the way into the vision prompt and the standard search. That is a guess
+-- presented to the model as a fact, and in the search it is worse than a
+-- guess: nearestStandards filters to grade - 1 .. grade + 1, so an unlabelled
+-- sixth grade ratio problem could not match a sixth grade standard at all.
+--
+-- Null now means "nobody has said", and the grade is inferred from the
+-- standard the problem retrieves against instead.
+ALTER TABLE "Child" ALTER COLUMN "grade" DROP NOT NULL;

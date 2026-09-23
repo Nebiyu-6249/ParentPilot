@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation";
 
 import { AccountIcon, HistoryIcon, SettingsIcon } from "@/components/icons";
 import { appButton, AppLabel, AppPage, AppSection } from "@/components/app/AppPage";
-import { copy } from "@/lib/copy";
+import { copy, gradeLabel } from "@/lib/copy";
 import type { RegisterName } from "@/lib/ai/schemas";
 
 interface ChildProfile {
   id: string;
   firstName: string | null;
-  grade: number;
+  grade: number | null;
   curriculum: string;
 }
 
@@ -86,7 +86,7 @@ export default function AccountScreen({
               >
                 <span>{child.firstName ?? "Your child"}</span>
                 <span style={{ color: "var(--app-text-dim)", fontSize: "var(--type-small)" }}>
-                  {child.grade === 0 ? "Kindergarten" : `Grade ${child.grade}`} · {child.curriculum}
+                  {gradeLabel(child.grade)} · {child.curriculum}
                 </span>
               </li>
             ))}

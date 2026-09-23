@@ -26,6 +26,10 @@ REGISTER: {{REGISTER}}
 LANGUAGE: {{LANGUAGE}}
 GRADE: {{GRADE}}
 
+When GRADE is the string `null` the year group is not known. Read what is
+actually on the page. Do not assume a year group and do not let an assumed
+one change how you read a digit.
+
 ## What to extract
 
 For each distinct problem on the page, return one object:

@@ -30,6 +30,9 @@ REGISTER: {{REGISTER}}
 LANGUAGE: {{LANGUAGE}}
 GRADE: {{GRADE}}
 
+When GRADE is the string `null` the year group is not known. Pitch the packet
+at the problem in front of you rather than at an assumed year.
+
 ## Context you are given
 
 PROBLEM: {{PRINTED_TEXT}}

@@ -704,7 +704,24 @@ export const copy = {
     /* Every settled screen on the product surface leads back to the one place
        a parent was actually working. */
     backToThread: "Back to the thread",
+    kindergarten: "Kindergarten",
+    /* Child.grade is nullable, so this is a state a parent can genuinely be
+       in rather than a placeholder for missing data. It says what is true and
+       does not nag. */
+    gradeUnknown: "Grade not set",
   },
 } as const;
 
 export type Copy = typeof copy;
+
+/**
+ * How a year group reads on screen.
+ *
+ * Four screens show one and all four go through here, because the interesting
+ * case is the one they each used to get wrong: `grade` is nullable now, and
+ * `Grade ${null}` renders the word "null" to a parent.
+ */
+export function gradeLabel(grade: number | null): string {
+  if (grade === null) return copy.common.gradeUnknown;
+  return grade === 0 ? copy.common.kindergarten : `Grade ${grade}`;
+}

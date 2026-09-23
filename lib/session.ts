@@ -27,7 +27,7 @@ export interface ParentProfile {
   anxietyBand: number;
   language: string;
   /** The most recently added child, if any. There is no child account. */
-  child: { id: string; firstName: string | null; grade: number; curriculum: string } | null;
+  child: { id: string; firstName: string | null; grade: number | null; curriculum: string } | null;
 }
 
 export const DEFAULT_PROFILE: ParentProfile = {

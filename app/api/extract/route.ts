@@ -71,7 +71,7 @@ export async function POST(request: Request): Promise<Response> {
       imageDataUrl: dataUrl,
       register: parent.register,
       language: parent.language,
-      grade: parent.child?.grade ?? 4,
+      grade: parent.child?.grade ?? null,
     });
   } catch (error) {
     const kind = error instanceof ModelError ? error.kind : "upstream";
