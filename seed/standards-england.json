@@ -1,0 +1,26 @@
+{
+  "$note": [
+    "England National Curriculum, grades 3 to 6 (Years 4 to 7).",
+    "",
+    "EMPTY ON PURPOSE. See seed/README.md for the field definitions and for why",
+    "nothing here is model written. Fill this in from the published programmes",
+    "of study and run: npm run seed -- --reembed",
+    "",
+    "The entry below is a shape, not content. Delete it when you add real ones;",
+    "the seeder skips any entry whose id starts with EXAMPLE."
+  ],
+  "standards": [
+    {
+      "id": "EXAMPLE-DELETE-ME",
+      "code": "ENC.Y5.NF.1",
+      "curriculum": "ENC",
+      "grade": 4,
+      "plainLanguage": "One or two sentences in the words a parent would use, describing what the child is learning.",
+      "expectedMethods": [
+        "How the classroom teaches it",
+        "A second classroom method, if there is one"
+      ],
+      "parentMethod": "How an adult was most likely taught the same thing."
+    }
+  ]
+}

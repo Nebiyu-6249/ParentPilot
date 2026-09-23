@@ -3,7 +3,7 @@
 import RegisterControl from "@/components/RegisterControl";
 import ShareSheet from "@/components/app/ShareSheet";
 import { PanelIcon, ShareIcon } from "@/components/icons";
-import { copy } from "@/lib/copy";
+import { useMessages } from "@/components/LocaleProvider";
 import type { RegisterName } from "@/lib/ai/schemas";
 import type { CurrentProblem } from "@/lib/thread";
 
@@ -45,6 +45,7 @@ export default function ThreadBar({
   onShareOpen: () => void;
   onShareClose: () => void;
 }) {
+  const t = useMessages();
   return (
     <header className="pp-topbar">
       {!railOpen && (
@@ -58,7 +59,10 @@ export default function ThreadBar({
         </button>
       )}
 
-      <span className="pp-topbar-title">{title}</span>
+      {/* The title is the problem, so it is a quotation rather than interface
+          copy and is isolated from the bidi algorithm for the same reason the
+          worksheet card is. */}
+      <span className="pp-topbar-title pp-transcript">{title}</span>
 
       <div className="pp-topbar-actions">
         <RegisterControl value={register} onChange={onRegisterChange} compact />
@@ -74,13 +78,13 @@ export default function ThreadBar({
           <button
             type="button"
             className="pp-topbar-share"
-            aria-label={copy.chat.share}
-            title={copy.chat.share}
+            aria-label={t.chat.share}
+            title={t.chat.share}
             onClick={onShareOpen}
           >
             <ShareIcon size={16} />
             <span className="pp-topbar-share-label" aria-hidden="true">
-              {copy.chat.share}
+              {t.chat.share}
             </span>
           </button>
         )}

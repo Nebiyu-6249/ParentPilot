@@ -47,8 +47,8 @@ export default function Citation({ code, plainLanguage }: { code: string; plainL
           style={{
             display: "block",
             marginTop: 10,
-            paddingLeft: 12,
-            borderLeft: "2px solid var(--annotation)",
+            paddingInlineStart: 12,
+            borderInlineStart: "2px solid var(--annotation)",
             fontSize: 16,
             color: "var(--text-on-sheet)",
             maxWidth: "62ch",

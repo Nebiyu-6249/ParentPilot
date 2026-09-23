@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 
 import StatusLine from "@/components/StatusLine";
 import { Banner, buttonStyle, inputStyle, Label, Page } from "@/components/ui";
-import { copy } from "@/lib/copy";
+import { useMessages } from "@/components/LocaleProvider";
 import { LIMITS } from "@/lib/limits.client";
 import type { ExtractResponse } from "@/app/api/extract/route";
 
@@ -31,6 +31,7 @@ interface Draft {
  * anything is generated.
  */
 export default function CaptureFlow() {
+  const t = useMessages();
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -46,8 +47,8 @@ export default function CaptureFlow() {
     setError(null);
     setNotice(null);
 
-    if (!file.type.startsWith("image/")) return setError(copy.capture.wrongType);
-    if (file.size > LIMITS.maxUploadBytes) return setError(copy.capture.tooLarge);
+    if (!file.type.startsWith("image/")) return setError(t.capture.wrongType);
+    if (file.size > LIMITS.maxUploadBytes) return setError(t.capture.tooLarge);
 
     setPhase("reading");
 
@@ -68,7 +69,7 @@ export default function CaptureFlow() {
       setPageNote(data.pageNote ?? null);
 
       if (!data.problems.length) {
-        setError(data.pageNote ?? copy.errors.noProblem);
+        setError(data.pageNote ?? t.errors.noProblem);
         setPhase("capture");
         return;
       }
@@ -86,7 +87,7 @@ export default function CaptureFlow() {
       );
       setPhase("review");
     } catch {
-      setError(copy.errors.generic);
+      setError(t.errors.generic);
       setPhase("capture");
     }
   }
@@ -103,7 +104,7 @@ export default function CaptureFlow() {
       const data = (await response.json()) as { problemId: string | null };
       router.push(`/problem/${data.problemId ?? "demo"}`);
     } catch {
-      setError(copy.errors.generic);
+      setError(t.errors.generic);
       setPhase("capture");
     }
   }
@@ -139,7 +140,7 @@ export default function CaptureFlow() {
   if (phase === "reading") {
     return (
       <Page>
-        <StatusLine step={copy.status.reading} />
+        <StatusLine step={t.status.reading} />
       </Page>
     );
   }
@@ -148,8 +149,8 @@ export default function CaptureFlow() {
     return (
       <Page>
         <header style={{ padding: "36px 0 20px" }}>
-          <h1 style={{ fontSize: "clamp(1.7rem, 6vw, 2.2rem)" }}>{copy.transcription.heading}</h1>
-          <p style={{ marginTop: 12, color: "var(--muted)", fontSize: 16 }}>{copy.transcription.help}</p>
+          <h1 style={{ fontSize: "clamp(1.7rem, 6vw, 2.2rem)" }}>{t.transcription.heading}</h1>
+          <p style={{ marginTop: 12, color: "var(--muted)", fontSize: 16 }}>{t.transcription.help}</p>
         </header>
 
         {notice && <Banner text={notice} />}
@@ -163,12 +164,12 @@ export default function CaptureFlow() {
             {draft.ocrConfidence < 0.7 && (
               <Banner
                 tone="alert"
-                text={draft.unreadableNote ?? copy.transcription.lowConfidence}
+                text={draft.unreadableNote ?? t.transcription.lowConfidence}
               />
             )}
 
             <div style={{ marginBottom: 18 }}>
-              <Label>{copy.transcription.printedLabel}</Label>
+              <Label>{t.transcription.printedLabel}</Label>
               <input
                 value={draft.printedText}
                 onChange={(e) => update(index, { printedText: e.target.value })}
@@ -177,7 +178,7 @@ export default function CaptureFlow() {
             </div>
 
             <div style={{ marginBottom: 18 }}>
-              <Label>{copy.transcription.workLabel}</Label>
+              <Label>{t.transcription.workLabel}</Label>
               <textarea
                 value={draft.childWorkText}
                 onChange={(e) => update(index, { childWorkText: e.target.value })}
@@ -187,7 +188,7 @@ export default function CaptureFlow() {
             </div>
 
             <div>
-              <Label>{copy.transcription.answerLabel}</Label>
+              <Label>{t.transcription.answerLabel}</Label>
               <input
                 value={draft.childAnswer}
                 onChange={(e) => update(index, { childAnswer: e.target.value })}
@@ -208,7 +209,7 @@ export default function CaptureFlow() {
           }}
         >
           <button type="button" onClick={confirmTranscription} style={buttonStyle("primary", true)}>
-            {copy.transcription.save}
+            {t.transcription.save}
           </button>
         </div>
       </Page>
@@ -218,15 +219,15 @@ export default function CaptureFlow() {
   return (
     <Page>
       <header style={{ padding: "36px 0 20px" }}>
-        <h1 style={{ fontSize: "clamp(1.7rem, 6vw, 2.2rem)" }}>{copy.capture.heading}</h1>
-        <p style={{ marginTop: 12, color: "var(--muted)", fontSize: 16 }}>{copy.capture.help}</p>
+        <h1 style={{ fontSize: "clamp(1.7rem, 6vw, 2.2rem)" }}>{t.capture.heading}</h1>
+        <p style={{ marginTop: 12, color: "var(--muted)", fontSize: 16 }}>{t.capture.help}</p>
       </header>
 
       {error && <Banner tone="alert" text={error} />}
       {notice && <Banner text={notice} />}
 
       <section style={{ borderTop: "1px solid var(--rule)", padding: "28px 0" }}>
-        <Label>{copy.capture.photoLabel}</Label>
+        <Label>{t.capture.photoLabel}</Label>
         <input
           ref={fileRef}
           type="file"
@@ -239,20 +240,20 @@ export default function CaptureFlow() {
           style={{ display: "none" }}
         />
         <button type="button" onClick={() => fileRef.current?.click()} style={buttonStyle("primary", true)}>
-          {copy.capture.submitPhoto}
+          {t.capture.submitPhoto}
         </button>
-        <p style={{ marginTop: 12, fontSize: 14, color: "var(--muted)" }}>{copy.capture.sizeLimit}</p>
+        <p style={{ marginTop: 12, fontSize: 14, color: "var(--muted)" }}>{t.capture.sizeLimit}</p>
       </section>
 
       <section style={{ borderTop: "1px solid var(--rule)", padding: "28px 0" }}>
-        <Label>{copy.capture.textLabel}</Label>
+        <Label>{t.capture.textLabel}</Label>
         <input
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
-          placeholder={copy.capture.textPlaceholder}
+          placeholder={t.capture.textPlaceholder}
           style={{ ...inputStyle, marginBottom: 16 }}
         />
-        <Label>{copy.capture.childWorkLabel}</Label>
+        <Label>{t.capture.childWorkLabel}</Label>
         <textarea
           value={typedWork}
           onChange={(e) => setTypedWork(e.target.value)}
@@ -265,7 +266,7 @@ export default function CaptureFlow() {
           disabled={!typed.trim()}
           style={buttonStyle("secondary", true)}
         >
-          {copy.capture.submitText}
+          {t.capture.submitText}
         </button>
       </section>
     </Page>

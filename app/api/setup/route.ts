@@ -19,6 +19,9 @@ const bodySchema = z.object({
          "infer it", never as a default year. */
       grade: z.number().int().min(0).max(8).nullable().default(null),
       curriculum: z.string().max(20),
+      /* The worksheet's language. Null means it is the parent's, which is
+         stored rather than copied so it follows a change to theirs. */
+      schoolLanguage: z.string().min(2).max(12).nullable().default(null),
       subjects: z.array(z.string().max(40)).max(12),
     })
     .nullable()
@@ -62,6 +65,7 @@ export async function POST(request: Request): Promise<Response> {
             firstName: child.firstName,
             grade: child.grade,
             curriculum: child.curriculum,
+            schoolLanguage: child.schoolLanguage,
             subjects: child.subjects,
           },
         });
@@ -72,6 +76,7 @@ export async function POST(request: Request): Promise<Response> {
             firstName: child.firstName,
             grade: child.grade,
             curriculum: child.curriculum,
+            schoolLanguage: child.schoolLanguage,
             subjects: child.subjects,
           },
         });

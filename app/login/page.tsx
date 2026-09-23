@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 
 import LoginForm from "@/components/LoginForm";
+import { LocaleProvider } from "@/components/LocaleProvider";
+import { currentParent } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Sign in" };
@@ -19,5 +21,10 @@ export default async function LoginPage({
 }) {
   const { error } = await searchParams;
   const reason = error && error in REASONS ? REASONS[error] : null;
-  return <LoginForm errorKey={reason ?? null} />;
+  const parent = await currentParent();
+  return (
+    <LocaleProvider code={parent.language}>
+      <LoginForm errorKey={reason ?? null} />
+    </LocaleProvider>
+  );
 }

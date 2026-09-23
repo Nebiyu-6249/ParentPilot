@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { buttonStyle, inputStyle, Label, Page } from "@/components/ui";
-import { copy } from "@/lib/copy";
+import { useMessages } from "@/components/LocaleProvider";
+import { LOCALES } from "@/lib/i18n/locales";
 import type { RegisterName } from "@/lib/ai/schemas";
 
 /**
@@ -31,16 +32,6 @@ const SAMPLES: { value: RegisterName; text: string }[] = [
   },
 ];
 
-const LANGUAGES = [
-  { code: "en", label: "English" },
-  { code: "es", label: "Espanol" },
-  { code: "fr", label: "Francais" },
-  { code: "pt", label: "Portugues" },
-  { code: "ar", label: "Arabic" },
-  { code: "zh", label: "Chinese" },
-  { code: "hi", label: "Hindi" },
-  { code: "so", label: "Somali" },
-];
 
 const SUBJECTS = ["Fractions", "Decimals", "Place value", "Multiplication", "Division", "Ratio", "Early algebra"];
 
@@ -56,6 +47,7 @@ export default function SetupFlow({
   initialRegister: RegisterName;
   initialLanguage: string;
 }) {
+  const t = useMessages();
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [register, setRegister] = useState<RegisterName>(initialRegister);
@@ -63,6 +55,10 @@ export default function SetupFlow({
   const [firstName, setFirstName] = useState("");
   const [grade, setGrade] = useState(4);
   const [curriculum, setCurriculum] = useState("CCSS");
+  /* Empty means "the same as mine", which is the ordinary case and is stored
+     as null rather than as a copy of the parent's language. A copy would go
+     stale the moment the parent changed theirs. */
+  const [schoolLanguage, setSchoolLanguage] = useState("");
   const [subjects, setSubjects] = useState<string[]>(["Fractions"]);
   const [language, setLanguage] = useState(initialLanguage);
   const [saving, setSaving] = useState(false);
@@ -77,7 +73,13 @@ export default function SetupFlow({
           register,
           anxietyBand,
           language,
-          child: { firstName: firstName.trim() || null, grade, curriculum, subjects },
+          child: {
+            firstName: firstName.trim() || null,
+            grade,
+            curriculum,
+            schoolLanguage: schoolLanguage || null,
+            subjects,
+          },
         }),
       });
     } catch {
@@ -91,12 +93,12 @@ export default function SetupFlow({
     <Page>
       <header style={{ padding: "36px 0 22px" }}>
         <Label>{`Step ${step} of 4`}</Label>
-        <h1 style={{ fontSize: "clamp(1.7rem, 6vw, 2.2rem)" }}>{copy.setup.heading}</h1>
-        <p style={{ marginTop: 12, color: "var(--muted)", fontSize: 16 }}>{copy.setup.subheading}</p>
+        <h1 style={{ fontSize: "clamp(1.7rem, 6vw, 2.2rem)" }}>{t.setup.heading}</h1>
+        <p style={{ marginTop: 12, color: "var(--muted)", fontSize: 16 }}>{t.setup.subheading}</p>
       </header>
 
       {step === 1 && (
-        <StepBody heading={copy.setup.step1.heading} help={copy.setup.step1.help}>
+        <StepBody heading={t.setup.step1.heading} help={t.setup.step1.help}>
           {SAMPLES.map((sample) => (
             <button
               key={sample.value}
@@ -106,7 +108,7 @@ export default function SetupFlow({
               style={{
                 display: "block",
                 width: "100%",
-                textAlign: "left",
+                textAlign: "start",
                 padding: "18px 20px",
                 marginBottom: 12,
                 fontSize: 17,
@@ -124,8 +126,8 @@ export default function SetupFlow({
       )}
 
       {step === 2 && (
-        <StepBody heading={copy.setup.step2.heading} help={copy.setup.step2.help}>
-          {copy.setup.step2.options.map((option) => (
+        <StepBody heading={t.setup.step2.heading} help={t.setup.step2.help}>
+          {t.setup.step2.options.map((option) => (
             <button
               key={option.band}
               type="button"
@@ -134,7 +136,7 @@ export default function SetupFlow({
               style={{
                 display: "block",
                 width: "100%",
-                textAlign: "left",
+                textAlign: "start",
                 padding: "17px 20px",
                 marginBottom: 12,
                 fontSize: 17,
@@ -151,9 +153,9 @@ export default function SetupFlow({
       )}
 
       {step === 3 && (
-        <StepBody heading={copy.setup.step3.heading} help={copy.setup.step3.help}>
+        <StepBody heading={t.setup.step3.heading} help={t.setup.step3.help}>
           <div style={{ marginBottom: 22 }}>
-            <Label>{copy.setup.step3.nameLabel}</Label>
+            <Label>{t.setup.step3.nameLabel}</Label>
             <input
               value={firstName}
               onChange={(event) => setFirstName(event.target.value)}
@@ -164,7 +166,7 @@ export default function SetupFlow({
           </div>
 
           <div style={{ marginBottom: 22 }}>
-            <Label>{copy.setup.step3.gradeLabel}</Label>
+            <Label>{t.setup.step3.gradeLabel}</Label>
             <select value={grade} onChange={(e) => setGrade(Number(e.target.value))} style={inputStyle}>
               {GRADES.map((g) => (
                 <option key={g.value} value={g.value}>
@@ -175,7 +177,7 @@ export default function SetupFlow({
           </div>
 
           <div style={{ marginBottom: 22 }}>
-            <Label>{copy.setup.step3.curriculumLabel}</Label>
+            <Label>{t.setup.step3.curriculumLabel}</Label>
             <select value={curriculum} onChange={(e) => setCurriculum(e.target.value)} style={inputStyle}>
               <option value="CCSS">Common Core (CCSS)</option>
               <option value="TEKS">Texas (TEKS)</option>
@@ -184,7 +186,32 @@ export default function SetupFlow({
           </div>
 
           <div>
-            <Label>{copy.setup.step3.subjectsLabel}</Label>
+            <Label>{t.setup.step3.schoolLanguageLabel}</Label>
+            <select
+              value={schoolLanguage}
+              onChange={(e) => setSchoolLanguage(e.target.value)}
+              style={inputStyle}
+            >
+              <option value="">{t.setup.step3.schoolLanguageSame}</option>
+              {LOCALES.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.endonym}
+                </option>
+              ))}
+            </select>
+            <p
+              style={{
+                marginTop: 6,
+                fontSize: "var(--type-small)",
+                color: "var(--text-on-sheet-muted)",
+              }}
+            >
+              {t.setup.step3.schoolLanguageHelp}
+            </p>
+          </div>
+
+          <div>
+            <Label>{t.setup.step3.subjectsLabel}</Label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {SUBJECTS.map((subject) => {
                 const on = subjects.includes(subject);
@@ -216,13 +243,18 @@ export default function SetupFlow({
       )}
 
       {step === 4 && (
-        <StepBody heading={copy.setup.step4.heading} help={copy.setup.step4.help}>
+        <StepBody heading={t.setup.step4.heading} help={t.setup.step4.help}>
           <select value={language} onChange={(e) => setLanguage(e.target.value)} style={inputStyle}>
-            {LANGUAGES.map((l) => (
-              <option key={l.code} value={l.code}>
-                {l.label}
-              </option>
-            ))}
+            {LOCALES.map((l) => (
+            <option key={l.code} value={l.code}>
+              {/* The name in its own language, because that is what a parent
+                  scans for, and an honest note when only the model speaks it.
+                  A picker that implies eleven translations and ships four is
+                  the kind of small lie this product does not tell. */}
+              {l.endonym}
+              {l.translated ? "" : ` (${l.english}, coaching only)`}
+            </option>
+          ))}
           </select>
         </StepBody>
       )}
@@ -241,16 +273,16 @@ export default function SetupFlow({
       >
         {step > 1 && (
           <button type="button" onClick={() => setStep((s) => s - 1)} style={buttonStyle("quiet")}>
-            {copy.setup.back}
+            {t.setup.back}
           </button>
         )}
         {step < 4 ? (
           <button type="button" onClick={() => setStep((s) => s + 1)} style={buttonStyle("primary", true)}>
-            {copy.setup.next}
+            {t.setup.next}
           </button>
         ) : (
           <button type="button" onClick={finish} disabled={saving} style={buttonStyle("primary", true)}>
-            {saving ? copy.common.loading : copy.setup.finish}
+            {saving ? t.common.loading : t.setup.finish}
           </button>
         )}
       </div>

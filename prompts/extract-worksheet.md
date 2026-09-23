@@ -24,7 +24,14 @@ are, problem by problem.
 
 REGISTER: {{REGISTER}}
 LANGUAGE: {{LANGUAGE}}
+SCHOOL_LANGUAGE: {{SCHOOL_LANGUAGE}}
 GRADE: {{GRADE}}
+
+SCHOOL_LANGUAGE is the language the page is written in. The prose you write
+around the transcription, `pageNote` and `unreadableNote`, is in LANGUAGE,
+which is the parent's. The transcription itself stays in SCHOOL_LANGUAGE,
+exactly as printed. When SCHOOL_LANGUAGE is the string `null` it is the same
+as LANGUAGE and there is nothing to keep apart.
 
 When GRADE is the string `null` the year group is not known. Read what is
 actually on the page. Do not assume a year group and do not let an assumed

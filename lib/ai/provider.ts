@@ -197,6 +197,20 @@ async function complete<T>({
   throw new ModelError("upstream", message);
 }
 
+/**
+ * Is the school's language the parent's language?
+ *
+ * Compared by base tag, so `es-MX` and `es` are the same language and a
+ * packet for that family carries no parenthesised glosses. A parent whose
+ * child is taught in their own language should not be shown every term
+ * twice.
+ */
+function sameLanguage(parent: string, school: string | null): boolean {
+  if (!school) return true;
+  const base = (code: string): string => code.split(/[-_]/)[0]?.toLowerCase() ?? code;
+  return base(parent) === base(school);
+}
+
 export interface ExtractArgs {
   imageDataUrl: string;
   register: RegisterName;
@@ -204,12 +218,16 @@ export interface ExtractArgs {
   /** Null when nobody has said. The prompt is told so, rather than being
    *  handed a year group the parent never gave. */
   grade: number | null;
+  /** The language on the page. The prose around the transcription is written
+   *  in the parent's language; the transcription itself stays in this one. */
+  schoolLanguage: string | null;
 }
 
 export async function extractWorksheet(args: ExtractArgs): Promise<Extraction> {
   const system = await loadPrompt("extract-worksheet", {
     REGISTER: args.register,
     LANGUAGE: args.language,
+    SCHOOL_LANGUAGE: sameLanguage(args.language, args.schoolLanguage) ? null : args.schoolLanguage,
     GRADE: args.grade,
   });
 
@@ -244,7 +262,11 @@ export interface PacketArgs {
   computedAnswer: string | null;
   misconception: string | null;
   register: RegisterName;
+  /** The parent's language. Everything written to them is in this. */
   language: string;
+  /** The worksheet's language. Null means it is the same as the parent's,
+   *  which is the ordinary case and needs no disambiguation. */
+  schoolLanguage: string | null;
   /** Null when nobody has said and no standard matched. */
   grade: number | null;
 }
@@ -253,6 +275,7 @@ export async function generatePacket(args: PacketArgs): Promise<PacketPayload> {
   const system = await loadPrompt("generate-packet", {
     REGISTER: args.register,
     LANGUAGE: args.language,
+    SCHOOL_LANGUAGE: sameLanguage(args.language, args.schoolLanguage) ? null : args.schoolLanguage,
     GRADE: args.grade,
     PRINTED_TEXT: args.printedText,
     CHILD_WORK: args.childWorkText,
@@ -381,6 +404,8 @@ export interface ChatTurnArgs {
   transcript: string;
   register: RegisterName;
   language: string;
+  /** The worksheet's language, when it differs from the parent's. */
+  schoolLanguage: string | null;
 }
 
 /**
@@ -423,6 +448,7 @@ async function chatTurnCall(
   const system = await loadPrompt("chat-turn", {
     REGISTER: args.register,
     LANGUAGE: args.language,
+    SCHOOL_LANGUAGE: sameLanguage(args.language, args.schoolLanguage) ? null : args.schoolLanguage,
     CHILD_NAME: args.childName,
     PRINTED_TEXT: args.printedText,
     CHILD_WORK: args.childWorkText,

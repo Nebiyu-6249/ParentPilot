@@ -19,7 +19,7 @@ import {
   TypeIcon,
 } from "@/components/icons";
 import { useLiveSession } from "@/lib/live/useLiveSession";
-import { copy } from "@/lib/copy";
+import { useMessages } from "@/components/LocaleProvider";
 import { Markdown } from "@/lib/markdown";
 import type { RegisterName } from "@/lib/ai/schemas";
 import {
@@ -62,6 +62,7 @@ export default function AppShell({
   signedIn: boolean;
   language: string;
 }) {
+  const t = useMessages();
   const [railOpen, setRailOpen] = useState(true);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [status, setStatus] = useState<string | null>(null);
@@ -178,7 +179,7 @@ export default function AppShell({
           },
         ]);
       }
-      setStatus(copy.status.reading);
+      setStatus(t.status.reading);
       setDraft("");
       setChips([]);
       setPinned(true);
@@ -248,7 +249,7 @@ export default function AppShell({
             id: `a-${Date.now()}`,
             role: "ASSISTANT",
             body: null,
-            cards: [{ kind: "text", body: copy.errors.generic }],
+            cards: [{ kind: "text", body: t.errors.generic }],
             createdAt: new Date().toISOString(),
           },
         ]);
@@ -275,17 +276,17 @@ export default function AppShell({
   function onFile(file: File): void {
     const form = new FormData();
     form.append("image", file);
-    void send({ method: "POST", body: form }, copy.chat.photoTurn);
+    void send({ method: "POST", body: form }, t.chat.photoTurn);
   }
 
   /** "Still stuck" advances the ladder. No model call: the rungs already exist. */
   function advance(problemId: string): void {
     const rung = lastRung(turns, problemId);
-    post({ kind: "advance", problemId, rung, printedText: printedTextFor(problemId) }, copy.packet.stillStuck);
+    post({ kind: "advance", problemId, rung, printedText: printedTextFor(problemId) }, t.packet.stillStuck);
   }
 
   function solved(problemId: string): void {
-    post({ kind: "solved", problemId, printedText: printedTextFor(problemId) }, copy.packet.answeredIt);
+    post({ kind: "solved", problemId, printedText: printedTextFor(problemId) }, t.packet.answeredIt);
   }
 
   /**
@@ -370,14 +371,14 @@ export default function AppShell({
             }}
           >
             <CameraIcon size={17} />
-            {copy.chat.newThread}
+            {t.chat.newThread}
           </button>
         </div>
 
         <div className="pp-rail-scroll">
           {threads.length === 0 ? (
             <p style={{ padding: "12px 10px", fontSize: 13, color: "var(--app-text-dim)" }}>
-              {signedIn ? copy.history.empty : copy.history.anonymous}
+              {signedIn ? t.history.empty : t.history.anonymous}
             </p>
           ) : (
             Object.entries(groupThreads(threads)).map(([group, items]) => (
@@ -404,7 +405,7 @@ export default function AppShell({
         >
           <a href="/account" className="pp-rail-item" style={{ display: "flex", alignItems: "center", gap: 9, flex: 1 }}>
             <AccountIcon size={17} />
-            {signedIn ? copy.account.heading : copy.account.signIn}
+            {signedIn ? t.account.heading : t.account.signIn}
           </a>
           <ThemeToggle />
         </div>
@@ -438,7 +439,7 @@ export default function AppShell({
             {empty && (
               <div className="pp-empty">
                 <p style={{ fontSize: 19, marginBottom: 20, maxWidth: "26ch", marginInline: "auto" }}>
-                  {copy.chat.emptyIntent}
+                  {t.chat.emptyIntent}
                 </p>
 
                 <button
@@ -458,40 +459,40 @@ export default function AppShell({
                   }}
                 >
                   <CameraIcon size={19} />
-                  {copy.chat.emptyPhoto}
+                  {t.chat.emptyPhoto}
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => post({ kind: "demo" }, copy.chat.demoTurn)}
+                  onClick={() => post({ kind: "demo" }, t.chat.demoTurn)}
                   className="pp-card"
                   style={{
                     display: "block",
                     width: "100%",
                     marginTop: 26,
                     padding: 16,
-                    textAlign: "left",
+                    textAlign: "start",
                     cursor: "pointer",
                     background: "var(--app-card)",
                   }}
                 >
                   <span style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                     <TypeIcon size={18} style={{ color: "var(--accent-ink)" }} />
-                    <span style={{ fontSize: 14.5, fontWeight: 500 }}>{copy.chat.emptyDemo}</span>
+                    <span style={{ fontSize: 14.5, fontWeight: 500 }}>{t.chat.emptyDemo}</span>
                   </span>
                   <span style={{ display: "block", fontSize: 20, marginBottom: 6 }}>1/4 + 2/3 =</span>
                   <span style={{ display: "block", fontSize: 13.5, color: "var(--app-text-dim)" }}>
-                    {copy.chat.emptyDemoWork}
+                    {t.chat.emptyDemoWork}
                   </span>
                   <span
                     style={{ display: "block", fontSize: 13, color: "var(--app-text-dim)", marginTop: 6 }}
                   >
-                    {copy.chat.emptyDemoNote}
+                    {t.chat.emptyDemoNote}
                   </span>
                 </button>
 
                 <div style={{ marginTop: 26 }}>
-                  {copy.chat.suggestions.map((suggestion) => (
+                  {t.chat.suggestions.map((suggestion) => (
                     <button
                       key={suggestion}
                       type="button"
@@ -554,7 +555,7 @@ export default function AppShell({
                 as typing it, which is why they read like something a parent
                 would have typed. */}
             {chips.length > 0 && !status && !draft && (
-              <div className="pp-next" aria-label={copy.chat.chipsLabel}>
+              <div className="pp-next" aria-label={t.chat.chipsLabel}>
                 {chips.map((chip) => (
                   <button key={chip} type="button" className="pp-chip" onClick={() => submitText(chip)}>
                     {chip}
@@ -575,7 +576,7 @@ export default function AppShell({
             }}
           >
             <ChevronIcon direction="down" size={15} />
-            {copy.chat.jumpToLatest}
+            {t.chat.jumpToLatest}
           </button>
         )}
 
@@ -599,8 +600,8 @@ export default function AppShell({
             <button
               type="button"
               className="pp-composer-btn"
-              aria-label={copy.chat.emptyPhoto}
-              title={copy.chat.emptyPhoto}
+              aria-label={t.chat.emptyPhoto}
+              title={t.chat.emptyPhoto}
               onClick={() => fileRef.current?.click()}
             >
               <CameraIcon size={19} />
@@ -610,7 +611,7 @@ export default function AppShell({
               ref={textRef}
               rows={1}
               value={text}
-              placeholder={copy.chat.placeholder}
+              placeholder={t.chat.placeholder}
               onChange={(event) => {
                 setText(event.target.value);
                 const el = event.target;
@@ -645,9 +646,9 @@ export default function AppShell({
               <button
                 type="button"
                 className={live.listening ? "pp-composer-btn pp-composer-live" : "pp-composer-btn"}
-                aria-label={live.listening ? copy.live.stopShort : copy.live.startShort}
+                aria-label={live.listening ? t.live.stopShort : t.live.startShort}
                 aria-pressed={live.listening}
-                title={live.listening ? copy.live.stopShort : copy.live.startShort}
+                title={live.listening ? t.live.stopShort : t.live.startShort}
                 onClick={() => void (live.listening ? live.stop() : live.start())}
               >
                 {live.listening ? <MicrophoneOffIcon size={19} /> : <MicrophoneIcon size={19} />}
@@ -658,14 +659,14 @@ export default function AppShell({
           {live.listening ? (
             <p className="pp-composer-note pp-listening" role="status" aria-live="polite">
               <span className="pp-listening-dot" aria-hidden="true" />
-              {copy.live.listeningInThread} {formatClock(live.elapsed)}
+              {t.live.listeningInThread} {formatClock(live.elapsed)}
             </p>
           ) : live.error === "denied" ? (
             <p className="pp-composer-note" role="status">
-              {copy.live.micDenied}
+              {t.live.micDenied}
             </p>
           ) : (
-            <p className="pp-composer-note">{copy.chat.note}</p>
+            <p className="pp-composer-note">{t.chat.note}</p>
           )}
         </div>
       </div>
@@ -699,6 +700,7 @@ function formatClock(seconds: number): string {
  * that.
  */
 function TurnCopy({ turn }: { turn: Turn }) {
+  const t = useMessages();
   const [copied, setCopied] = useState(false);
   const text = plainText(turn);
   if (!text) return null;
@@ -708,7 +710,7 @@ function TurnCopy({ turn }: { turn: Turn }) {
       <button
         type="button"
         className="pp-turn-copy"
-        aria-label={copy.chat.copyTurn}
+        aria-label={t.chat.copyTurn}
         onClick={() => {
           void navigator.clipboard
             .writeText(text)
@@ -717,7 +719,7 @@ function TurnCopy({ turn }: { turn: Turn }) {
         }}
       >
         <CopyIcon size={14} />
-        {copied ? copy.chat.copiedTurn : copy.chat.copyTurn}
+        {copied ? t.chat.copiedTurn : t.chat.copyTurn}
       </button>
     </div>
   );

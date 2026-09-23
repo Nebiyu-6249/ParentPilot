@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 
 import { extractWorksheet, isConfigured, ModelError } from "@/lib/ai/provider";
 import { clientIp, consume, logFailure, validateUpload } from "@/lib/limits";
-import { copy } from "@/lib/copy";
 import { prisma, hasDatabase } from "@/lib/db";
 import { toDataUrl } from "@/lib/exif";
-import { ensureParent } from "@/lib/session";
+import { currentParent, ensureParent } from "@/lib/session";
 import type { Extraction } from "@/lib/ai/schemas";
+import { messages } from "@/lib/i18n";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
@@ -26,6 +26,11 @@ export interface ExtractResponse {
  * downstream step inherits this text and a misread digit poisons all of it.
  */
 export async function POST(request: Request): Promise<Response> {
+  /* Every notice below is rendered in the parent's thread, so it is written in
+     the parent's language rather than in the server's. Read before the
+     validation branches, because those branches produce notices too. */
+  const t = messages((await currentParent()).language);
+
   const form = await request.formData().catch(() => null);
   if (!form) return NextResponse.json({ error: "bad request" }, { status: 400 });
 
@@ -36,16 +41,16 @@ export async function POST(request: Request): Promise<Response> {
   if (!check.ok || !upload) {
     const message =
       check.ok || check.reason === "missing"
-        ? copy.errors.noProblem
+        ? t.errors.noProblem
         : check.reason === "size"
-          ? copy.capture.tooLarge
-          : copy.capture.wrongType;
+          ? t.capture.tooLarge
+          : t.capture.wrongType;
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
   const verdict = await consume(clientIp(request.headers), "extract");
   if (!verdict.allowed) {
-    const notice = verdict.reason === "spend" ? copy.limits.spendBanner : copy.limits.banner;
+    const notice = verdict.reason === "spend" ? t.limits.spendBanner : t.limits.banner;
     return NextResponse.json({ assignmentId: null, problems: [], pageNote: null, notice } satisfies ExtractResponse);
   }
 
@@ -54,7 +59,7 @@ export async function POST(request: Request): Promise<Response> {
       assignmentId: null,
       problems: [],
       pageNote: null,
-      notice: copy.limits.unconfiguredBanner,
+      notice: t.limits.unconfiguredBanner,
     } satisfies ExtractResponse);
   }
 
@@ -72,6 +77,7 @@ export async function POST(request: Request): Promise<Response> {
       register: parent.register,
       language: parent.language,
       grade: parent.child?.grade ?? null,
+      schoolLanguage: parent.child?.schoolLanguage ?? null,
     });
   } catch (error) {
     const kind = error instanceof ModelError ? error.kind : "upstream";
@@ -80,7 +86,7 @@ export async function POST(request: Request): Promise<Response> {
       assignmentId: null,
       problems: [],
       pageNote: null,
-      notice: kind === "malformed" ? copy.errors.malformed : copy.errors.modelTimeout,
+      notice: kind === "malformed" ? t.errors.malformed : t.errors.modelTimeout,
     } satisfies ExtractResponse);
   }
 
@@ -132,6 +138,8 @@ export async function PATCH(request: Request): Promise<Response> {
   if (!body?.problemId) return NextResponse.json({ error: "bad request" }, { status: 400 });
   if (!hasDatabase()) return NextResponse.json({ ok: true });
 
+  const t = messages((await currentParent()).language);
+
   try {
     await prisma.problem.update({
       where: { id: body.problemId },
@@ -149,6 +157,6 @@ export async function PATCH(request: Request): Promise<Response> {
     return NextResponse.json({ ok: true });
   } catch (error) {
     await logFailure("extract-patch", error instanceof Error ? error.message : String(error));
-    return NextResponse.json({ error: copy.errors.generic }, { status: 500 });
+    return NextResponse.json({ error: t.errors.generic }, { status: 500 });
   }
 }

@@ -5,19 +5,10 @@ import { useState } from "react";
 
 import RegisterControl from "@/components/RegisterControl";
 import { AppBanner, appButton, appInput, AppPage, AppSection } from "@/components/app/AppPage";
-import { copy } from "@/lib/copy";
+import { useMessages } from "@/components/LocaleProvider";
+import { LOCALES } from "@/lib/i18n/locales";
 import type { RegisterName } from "@/lib/ai/schemas";
 
-const LANGUAGES = [
-  { code: "en", label: "English" },
-  { code: "es", label: "Espanol" },
-  { code: "fr", label: "Francais" },
-  { code: "pt", label: "Portugues" },
-  { code: "ar", label: "Arabic" },
-  { code: "zh", label: "Chinese" },
-  { code: "hi", label: "Hindi" },
-  { code: "so", label: "Somali" },
-];
 
 export default function SettingsScreen({
   register: initialRegister,
@@ -30,6 +21,7 @@ export default function SettingsScreen({
   anxietyBand: number;
   child: { id: string; firstName: string | null; grade: number | null; curriculum: string } | null;
 }) {
+  const t = useMessages();
   const router = useRouter();
   const [register, setRegister] = useState(initialRegister);
   const [language, setLanguage] = useState(initialLanguage);
@@ -66,39 +58,44 @@ export default function SettingsScreen({
 
   if (deleted) {
     return (
-      <AppPage title={copy.settings.heading}>
+      <AppPage title={t.settings.heading}>
         <AppSection>
-          <p style={{ fontSize: 17 }}>{copy.settings.deleted}</p>
+          <p style={{ fontSize: 17 }}>{t.settings.deleted}</p>
         </AppSection>
       </AppPage>
     );
   }
 
   return (
-    <AppPage title={copy.settings.heading}>
+    <AppPage title={t.settings.heading}>
 
       {saved && <AppBanner text="Saved." />}
 
-      <AppSection title={copy.settings.registerHeading} note={copy.settings.registerHelp}>
+      <AppSection title={t.settings.registerHeading} note={t.settings.registerHelp}>
         <RegisterControl value={register} onChange={(next) => void save({ register: next })} surface="app" />
       </AppSection>
 
-      <AppSection title={copy.settings.languageHeading} note={copy.setup.step4.help}>
+      <AppSection title={t.settings.languageHeading} note={t.setup.step4.help}>
         <select
           value={language}
           onChange={(event) => void save({ language: event.target.value })}
           style={appInput}
         >
-          {LANGUAGES.map((l) => (
+          {LOCALES.map((l) => (
             <option key={l.code} value={l.code}>
-              {l.label}
+              {/* The name in its own language, because that is what a parent
+                  scans for, and an honest note when only the model speaks it.
+                  A picker that implies eleven translations and ships four is
+                  the kind of small lie this product does not tell. */}
+              {l.endonym}
+              {l.translated ? "" : ` (${l.english}, coaching only)`}
             </option>
           ))}
         </select>
       </AppSection>
 
-      <AppSection title={copy.settings.anxietyHeading} note={copy.setup.step2.help}>
-        {copy.setup.step2.options.map((option) => (
+      <AppSection title={t.settings.anxietyHeading} note={t.setup.step2.help}>
+        {t.setup.step2.options.map((option) => (
           <button
             key={option.band}
             type="button"
@@ -107,7 +104,7 @@ export default function SettingsScreen({
             style={{
               display: "block",
               width: "100%",
-              textAlign: "left",
+              textAlign: "start",
               padding: "14px 18px",
               marginBottom: 10,
               fontSize: 16,
@@ -128,17 +125,17 @@ export default function SettingsScreen({
         ))}
       </AppSection>
 
-      <AppSection title={copy.settings.exportHeading}>
+      <AppSection title={t.settings.exportHeading}>
         <a
           href="/api/account"
           download="parentpilot-export.json"
           style={{ ...appButton("secondary"), textDecoration: "none", display: "inline-block" }}
         >
-          {copy.settings.exportButton}
+          {t.settings.exportButton}
         </a>
 
         <div style={{ marginTop: 34, borderTop: "1px solid var(--app-line)", paddingTop: 26 }}>
-          <p style={{ fontSize: 16, marginBottom: 16 }}>{copy.settings.deleteConfirm}</p>
+          <p style={{ fontSize: 16, marginBottom: 16 }}>{t.settings.deleteConfirm}</p>
           <input
             value={confirmText}
             onChange={(event) => setConfirmText(event.target.value)}
@@ -151,7 +148,7 @@ export default function SettingsScreen({
             disabled={confirmText !== "DELETE"}
             style={appButton("alert", true)}
           >
-            {copy.settings.deleteButton}
+            {t.settings.deleteButton}
           </button>
         </div>
       </AppSection>

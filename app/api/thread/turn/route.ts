@@ -148,6 +148,7 @@ export async function POST(request: Request): Promise<Response> {
           register: parent.register,
           language: parent.language,
           grade: parent.child?.grade ?? null,
+          schoolLanguage: parent.child?.schoolLanguage ?? null,
         });
 
         const first = extraction.problems[0];
@@ -214,6 +215,8 @@ export async function POST(request: Request): Promise<Response> {
           register: parent.register,
           language: parent.language,
           grade: parent.child.grade,
+          curriculum: parent.child.curriculum,
+          schoolLanguage: parent.child.schoolLanguage,
           onStep: (step: PacketStep) => send({ type: "status", text: STEP_TEXT[step] }),
         });
 
@@ -360,6 +363,8 @@ export async function POST(request: Request): Promise<Response> {
             register,
             language: owner.language,
             grade: owner.child?.grade ?? null,
+            curriculum: owner.child?.curriculum ?? null,
+            schoolLanguage: owner.child?.schoolLanguage ?? null,
             onStep: (step: PacketStep) => send({ type: "status", text: STEP_TEXT[step] }),
           });
 
@@ -378,6 +383,8 @@ export async function POST(request: Request): Promise<Response> {
               register,
               language: parent.language,
               grade: parent.child?.grade ?? null,
+          curriculum: parent.child?.curriculum ?? null,
+          schoolLanguage: parent.child?.schoolLanguage ?? null,
             }).catch(() => null)
           : null;
 
@@ -398,6 +405,9 @@ export async function POST(request: Request): Promise<Response> {
             misconception: bundle?.misconception?.plainName ?? null,
             rungsUsed: Math.min(rung + 1, ladder.length),
             rungsTotal: ladder.length,
+            /* The worksheet's language, which is often not the parent's. Null
+               when they are the same, which the provider also normalises. */
+            schoolLanguage: parent.child?.schoolLanguage ?? null,
             transcript: renderTranscript(parsed.data.transcript ?? [], said),
             register,
             language: parent.language,
@@ -532,6 +542,8 @@ async function bundleFor(
       register,
       language: parent.language,
       grade: parent.child?.grade ?? null,
+          curriculum: parent.child?.curriculum ?? null,
+          schoolLanguage: parent.child?.schoolLanguage ?? null,
     });
   }
 
@@ -540,5 +552,7 @@ async function bundleFor(
     register,
     language: parent.language,
     grade: parent.child?.grade ?? null,
+          curriculum: parent.child?.curriculum ?? null,
+          schoolLanguage: parent.child?.schoolLanguage ?? null,
   });
 }
