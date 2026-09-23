@@ -243,7 +243,10 @@ export async function buildPacketFromText(args: BuildFromTextArgs): Promise<Pack
       misconception: misconception?.signature ?? misconception?.plainName ?? null,
       register,
       language,
-      grade: grade ?? standard?.grade ?? 4,
+      /* The standard the problem just retrieved against is a better source
+         for the year group than any default, and when nothing matched, null
+         is the truth. Neither is 4. */
+      grade: grade ?? standard?.grade ?? null,
     });
   } catch (error) {
     const kind = error instanceof ModelError ? error.kind : "upstream";

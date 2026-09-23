@@ -89,7 +89,10 @@ model Child {
   id         String   @id @default(cuid())
   parentId   String
   firstName  String? // optional, used only in scripts
-  grade      Int // 0 = K, 1..8
+  /// Null when nobody has said. The pipeline infers it from the standard
+  /// the problem retrieves against rather than assuming a year group, so a
+  /// parent who has not finished setup still gets their own worksheet read.
+  grade      Int? // 0 = K, 1..8, or null for unknown
   curriculum String   @default("CCSS")
   subjects   String[]
   parent     Parent   @relation(fields: [parentId], references: [id], onDelete: Cascade)

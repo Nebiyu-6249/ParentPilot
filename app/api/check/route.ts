@@ -57,7 +57,7 @@ export async function POST(request: Request): Promise<Response> {
       imageDataUrl: toDataUrl(bytes, upload.type),
       register: parent.register,
       language: parent.language,
-      grade: parent.child?.grade ?? 4,
+      grade: parent.child?.grade ?? null,
     });
     return NextResponse.json({ ...result, notice: null } satisfies CheckResponse);
   } catch (error) {

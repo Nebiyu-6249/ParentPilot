@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { CopyIcon, ShareIcon } from "@/components/icons";
 import { appButton, AppLabel } from "@/components/app/AppPage";
-import { copy } from "@/lib/copy";
+import { copy, gradeLabel } from "@/lib/copy";
 
 export interface HistoryRow {
   id: string;
@@ -13,7 +13,7 @@ export interface HistoryRow {
   autonomyScore: number | null;
   parked: boolean;
   moves: number;
-  grade: number;
+  grade: number | null;
   topic: string | null;
   shareToken: string | null;
   shareExpiresAt: string | null;
@@ -84,7 +84,7 @@ export default function HistoryList({ sessions }: { sessions: HistoryRow[] }) {
                   {date.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
                 </p>
                 <p style={{ fontSize: "var(--type-small)", color: "var(--app-text-dim)", marginTop: 4 }}>
-                  {row.grade === 0 ? "Kindergarten" : `Grade ${row.grade}`}
+                  {gradeLabel(row.grade)}
                   {" · "}
                   {copy.history.problemsLabel}: {row.moves}
                   {row.parked ? " · stopped early" : ""}
