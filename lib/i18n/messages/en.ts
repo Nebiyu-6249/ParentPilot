@@ -385,6 +385,54 @@ export const en = {
       "I could not generate a fresh primer for this one, so this is the saved general explanation for this topic. It is accurate but not tailored to your child's working.",
   },
 
+  /* Voice Mode.
+   *
+   * Kept apart from `live` in the catalogue as well as on screen, because the
+   * one thing this feature must never be is confusable with Live Mode. One
+   * listens to a conversation and coaches; the other answers a question out
+   * loud. A parent who mixes them up either thinks they are being recorded
+   * when they are not, or speaks to a microphone that is only classifying. */
+  voice: {
+    /* The control. Press and hold, so the label says so: a tap does nothing
+       and a label that implied otherwise would be the first thing to break
+       trust in it. */
+    hold: "Hold to talk",
+    holding: "Listening, let go to send",
+    thinking: "Working out what to say",
+    speaking: "Speaking",
+    stop: "Stop",
+
+    /* The indicator names the mode in words. Two mic-shaped controls on one
+       composer is exactly the situation where an icon is not enough. */
+    activeVoice: "Voice Mode. I answer out loud.",
+    activeLive: "Live Mode. I listen and coach, I do not answer.",
+
+    keepListening: "Keep the mic open after I answer",
+    keepListeningHelp:
+      "Leaves it open for a few seconds so you can follow up without reaching for the phone again.",
+
+    /* Default on, and the help text says what it changes rather than what it
+       is called. */
+    childCanHear: "She can hear this",
+    childCanHearHelp:
+      "On, I never say the answer out loud, never name what she got wrong, and never use her name. The full version stays on your screen, where only you read it.",
+    childCanHearOffHelp:
+      "Off, I can be franker out loud. The answer still only comes from the press and hold.",
+
+    /* The fixed line. Said when the parent asks for the answer aloud, and
+       substituted whenever a rendering fails its check. Short on purpose:
+       anything longer is talking its way towards the number. */
+    onScreen: "It is on your screen, behind the hold.",
+
+    unconfigured: "This deployment cannot speak yet. Everything else works.",
+    limit: "We have hit today's ceiling on speech. Typing still works.",
+    nothingHeard: "I did not catch that. Hold the button while you talk.",
+    tooLong: "That was a long one. Try again in a sentence or two.",
+    failed: "That did not come through. Try saying it again.",
+    micDenied: "Your browser did not give us the microphone. Voice Mode needs it.",
+    unsupported: "This browser cannot record audio, so Voice Mode is off. Typing works.",
+  },
+
   live: {
     heading: "Live Mode",
     intro:

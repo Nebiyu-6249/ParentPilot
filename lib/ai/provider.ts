@@ -14,6 +14,7 @@ import {
   packetSchema,
   recapSchema,
   teacherNoteSchema,
+  voiceTurnSchema,
   type ChatTurn,
   type CheckResult,
   type Classification,
@@ -22,6 +23,7 @@ import {
   type PacketPayload,
   type Recap,
   type RegisterName,
+  type VoiceTurn,
 } from "@/lib/ai/schemas";
 
 /**
@@ -589,6 +591,55 @@ export function partialReply(raw: string): string | null {
   return out;
 }
 
+export interface VoiceTurnArgs {
+  /** The reply that was already written into the thread. */
+  writtenReply: string;
+  printedText: string | null;
+  misconception: string | null;
+  childName: string | null;
+  /** The "she can hear this" toggle. True unless the parent said otherwise. */
+  childCanHear: boolean;
+  register: RegisterName;
+  language: string;
+  schoolLanguage: string | null;
+}
+
+/**
+ * The same turn, rendered for a room.
+ *
+ * A second call rather than a second field on `chatTurn`, for two reasons.
+ * The written reply streams and a parent should not wait for a spoken
+ * rendering they may never play; and the spoken half is only produced when
+ * Voice Mode is on, so folding it into every typed turn would pay for it on
+ * every turn.
+ *
+ * The output has one field and the caller checks it before synthesising. The
+ * prompt asks; `lib/voice.ts` decides.
+ */
+export async function voiceTurn(args: VoiceTurnArgs): Promise<VoiceTurn> {
+  const system = await loadPrompt("voice-turn", {
+    REGISTER: args.register,
+    LANGUAGE: args.language,
+    SCHOOL_LANGUAGE: sameLanguage(args.language, args.schoolLanguage) ? null : args.schoolLanguage,
+    CHILD_NAME: args.childName,
+    CHILD_CAN_HEAR: String(args.childCanHear),
+    WRITTEN_REPLY: args.writtenReply,
+    PRINTED_TEXT: args.printedText,
+    MISCONCEPTION: args.misconception,
+  });
+
+  return complete({
+    task: "classify",
+    schema: voiceTurnSchema,
+    temperature: 0.3,
+    maxTokens: 400,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: "Say that turn out loud." },
+    ],
+  });
+}
+
 export interface MisconceptionJudgeArgs {
   printedText: string;
   childWorkText: string;
@@ -724,11 +775,35 @@ export async function embedBatch(texts: string[]): Promise<number[][]> {
     .map((d) => d.embedding);
 }
 
-/** The voice the primer is read in. */
+/** The voice the primer is read in when nothing more specific applies. */
 export const DEFAULT_TTS_VOICE = "nova";
 
-export function ttsVoice(): string {
-  return process.env.OPENAI_TTS_VOICE ?? DEFAULT_TTS_VOICE;
+/**
+ * One voice per launch language.
+ *
+ * The provider's voices are trained predominantly on English and all of them
+ * will read Arabic or Amharic after a fashion, so this is a choice between
+ * imperfect options rather than a lookup. They are picked for steadiness on
+ * non-Latin script rather than for character: a voice that sounds charming in
+ * English and mangles a word a parent needs to recognise is the wrong trade
+ * in a product whose spoken half exists for parents who read less comfortably
+ * than they listen.
+ *
+ * Overridable per deployment, and worth overriding once somebody has listened
+ * to all four. That listening has not happened yet; docs/i18n.md says so.
+ */
+const VOICES: Record<string, string> = {
+  en: "nova",
+  es: "nova",
+  ar: "shimmer",
+  am: "shimmer",
+};
+
+export function ttsVoice(language?: string | null): string {
+  const override = process.env.OPENAI_TTS_VOICE;
+  if (override) return override;
+  const base = (language ?? "").split(/[-_]/)[0]?.toLowerCase() ?? "";
+  return VOICES[base] ?? DEFAULT_TTS_VOICE;
 }
 
 export interface SpokenPrimer {
@@ -741,16 +816,20 @@ export interface SpokenPrimer {
 }
 
 /**
- * Reads a primer aloud.
+ * Reads text aloud.
  *
  * The highest-value thing in the product for a parent who cannot read English
  * comfortably: the same explanation, through their ears, while they cook.
  *
- * No prompt file, because this is not a prompt. The text spoken is the primer
- * the packet already generated, unchanged, so there is nothing for a model to
- * decide and nothing to instruct it with.
+ * No prompt file, because this is not a prompt. The text is already written,
+ * by `generatePacket` for a primer and by `voiceTurn` for a spoken reply, so
+ * there is nothing for a model to decide and nothing to instruct it with.
+ *
+ * **Nothing reaches here unchecked.** A spoken reply passes `safeSpoken` in
+ * lib/voice.ts first, and the route is the only caller. Synthesis is the last
+ * irreversible step: once it is audio, it is in the room.
  */
-export async function speakPrimer(text: string, voice: string): Promise<SpokenPrimer> {
+export async function speak(text: string, voice: string): Promise<SpokenPrimer> {
   const openai = getClient();
   const model = MODELS.speech;
 

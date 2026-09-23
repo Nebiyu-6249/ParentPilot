@@ -2,7 +2,7 @@
 
 import RegisterControl from "@/components/RegisterControl";
 import ShareSheet from "@/components/app/ShareSheet";
-import { PanelIcon, ShareIcon } from "@/components/icons";
+import { EarIcon, PanelIcon, ShareIcon } from "@/components/icons";
 import { useMessages } from "@/components/LocaleProvider";
 import type { RegisterName } from "@/lib/ai/schemas";
 import type { CurrentProblem } from "@/lib/thread";
@@ -33,6 +33,9 @@ export default function ThreadBar({
   shareOpen,
   onShareOpen,
   onShareClose,
+  liveListening,
+  liveDisabled,
+  onLiveToggle,
 }: {
   title: string;
   /** Null until a worksheet has been read. Share does not appear before then. */
@@ -44,6 +47,16 @@ export default function ThreadBar({
   shareOpen: boolean;
   onShareOpen: () => void;
   onShareClose: () => void;
+  /* Live Mode lives up here rather than in the composer, and the reason is
+     not only that a third composer button clipped the placeholder at phone
+     width. Live Mode is a session: it listens while the two of them work and
+     raises coaching cards, for as long as it is on. Voice Mode is one
+     message. Session-level controls are what this bar is for, and putting
+     them in the same row as the composer's send button was what made the two
+     modes look like variants of one thing. */
+  liveListening: boolean;
+  liveDisabled: boolean;
+  onLiveToggle: () => void;
 }) {
   const t = useMessages();
   return (
@@ -66,6 +79,22 @@ export default function ThreadBar({
 
       <div className="pp-topbar-actions">
         <RegisterControl value={register} onChange={onRegisterChange} compact />
+
+        {/* Live Mode. Named on the button, because the icon is arcs of sound
+            and nothing in this product should rely on a parent guessing what
+            a glyph means when the two guesses are "it is recording us" and
+            "it is not". */}
+        <button
+          type="button"
+          className={liveListening ? "pp-topbar-live pp-topbar-live-on" : "pp-topbar-live"}
+          aria-label={liveListening ? t.live.stopShort : t.live.startShort}
+          aria-pressed={liveListening}
+          title={liveListening ? t.live.stopShort : t.live.startShort}
+          disabled={liveDisabled}
+          onClick={onLiveToggle}
+        >
+          <EarIcon size={16} />
+        </button>
 
         {/* Absent rather than disabled on an empty thread. A dead grey button
             is an offer the product cannot keep, and the bar still carries the

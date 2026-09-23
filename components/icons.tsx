@@ -72,6 +72,30 @@ export function UploadIcon(props: IconProps) {
   );
 }
 
+/**
+ * Live Mode's control.
+ *
+ * Sound arriving rather than a second microphone, because the two features
+ * must not look alike. A microphone is a thing you speak into and that is
+ * Voice Mode; Live Mode listens to a room and never answers, and drawing it
+ * as a microphone would be the icon making the promise backwards.
+ *
+ * An ear was the first attempt and it read as a question mark at 19px, which
+ * is both ambiguous and, next to a composer, actively wrong: it looked like
+ * help. Concentric arcs around a point survive the size and mean one thing.
+ */
+export function EarIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
+      <path d="M8.6 8.6a4.8 4.8 0 0 0 0 6.8" />
+      <path d="M15.4 8.6a4.8 4.8 0 0 1 0 6.8" />
+      <path d="M5.8 5.8a8.8 8.8 0 0 0 0 12.4" />
+      <path d="M18.2 5.8a8.8 8.8 0 0 1 0 12.4" />
+    </Icon>
+  );
+}
+
 export function MicrophoneIcon(props: IconProps) {
   return (
     <Icon {...props}>

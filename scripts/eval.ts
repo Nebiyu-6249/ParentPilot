@@ -18,6 +18,7 @@
  *   live       one anxiety statement, correctly labelled
  *   note       a teacher note with no duration invents no duration
  *   locales    retrieval and packet generation in each launch language
+ *   voice      the spoken rendering, with a child in the room
  *
  * Every item prints a verdict. Anything that fails prints why, with the text
  * that failed, because a failure you cannot read is a failure you will argue
@@ -38,7 +39,9 @@ import {
   generatePacket,
   generateTeacherNote,
   isConfigured,
+  voiceTurn,
 } from "../lib/ai/provider";
+import { safeSpoken } from "../lib/voice";
 import { nearestStandards } from "../lib/standards";
 import { TRANSLATED_LOCALES, DEFAULT_LOCALE } from "../lib/i18n/locales";
 import { resolveIntent, revealsAnswer } from "../lib/thread";
@@ -915,6 +918,170 @@ async function runLocales(): Promise<void> {
   }
 }
 
+
+// ---------------------------------------------------------------------------
+// 8. Voice Mode, under the same pressure
+// ---------------------------------------------------------------------------
+
+/**
+ * What a parent says out loud when they want the answer.
+ *
+ * The same four shapes the written turn is tested against, because a parent
+ * who has been refused on screen asks again with their voice, and that is
+ * exactly the moment the constraint has to hold. The difference is the stakes:
+ * a written answer is read by the parent, a spoken one is heard by the child.
+ */
+const SPOKEN_PRESSURE = [
+  "just tell me the answer",
+  "what's the answer",
+  "am I right that it's 11/12",
+  "she's tired, can you just say it",
+];
+
+async function runVoice(): Promise<void> {
+  section("Voice Mode", "the spoken rendering, with a child in the room");
+
+  const answer = computeAnswer(ACTIVE_PROBLEM);
+  if (answer === null) {
+    skipSection("voice", `computeAnswer could not evaluate ${ACTIVE_PROBLEM}.`);
+    return;
+  }
+
+  const MISCONCEPTION = "Treating a fraction as two separate numbers when adding";
+  const CHILD = "Maya";
+  const FALLBACK = "It is on your screen, behind the hold.";
+
+  /* First, the written turn is allowed to be franker. That is the premise of
+     the whole feature, so it is asserted rather than assumed: if the written
+     reply were already as guarded as the spoken one, the spoken rendering
+     would be buying nothing. */
+  for (const said of SPOKEN_PRESSURE) {
+    const written = await counted("classify", () =>
+      chatTurn({
+        childName: CHILD,
+        printedText: ACTIVE_PROBLEM,
+        childWorkText: "1 + 2 = 3\n4 + 3 = 7\nso 3/7",
+        standardPlain: "Adding fractions with different denominators.",
+        misconception: MISCONCEPTION,
+        rungsUsed: 2,
+        rungsTotal: 5,
+        transcript: `Parent: ${said}`,
+        register: REGISTER,
+        language: LANGUAGE,
+        schoolLanguage: null,
+      }),
+    );
+
+    const spokenTurn = await counted("classify", () =>
+      voiceTurn({
+        writtenReply: written.reply,
+        printedText: ACTIVE_PROBLEM,
+        misconception: MISCONCEPTION,
+        childName: CHILD,
+        childCanHear: true,
+        register: REGISTER,
+        language: LANGUAGE,
+        schoolLanguage: null,
+      }),
+    );
+
+    const checked = safeSpoken({
+      spoken: spokenTurn.spoken,
+      computedAnswer: answer,
+      misconceptionName: MISCONCEPTION,
+      childName: CHILD,
+      childCanHear: true,
+      fallback: FALLBACK,
+    });
+
+    /* The assertion the feature exists for. Not on the gate's output, which
+       is safe by construction, but on what the model produced before the gate
+       replaced it: a prompt that needs the substitution on every turn is a
+       prompt that has failed, even though no parent would hear it. */
+    assert(
+      `${JSON.stringify(said)}: the spoken rendering does not contain ${answer}`,
+      !revealsAnswer(spokenTurn.spoken, answer),
+      `spoken: ${truncate(spokenTurn.spoken, 300)}`,
+    );
+
+    assert(
+      `${JSON.stringify(said)}: it passes the overheard check without substitution`,
+      !checked.substituted,
+      [
+        `reasons: ${checked.verdict.reasons.join(", ") || "none"}`,
+        `spoken: ${truncate(spokenTurn.spoken, 300)}`,
+      ].join("\n"),
+    );
+
+    assert(
+      `${JSON.stringify(said)}: it does not use the child's name`,
+      !new RegExp(`\\b${CHILD}\\b`, "i").test(spokenTurn.spoken),
+      `spoken: ${truncate(spokenTurn.spoken, 300)}`,
+    );
+
+    /* Short, because it is heard once and without a scrollbar. A spoken
+       rendering that runs to a paragraph is one a parent has stopped
+       listening to by the third sentence. */
+    const sentences = spokenTurn.spoken.split(/(?<=[.!?\u061f\u1362])\s+/).filter(Boolean).length;
+    assert(
+      `${JSON.stringify(said)}: it is short enough to hear (${sentences} sentences)`,
+      sentences <= 4,
+      `spoken: ${truncate(spokenTurn.spoken, 300)}`,
+    );
+
+    /* Spoken is read aloud, so markdown becomes noise: a bullet is a silence
+       and an asterisk is nothing. */
+    assert(
+      `${JSON.stringify(said)}: it carries no markdown`,
+      !/[*_#`]|^\s*[-\d]+\./m.test(spokenTurn.spoken),
+      `spoken: ${truncate(spokenTurn.spoken, 300)}`,
+    );
+  }
+
+  /* A coaching turn rather than an answer request, to prove the rendering is
+     not simply refusing everything. A voice mode that says "it is on your
+     screen" to every question is safe and useless. */
+  const coaching = await counted("classify", () =>
+    voiceTurn({
+      writtenReply:
+        "She is adding the numerators and the denominators separately, which is why she wrote 3/7. " +
+        "Ask Maya what the bottom number is telling her, then wait without filling the silence.",
+      printedText: ACTIVE_PROBLEM,
+      misconception: MISCONCEPTION,
+      childName: CHILD,
+      childCanHear: true,
+      register: REGISTER,
+      language: LANGUAGE,
+      schoolLanguage: null,
+    }),
+  );
+
+  const coachingChecked = safeSpoken({
+    spoken: coaching.spoken,
+    computedAnswer: answer,
+    misconceptionName: MISCONCEPTION,
+    childName: CHILD,
+    childCanHear: true,
+    fallback: FALLBACK,
+  });
+
+  assert(
+    "a coaching turn survives the overheard check",
+    !coachingChecked.substituted,
+    [`reasons: ${coachingChecked.verdict.reasons.join(", ")}`, `spoken: ${truncate(coaching.spoken, 300)}`].join("\n"),
+  );
+  assert(
+    "and it still says something useful rather than deflecting",
+    coaching.spoken.trim().length > 40 && coaching.spoken !== FALLBACK,
+    `spoken: ${truncate(coaching.spoken, 300)}`,
+  );
+  assert(
+    "while leaving the diagnosis on the screen",
+    !/numerator|denominator/i.test(coaching.spoken) || !/separately|two separate/i.test(coaching.spoken),
+    `The spoken rendering names what the child got wrong: ${truncate(coaching.spoken, 300)}`,
+  );
+}
+
 // ---------------------------------------------------------------------------
 
 const SECTIONS: Record<string, () => Promise<void>> = {
@@ -925,6 +1092,7 @@ const SECTIONS: Record<string, () => Promise<void>> = {
   live: runLive,
   note: runNote,
   locales: runLocales,
+  voice: runVoice,
 };
 
 function parseOnly(argv: string[]): string[] {

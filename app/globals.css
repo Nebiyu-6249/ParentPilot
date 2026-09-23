@@ -1963,3 +1963,86 @@ ul.pp-md-list {
 [dir="rtl"] .pp-logo {
   direction: ltr;
 }
+
+/* ---------------------------------------------------------------------------
+   Voice Mode
+   --------------------------------------------------------------------------- */
+
+/* Live Mode's control, in the top bar beside the register control. */
+.pp-topbar-live {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-control);
+  border: 1px solid var(--app-border-interactive);
+  background: transparent;
+  color: var(--app-text-dim);
+  cursor: pointer;
+}
+
+.pp-topbar-live:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.pp-topbar-live-on {
+  background: var(--accent-fill);
+  border-color: var(--accent-fill);
+  color: #ffffff;
+}
+
+/* Recording. A different colour from Live Mode's, because the whole point of
+   splitting the two controls is that a glance tells you which one is on. */
+.pp-composer-voice {
+  background: var(--accent-fill);
+  color: #ffffff;
+  border-color: var(--accent-fill);
+}
+
+/* The mode's name, carried at the front of the indicator so a screen reader
+   announces which one is listening before it announces what it is doing. */
+.pp-mode-name {
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.pp-voice-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.pp-voice-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--app-border-interactive);
+  background: transparent;
+  color: var(--app-text-dim);
+  font-family: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.pp-voice-toggle[aria-checked="true"] {
+  color: var(--app-text);
+  border-color: var(--accent-ink);
+}
+
+.pp-voice-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--app-line);
+  flex-shrink: 0;
+}
+
+.pp-voice-dot[data-on="true"] {
+  background: var(--accent-fill);
+}

@@ -32,6 +32,7 @@ import {
   threadTranscript,
 } from "../lib/thread";
 import { resolveAppUrl } from "../lib/app-url";
+import { overheardSafety, safeSpoken, soundsLikeAVerdict } from "../lib/voice";
 import { coverage, type LocaleOverlay } from "../lib/i18n";
 import { LOCALES, localeFor } from "../lib/i18n/locales";
 import { formatNumber, formatPercent, localiseExpression } from "../lib/i18n/numbers";
@@ -873,15 +874,15 @@ section("Audio primer, Studio panel and citations");
 
   ok("the voice is nova", provider.includes('DEFAULT_TTS_VOICE = "nova"'));
   ok("speech goes through the provider like every other model call",
-    provider.includes("export async function speakPrimer"));
-  ok("and increments the spend ledger", /speakPrimer[\s\S]{0,900}recordSpend/.test(provider));
+    provider.includes("export async function speak("));
+  ok("and increments the spend ledger", /export async function speak\([\s\S]{0,900}recordSpend/.test(provider));
   ok("the route never calls the SDK itself", !/new OpenAI|openai\.audio/.test(route));
 
   // Cached on the packet key, so a primer is spoken once per standard,
   // register and language rather than once per listen.
   ok("audio is cached on the packet cache key", route.includes("packetCacheKey("));
   ok("the cache is consulted before generating",
-    route.indexOf("audioPrimer.findUnique") < route.indexOf("speakPrimer("));
+    route.indexOf("audioPrimer.findUnique") < route.indexOf("speak(primer"));
   ok("the spend ceiling is honoured", route.includes("spendCeilingReached"));
   ok("requests are rate limited", route.includes("consume("));
 
@@ -1333,8 +1334,14 @@ section("Live Mode is part of the thread rather than a screen beside it");
   ok("the separate Live Mode screen is gone",
     !existsSync(path.join(process.cwd(), "components", "LiveMode.tsx")));
   ok("its route redirects into the thread", /redirect\("\/app"\)/.test(livePage));
-  ok("the microphone is a toggle in the composer, not a link",
-    /aria-pressed=\{live\.listening\}/.test(shell) && !/location\.href = "\/live"/.test(shell));
+  /* Live Mode is a toggle rather than a destination, and it now lives in the
+     top bar with the other session-level controls rather than in the
+     composer. The composer is per message; Live Mode runs for as long as the
+     two of them are working. */
+  ok("Live Mode is a toggle, not a link",
+    /aria-pressed=\{liveListening\}/.test(
+      readFileSync(path.join(process.cwd(), "components", "app", "ThreadBar.tsx"), "utf8"),
+    ) && !/location\.href = "\/live"/.test(shell));
 
   // Cards inline, and a summary when it stops. Both are turns in the thread.
   ok("a coaching card is a turn in the thread", /kind: "live_coach"/.test(hook));
@@ -2020,6 +2027,120 @@ section("Misconceptions stay canonical");
     const text = readFileSync(path.join(process.cwd(), "prompts", `${name}.md`), "utf8");
     ok(`${name}: carries the school language`, text.includes("SCHOOL_LANGUAGE"));
   }
+}
+
+
+// ---------------------------------------------------------------------------
+
+section("Voice Mode, and what may be said in a room");
+
+{
+  const ANSWER = "11/12";
+  const MIS = "Treating a fraction as two separate numbers when adding";
+  const base = {
+    computedAnswer: ANSWER,
+    misconceptionName: MIS,
+    childName: "Maya",
+    childCanHear: true,
+  };
+
+  /* The whole point of the feature, asserted first. A spoken reply carrying
+     the answer is the press and hold defeated by a loudspeaker, and it is
+     defeated for the child too, who never chose to reveal it. */
+  ok("a spoken reply carrying the answer is refused",
+    !overheardSafety({ ...base, spoken: `It comes to ${ANSWER}.` }).ok);
+  ok("and so is one that arrives at it",
+    !overheardSafety({ ...base, spoken: "Three twelfths and eight twelfths, so 11/12." }).ok);
+  ok("the answer is refused even with the child out of the room",
+    !overheardSafety({ ...base, childCanHear: false, spoken: `It is ${ANSWER}.` }).ok);
+  eq("and the reason names it", overheardSafety({ ...base, spoken: `It is ${ANSWER}.` }).reasons, ["answer"]);
+
+  // The three that are about who is listening rather than about the answer.
+  ok("naming the misconception out loud is refused",
+    !overheardSafety({ ...base, spoken: "She is treating the fraction as two separate numbers when she adds." }).ok);
+  ok("using the child's name out loud is refused",
+    !overheardSafety({ ...base, spoken: "Ask Maya what the bottom number means." }).ok);
+  ok("a verdict on the child is refused",
+    soundsLikeAVerdict("She got it wrong, so try asking again."));
+
+  // And the same three, allowed once nobody is listening.
+  ok("with the child out of the room the misconception may be named",
+    overheardSafety({ ...base, childCanHear: false, spoken: "She is treating the fraction as two separate numbers when she adds." }).ok);
+  ok("and the name may be used",
+    overheardSafety({ ...base, childCanHear: false, spoken: "Ask Maya what the bottom number means." }).ok);
+
+  // The ordinary case has to pass, or the feature is a refusal machine.
+  ok("an ordinary coaching line passes",
+    overheardSafety({ ...base, spoken: "Ask what the bottom number is telling her, then wait." }).ok);
+  ok("so does one that mentions the problem without solving it",
+    overheardSafety({ ...base, spoken: "Have her read one quarter plus two thirds out loud." }).ok);
+  ok("a partial overlap with the misconception is not a match",
+    overheardSafety({ ...base, spoken: "Ask her what a fraction is." }).ok);
+
+  /* The gate, rather than the predicate. A caller that forgets to look at the
+     verdict still cannot synthesise the unsafe line, because the text it is
+     handed back has already been replaced. */
+  const FALLBACK = "It is on your screen, behind the hold.";
+  const leaked = safeSpoken({ ...base, spoken: `The answer is ${ANSWER}.`, fallback: FALLBACK });
+  eq("an unsafe rendering is replaced rather than flagged", leaked.text, FALLBACK);
+  ok("and the substitution is reported", leaked.substituted);
+  ok("the fallback itself is safe", safeSpoken({ ...base, spoken: FALLBACK, fallback: FALLBACK }).verdict.ok);
+
+  const fine = safeSpoken({ ...base, spoken: "Ask what the bottom number means, then wait.", fallback: FALLBACK });
+  ok("a safe rendering is passed through untouched", !fine.substituted && fine.text.includes("bottom number"));
+
+  // The shape the model returns has nowhere to put the things it must not say.
+  const shape = readFileSync(path.join(process.cwd(), "lib", "ai", "schemas.ts"), "utf8");
+  const voiceShape = shape.slice(shape.indexOf("export const voiceTurnSchema"), shape.indexOf("export type VoiceTurn"));
+  ok("the voice turn schema carries one field and no answer",
+    /spoken: z\.string\(\)/.test(voiceShape) && !/answer|misconception/i.test(voiceShape));
+
+  // Synthesis has one entrance and it is behind the check.
+  const speakRoute = readFileSync(path.join(process.cwd(), "app", "api", "voice", "speak", "route.ts"), "utf8");
+  ok("the spoken route checks before it synthesises",
+    speakRoute.indexOf("safeSpoken(") < speakRoute.indexOf("await speak("));
+  ok("and it reads the answer from the problem rather than the request",
+    /bundle\?\.problem\.computedAnswer/.test(speakRoute) && !/computedAnswer:\s*parsed/.test(speakRoute));
+  /* A missing or malformed toggle reads as "the child is listening", which is
+     the safer of the two readings and the one a tampered request cannot get
+     round by omitting the field. */
+  ok("an absent toggle reads as the child listening",
+    /childCanHear\s*=\s*parsed\.data\.childCanHear\s*\?\?\s*true/.test(speakRoute));
+
+  const provider = readFileSync(path.join(process.cwd(), "lib", "ai", "provider.ts"), "utf8");
+  ok("speech is only synthesised by one function", (provider.match(/audio\.speech\.create/g) ?? []).length === 1);
+  ok("and there is one voice per launch language",
+    /const VOICES: Record<string, string>/.test(provider) && /\bam: "/.test(provider));
+
+  // Voice Mode and Live Mode are two features and the interface says so.
+  const shell = readFileSync(path.join(process.cwd(), "components", "app", "AppShell.tsx"), "utf8");
+  const bar = readFileSync(path.join(process.cwd(), "components", "app", "ThreadBar.tsx"), "utf8");
+  ok("Live Mode has its own control, away from the composer",
+    /EarIcon/.test(bar) && !/EarIcon/.test(shell));
+  ok("and the microphone is press and hold for Voice Mode",
+    /onPointerDown=\{\(\) => void voice\.begin\(\)\}/.test(shell));
+  ok("the indicator names which mode is listening",
+    reads(shell, "voice.activeVoice") && reads(shell, "voice.activeLive"));
+  ok("the two cannot both hold the microphone",
+    /liveDisabled=\{voice\.phase !== "idle"\}/.test(shell) &&
+      /disabled=\{!voice\.supported \|\| live\.listening\}/.test(shell));
+  ok("she can hear this defaults to on",
+    /useState\(true\)/.test(readFileSync(path.join(process.cwd(), "lib", "voice", "useVoiceMode.ts"), "utf8")));
+
+  // No transcript, spoken or otherwise, survives the turn.
+  const hook = readFileSync(path.join(process.cwd(), "lib", "voice", "useVoiceMode.ts"), "utf8");
+  ok("the voice hook keeps no transcript in state", !/useState[^\n]*transcript/i.test(hook));
+  const transcribeRoute = readFileSync(
+    path.join(process.cwd(), "app", "api", "voice", "transcribe", "route.ts"), "utf8");
+  ok("and the transcription route stores nothing", !/prisma\./.test(transcribeRoute));
+
+  const prompt = readFileSync(path.join(process.cwd(), "prompts", "voice-turn.md"), "utf8").replace(/\s+/g, " ");
+  ok("voice-turn: bans the em dash", /never write an em dash/i.test(prompt));
+  ok("voice-turn: addresses the parent, never the child", /never address the child/i.test(prompt));
+  ok("voice-turn: says the answer is on the screen", /on the screen, behind the hold/i.test(prompt));
+  ok("voice-turn: forbids naming the misconception", /never name what the child got wrong/i.test(prompt));
+  ok("voice-turn: forbids the child's name", /never use the child's name/i.test(prompt));
+  ok("voice-turn: contains no em dash of its own", !/—|―/.test(prompt));
 }
 
 // ---------------------------------------------------------------------------
