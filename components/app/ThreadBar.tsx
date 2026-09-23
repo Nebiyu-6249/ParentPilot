@@ -2,8 +2,8 @@
 
 import RegisterControl from "@/components/RegisterControl";
 import ShareSheet from "@/components/app/ShareSheet";
-import { PanelIcon, ShareIcon } from "@/components/icons";
-import { copy } from "@/lib/copy";
+import { EarIcon, PanelIcon, ShareIcon } from "@/components/icons";
+import { useMessages } from "@/components/LocaleProvider";
 import type { RegisterName } from "@/lib/ai/schemas";
 import type { CurrentProblem } from "@/lib/thread";
 
@@ -33,6 +33,9 @@ export default function ThreadBar({
   shareOpen,
   onShareOpen,
   onShareClose,
+  liveListening,
+  liveDisabled,
+  onLiveToggle,
 }: {
   title: string;
   /** Null until a worksheet has been read. Share does not appear before then. */
@@ -44,7 +47,18 @@ export default function ThreadBar({
   shareOpen: boolean;
   onShareOpen: () => void;
   onShareClose: () => void;
+  /* Live Mode lives up here rather than in the composer, and the reason is
+     not only that a third composer button clipped the placeholder at phone
+     width. Live Mode is a session: it listens while the two of them work and
+     raises coaching cards, for as long as it is on. Voice Mode is one
+     message. Session-level controls are what this bar is for, and putting
+     them in the same row as the composer's send button was what made the two
+     modes look like variants of one thing. */
+  liveListening: boolean;
+  liveDisabled: boolean;
+  onLiveToggle: () => void;
 }) {
+  const t = useMessages();
   return (
     <header className="pp-topbar">
       {!railOpen && (
@@ -58,10 +72,29 @@ export default function ThreadBar({
         </button>
       )}
 
-      <span className="pp-topbar-title">{title}</span>
+      {/* The title is the problem, so it is a quotation rather than interface
+          copy and is isolated from the bidi algorithm for the same reason the
+          worksheet card is. */}
+      <span className="pp-topbar-title pp-transcript">{title}</span>
 
       <div className="pp-topbar-actions">
         <RegisterControl value={register} onChange={onRegisterChange} compact />
+
+        {/* Live Mode. Named on the button, because the icon is arcs of sound
+            and nothing in this product should rely on a parent guessing what
+            a glyph means when the two guesses are "it is recording us" and
+            "it is not". */}
+        <button
+          type="button"
+          className={liveListening ? "pp-topbar-live pp-topbar-live-on" : "pp-topbar-live"}
+          aria-label={liveListening ? t.live.stopShort : t.live.startShort}
+          aria-pressed={liveListening}
+          title={liveListening ? t.live.stopShort : t.live.startShort}
+          disabled={liveDisabled}
+          onClick={onLiveToggle}
+        >
+          <EarIcon size={16} />
+        </button>
 
         {/* Absent rather than disabled on an empty thread. A dead grey button
             is an offer the product cannot keep, and the bar still carries the
@@ -74,13 +107,13 @@ export default function ThreadBar({
           <button
             type="button"
             className="pp-topbar-share"
-            aria-label={copy.chat.share}
-            title={copy.chat.share}
+            aria-label={t.chat.share}
+            title={t.chat.share}
             onClick={onShareOpen}
           >
             <ShareIcon size={16} />
             <span className="pp-topbar-share-label" aria-hidden="true">
-              {copy.chat.share}
+              {t.chat.share}
             </span>
           </button>
         )}

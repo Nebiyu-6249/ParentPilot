@@ -19,7 +19,8 @@ import {
   TypeIcon,
 } from "@/components/icons";
 import { useLiveSession } from "@/lib/live/useLiveSession";
-import { copy } from "@/lib/copy";
+import { useVoiceMode } from "@/lib/voice/useVoiceMode";
+import { useMessages } from "@/components/LocaleProvider";
 import { Markdown } from "@/lib/markdown";
 import type { RegisterName } from "@/lib/ai/schemas";
 import {
@@ -62,6 +63,7 @@ export default function AppShell({
   signedIn: boolean;
   language: string;
 }) {
+  const t = useMessages();
   const [railOpen, setRailOpen] = useState(true);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [status, setStatus] = useState<string | null>(null);
@@ -126,6 +128,37 @@ export default function AppShell({
 
   const live = useLiveSession(language, emitLive);
 
+  /* Voice Mode is a different thing from Live Mode and the code says so as
+     plainly as the screen does. Live listens to the two of them working and
+     raises a coaching card; Voice answers one spoken question out loud.
+     Sharing a hook, or a control, would be how a parent ends up believing
+     they are being recorded when they are not. */
+  const voice = useVoiceMode({
+    register,
+    onTranscript: (said) => {
+      /* The question was spoken, so the reply is owed out loud. Set here
+         rather than in the button handler, because a hold that produced no
+         transcript is not a turn and must not leave this armed. */
+      awaitingSpoken.current = true;
+      submitText(said);
+    },
+    strings: {
+      micDenied: t.voice.micDenied,
+      unsupported: t.voice.unsupported,
+      nothingHeard: t.voice.nothingHeard,
+      failed: t.voice.failed,
+    },
+  });
+
+  /* Set while a spoken question is in flight, so the committed reply knows to
+     read itself back. A ref rather than state: the value is read inside the
+     stream handler, which closes over its render. */
+  const awaitingSpoken = useRef(false);
+  const voiceRef = useRef(voice);
+  voiceRef.current = voice;
+  /** The problem in front of the child when the question was asked. */
+  const problemRef = useRef<string | null>(null);
+
   /* Set while the thread scrolls itself, so its own scroll does not read as
      the parent scrolling away. Without this the thread un-pinned itself on
      the first streamed chunk, stopped following, and put up a jump control
@@ -178,7 +211,7 @@ export default function AppShell({
           },
         ]);
       }
-      setStatus(copy.status.reading);
+      setStatus(t.status.reading);
       setDraft("");
       setChips([]);
       setPinned(true);
@@ -230,17 +263,30 @@ export default function AppShell({
         }
         consume(buffer);
 
-        setTurns((current) => [
-          ...current,
-          {
-            id: `a-${Date.now()}`,
-            role: "ASSISTANT",
-            body: null,
-            cards,
-            createdAt: new Date().toISOString(),
-          },
-        ]);
+        const committed: Turn = {
+          id: `a-${Date.now()}`,
+          role: "ASSISTANT",
+          body: null,
+          cards,
+          createdAt: new Date().toISOString(),
+        };
+        setTurns((current) => [...current, committed]);
         setChips(nextChips);
+
+        /* Spoken only when the question was spoken. A parent who typed gets
+           the thread and nothing out loud, which is what they asked for.
+           `plainText` is the same extraction the copy control uses, and it
+           already leaves the answer card out. */
+        if (awaitingSpoken.current) {
+          awaitingSpoken.current = false;
+          const prose = plainText(committed);
+          if (prose) {
+            void voiceRef.current?.speakReply({
+              writtenReply: prose,
+              problemId: currentProblem([committed])?.problemId ?? problemRef.current,
+            });
+          }
+        }
       } catch {
         setTurns((current) => [
           ...current,
@@ -248,7 +294,7 @@ export default function AppShell({
             id: `a-${Date.now()}`,
             role: "ASSISTANT",
             body: null,
-            cards: [{ kind: "text", body: copy.errors.generic }],
+            cards: [{ kind: "text", body: t.errors.generic }],
             createdAt: new Date().toISOString(),
           },
         ]);
@@ -275,17 +321,17 @@ export default function AppShell({
   function onFile(file: File): void {
     const form = new FormData();
     form.append("image", file);
-    void send({ method: "POST", body: form }, copy.chat.photoTurn);
+    void send({ method: "POST", body: form }, t.chat.photoTurn);
   }
 
   /** "Still stuck" advances the ladder. No model call: the rungs already exist. */
   function advance(problemId: string): void {
     const rung = lastRung(turns, problemId);
-    post({ kind: "advance", problemId, rung, printedText: printedTextFor(problemId) }, copy.packet.stillStuck);
+    post({ kind: "advance", problemId, rung, printedText: printedTextFor(problemId) }, t.packet.stillStuck);
   }
 
   function solved(problemId: string): void {
-    post({ kind: "solved", problemId, printedText: printedTextFor(problemId) }, copy.packet.answeredIt);
+    post({ kind: "solved", problemId, printedText: printedTextFor(problemId) }, t.packet.answeredIt);
   }
 
   /**
@@ -319,6 +365,7 @@ export default function AppShell({
     setText("");
 
     const problem = currentProblem(turns);
+    problemRef.current = problem?.problemId ?? null;
     post(
       {
         kind: "text",
@@ -370,14 +417,14 @@ export default function AppShell({
             }}
           >
             <CameraIcon size={17} />
-            {copy.chat.newThread}
+            {t.chat.newThread}
           </button>
         </div>
 
         <div className="pp-rail-scroll">
           {threads.length === 0 ? (
             <p style={{ padding: "12px 10px", fontSize: 13, color: "var(--app-text-dim)" }}>
-              {signedIn ? copy.history.empty : copy.history.anonymous}
+              {signedIn ? t.history.empty : t.history.anonymous}
             </p>
           ) : (
             Object.entries(groupThreads(threads)).map(([group, items]) => (
@@ -404,7 +451,7 @@ export default function AppShell({
         >
           <a href="/account" className="pp-rail-item" style={{ display: "flex", alignItems: "center", gap: 9, flex: 1 }}>
             <AccountIcon size={17} />
-            {signedIn ? copy.account.heading : copy.account.signIn}
+            {signedIn ? t.account.heading : t.account.signIn}
           </a>
           <ThemeToggle />
         </div>
@@ -431,6 +478,9 @@ export default function AppShell({
           shareOpen={shareOpen}
           onShareOpen={() => setShareOpen(true)}
           onShareClose={() => setShareOpen(false)}
+          liveListening={live.listening}
+          liveDisabled={voice.phase !== "idle"}
+          onLiveToggle={() => void (live.listening ? live.stop() : live.start())}
         />
 
         <div className="pp-thread" ref={threadRef} onScroll={onThreadScroll}>
@@ -438,7 +488,7 @@ export default function AppShell({
             {empty && (
               <div className="pp-empty">
                 <p style={{ fontSize: 19, marginBottom: 20, maxWidth: "26ch", marginInline: "auto" }}>
-                  {copy.chat.emptyIntent}
+                  {t.chat.emptyIntent}
                 </p>
 
                 <button
@@ -458,40 +508,40 @@ export default function AppShell({
                   }}
                 >
                   <CameraIcon size={19} />
-                  {copy.chat.emptyPhoto}
+                  {t.chat.emptyPhoto}
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => post({ kind: "demo" }, copy.chat.demoTurn)}
+                  onClick={() => post({ kind: "demo" }, t.chat.demoTurn)}
                   className="pp-card"
                   style={{
                     display: "block",
                     width: "100%",
                     marginTop: 26,
                     padding: 16,
-                    textAlign: "left",
+                    textAlign: "start",
                     cursor: "pointer",
                     background: "var(--app-card)",
                   }}
                 >
                   <span style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                     <TypeIcon size={18} style={{ color: "var(--accent-ink)" }} />
-                    <span style={{ fontSize: 14.5, fontWeight: 500 }}>{copy.chat.emptyDemo}</span>
+                    <span style={{ fontSize: 14.5, fontWeight: 500 }}>{t.chat.emptyDemo}</span>
                   </span>
                   <span style={{ display: "block", fontSize: 20, marginBottom: 6 }}>1/4 + 2/3 =</span>
                   <span style={{ display: "block", fontSize: 13.5, color: "var(--app-text-dim)" }}>
-                    {copy.chat.emptyDemoWork}
+                    {t.chat.emptyDemoWork}
                   </span>
                   <span
                     style={{ display: "block", fontSize: 13, color: "var(--app-text-dim)", marginTop: 6 }}
                   >
-                    {copy.chat.emptyDemoNote}
+                    {t.chat.emptyDemoNote}
                   </span>
                 </button>
 
                 <div style={{ marginTop: 26 }}>
-                  {copy.chat.suggestions.map((suggestion) => (
+                  {t.chat.suggestions.map((suggestion) => (
                     <button
                       key={suggestion}
                       type="button"
@@ -554,7 +604,7 @@ export default function AppShell({
                 as typing it, which is why they read like something a parent
                 would have typed. */}
             {chips.length > 0 && !status && !draft && (
-              <div className="pp-next" aria-label={copy.chat.chipsLabel}>
+              <div className="pp-next" aria-label={t.chat.chipsLabel}>
                 {chips.map((chip) => (
                   <button key={chip} type="button" className="pp-chip" onClick={() => submitText(chip)}>
                     {chip}
@@ -575,7 +625,7 @@ export default function AppShell({
             }}
           >
             <ChevronIcon direction="down" size={15} />
-            {copy.chat.jumpToLatest}
+            {t.chat.jumpToLatest}
           </button>
         )}
 
@@ -599,18 +649,19 @@ export default function AppShell({
             <button
               type="button"
               className="pp-composer-btn"
-              aria-label={copy.chat.emptyPhoto}
-              title={copy.chat.emptyPhoto}
+              aria-label={t.chat.emptyPhoto}
+              title={t.chat.emptyPhoto}
               onClick={() => fileRef.current?.click()}
             >
               <CameraIcon size={19} />
             </button>
 
+
             <textarea
               ref={textRef}
               rows={1}
               value={text}
-              placeholder={copy.chat.placeholder}
+              placeholder={t.chat.placeholder}
               onChange={(event) => {
                 setText(event.target.value);
                 const el = event.target;
@@ -639,33 +690,95 @@ export default function AppShell({
                 <SendIcon size={18} />
               </button>
             ) : (
-              /* Live Mode, in place. It used to navigate to its own screen,
-                 which meant leaving the thread mid-session and coming back to
-                 a recap that had no relationship to it. */
+              /* The microphone is Voice Mode: press and hold, one question,
+                 one spoken answer. Live Mode has its own control to the left
+                 of the composer, because two things that both listen must not
+                 share one button. A parent who taps the wrong one either
+                 thinks they are being recorded when they are not, or talks to
+                 a microphone that is only classifying. */
               <button
                 type="button"
-                className={live.listening ? "pp-composer-btn pp-composer-live" : "pp-composer-btn"}
-                aria-label={live.listening ? copy.live.stopShort : copy.live.startShort}
-                aria-pressed={live.listening}
-                title={live.listening ? copy.live.stopShort : copy.live.startShort}
-                onClick={() => void (live.listening ? live.stop() : live.start())}
+                className={
+                  voice.phase === "recording" ? "pp-composer-btn pp-composer-voice" : "pp-composer-btn"
+                }
+                aria-label={voice.phase === "recording" ? t.voice.holding : t.voice.hold}
+                aria-pressed={voice.phase === "recording"}
+                title={t.voice.hold}
+                disabled={!voice.supported || live.listening}
+                onPointerDown={() => void voice.begin()}
+                onPointerUp={() => void voice.end()}
+                onPointerLeave={() => {
+                  if (voice.phase === "recording") void voice.end();
+                }}
               >
-                {live.listening ? <MicrophoneOffIcon size={19} /> : <MicrophoneIcon size={19} />}
+                {voice.phase === "recording" ? <MicrophoneOffIcon size={19} /> : <MicrophoneIcon size={19} />}
               </button>
             )}
           </div>
 
+          {/* Which mode is listening, said in words rather than shown as a
+              pulsing dot. Two microphone-shaped controls on one composer is
+              exactly the situation where an icon is not enough, and the
+              difference between them is what the product promises about the
+              audio. */}
           {live.listening ? (
             <p className="pp-composer-note pp-listening" role="status" aria-live="polite">
               <span className="pp-listening-dot" aria-hidden="true" />
-              {copy.live.listeningInThread} {formatClock(live.elapsed)}
+              <strong className="pp-mode-name">{t.voice.activeLive}</strong> {t.live.listeningInThread}{" "}
+              {formatClock(live.elapsed)}
+            </p>
+          ) : voice.phase !== "idle" ? (
+            <p className="pp-composer-note pp-listening" role="status" aria-live="polite">
+              <span className="pp-listening-dot" aria-hidden="true" />
+              <strong className="pp-mode-name">{t.voice.activeVoice}</strong>{" "}
+              {voice.phase === "recording"
+                ? t.voice.holding
+                : voice.phase === "transcribing" || voice.phase === "thinking"
+                  ? t.voice.thinking
+                  : t.voice.speaking}
+            </p>
+          ) : voice.error ? (
+            <p className="pp-composer-note" role="status">
+              {voice.error}
             </p>
           ) : live.error === "denied" ? (
             <p className="pp-composer-note" role="status">
-              {copy.live.micDenied}
+              {t.live.micDenied}
             </p>
           ) : (
-            <p className="pp-composer-note">{copy.chat.note}</p>
+            <p className="pp-composer-note">{t.chat.note}</p>
+          )}
+
+          {/* Both toggles sit here rather than in Settings. "She can hear
+              this" changes what is said out loud in the next ten seconds,
+              and a safety control a parent has to go and find is a safety
+              control most parents never see. */}
+          {voice.supported && (
+            <div className="pp-voice-toggles">
+              <button
+                type="button"
+                className="pp-voice-toggle"
+                role="switch"
+                aria-checked={voice.childCanHear}
+                onClick={() => voice.setChildCanHear(!voice.childCanHear)}
+                title={voice.childCanHear ? t.voice.childCanHearHelp : t.voice.childCanHearOffHelp}
+              >
+                <span className="pp-voice-dot" data-on={voice.childCanHear} aria-hidden="true" />
+                {t.voice.childCanHear}
+              </button>
+
+              <button
+                type="button"
+                className="pp-voice-toggle"
+                role="switch"
+                aria-checked={voice.keepListening}
+                onClick={() => voice.setKeepListening(!voice.keepListening)}
+                title={t.voice.keepListeningHelp}
+              >
+                <span className="pp-voice-dot" data-on={voice.keepListening} aria-hidden="true" />
+                {t.voice.keepListening}
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -699,6 +812,7 @@ function formatClock(seconds: number): string {
  * that.
  */
 function TurnCopy({ turn }: { turn: Turn }) {
+  const t = useMessages();
   const [copied, setCopied] = useState(false);
   const text = plainText(turn);
   if (!text) return null;
@@ -708,7 +822,7 @@ function TurnCopy({ turn }: { turn: Turn }) {
       <button
         type="button"
         className="pp-turn-copy"
-        aria-label={copy.chat.copyTurn}
+        aria-label={t.chat.copyTurn}
         onClick={() => {
           void navigator.clipboard
             .writeText(text)
@@ -717,7 +831,7 @@ function TurnCopy({ turn }: { turn: Turn }) {
         }}
       >
         <CopyIcon size={14} />
-        {copied ? copy.chat.copiedTurn : copy.chat.copyTurn}
+        {copied ? t.chat.copiedTurn : t.chat.copyTurn}
       </button>
     </div>
   );

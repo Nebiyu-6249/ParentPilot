@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 
 import { PauseIcon, PlayIcon } from "@/components/icons";
-import { copy } from "@/lib/copy";
+import { useMessages } from "@/components/LocaleProvider";
 import type { RegisterName } from "@/lib/ai/schemas";
 
 /**
@@ -20,6 +20,7 @@ export default function AudioPrimer({
   problemId: string;
   register: RegisterName;
 }) {
+  const t = useMessages();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [state, setState] = useState<"idle" | "loading" | "playing" | "paused" | "unavailable">("idle");
 
@@ -62,13 +63,13 @@ export default function AudioPrimer({
   if (state === "unavailable") {
     return (
       <p style={{ fontSize: "var(--type-small)", color: "var(--text-on-sheet-muted)" }}>
-        {copy.audio.unavailable}
+        {t.audio.unavailable}
       </p>
     );
   }
 
   const label =
-    state === "loading" ? copy.audio.loading : state === "playing" ? copy.audio.pause : copy.audio.play;
+    state === "loading" ? t.audio.loading : state === "playing" ? t.audio.pause : t.audio.play;
 
   return (
     <div>
@@ -91,7 +92,7 @@ export default function AudioPrimer({
         {label}
       </button>
       <p style={{ marginTop: 10, fontSize: "var(--type-small)", color: "var(--text-on-sheet-muted)" }}>
-        {copy.audio.help}
+        {t.audio.help}
       </p>
     </div>
   );

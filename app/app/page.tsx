@@ -4,6 +4,7 @@ import AppShell from "@/components/app/AppShell";
 import { copy } from "@/lib/copy";
 import { prisma, hasDatabase } from "@/lib/db";
 import { currentParent } from "@/lib/session";
+import { LocaleProvider } from "@/components/LocaleProvider";
 
 // Reads the session cookie, so it can never be prerendered: a static /app
 // would hand one parent's thread list to every visitor.
@@ -42,7 +43,11 @@ export default async function AppPage() {
   const now = Date.now();
 
   return (
-    <AppShell
+    /* The whole product surface reads its copy through this, and the provider
+       also owns the document's lang and dir. A parent whose language is Arabic
+       gets an Arabic interface laid out right to left from here. */
+    <LocaleProvider code={parent.language}>
+      <AppShell
       register={parent.register}
       signedIn={signedIn}
       language={parent.language}
@@ -50,7 +55,8 @@ export default async function AppPage() {
         id: thread.id,
         title: thread.title,
         group: group(thread.updatedAt, now),
-      }))}
-    />
+        }))}
+      />
+    </LocaleProvider>
   );
 }

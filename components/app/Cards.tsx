@@ -16,7 +16,7 @@ import {
   TypeIcon,
   type IconProps,
 } from "@/components/icons";
-import { copy } from "@/lib/copy";
+import { useMessages } from "@/components/LocaleProvider";
 import { Markdown } from "@/lib/markdown";
 import { sanitizeSvg } from "@/lib/svg";
 import type { Card } from "@/lib/thread";
@@ -65,6 +65,7 @@ export default function ThreadCard({
   onAdvance: (problemId: string) => void;
   onSolved: (problemId: string) => void;
 }) {
+  const t = useMessages();
   switch (card.kind) {
     /* Never collapsed and never quiet. This is the card that stops a parent
        acting on a saved example as though we had read their page. */
@@ -103,7 +104,7 @@ export default function ThreadCard({
       return (
         <article className="pp-card">
           <div className="pp-card-body" style={{ paddingTop: 15 }}>
-            <p className="pp-example-label">{copy.chat.exampleLabel}</p>
+            <p className="pp-example-label">{t.chat.exampleLabel}</p>
             <p className="pp-example-problem">{card.problem}</p>
             <ol className="pp-example-steps">
               {card.steps.map((step, i) => (
@@ -132,7 +133,7 @@ export default function ThreadCard({
             </ol>
             {card.avoid && (
               <p className="pp-strategy-avoid">
-                <span>{copy.chat.avoidLabel}</span> {card.avoid}
+                <span>{t.chat.avoidLabel}</span> {card.avoid}
               </p>
             )}
           </div>
@@ -152,7 +153,7 @@ export default function ThreadCard({
 
     case "worksheet":
       return (
-        <Shell title="What I read on the page" icon={TypeIcon} defaultOpen>
+        <Shell title={t.transcription.heading} icon={TypeIcon} defaultOpen>
           {card.imageDataUrl && (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
@@ -169,18 +170,25 @@ export default function ThreadCard({
             />
           )}
 
-          <p style={{ fontSize: 19, marginBottom: 10 }}>{card.printedText}</p>
+          {/* A transcription, so it is isolated left to right whatever the
+              interface direction. Inside an Arabic paragraph the bidi
+              algorithm reorders a run of digits and operators, and `1/4 + 2/3 =`
+              renders as `= 2/3 + 1/4`: a different problem from the one on the
+              child's page, shown to the parent under a heading that says this
+              is what we read. */}
+          <p className="pp-transcript" style={{ fontSize: 19, marginBottom: 10 }}>{card.printedText}</p>
 
           {card.childWorkText && (
             <pre
+              className="pp-transcript"
               style={{
                 margin: 0,
                 fontFamily: "inherit",
                 fontSize: 14,
                 whiteSpace: "pre-wrap",
                 color: "var(--app-text-dim)",
-                borderLeft: "2px solid var(--app-line)",
-                paddingLeft: 12,
+                borderInlineStart: "2px solid var(--app-line)",
+                paddingInlineStart: 12,
               }}
             >
               {card.childWorkText}
@@ -202,7 +210,7 @@ export default function ThreadCard({
                 }}
               >
                 <CheckIcon size={13} />
-                {copy.packet.verifiedBadge}
+                {t.packet.verifiedBadge}
               </span>
             )}
             {card.standardCode && <Citation code={card.standardCode} plainLanguage={card.standardPlain} />}
@@ -225,13 +233,13 @@ export default function ThreadCard({
                 marginBottom: 8,
               }}
             >
-              {copy.packet.askLabel}
+              {t.packet.askLabel}
             </span>
 
             <p className="pp-ask-question">{card.question}</p>
 
             <p style={{ marginTop: 10, fontSize: 13, color: "var(--app-text-dim)" }}>
-              {copy.packet.rungCounter(card.rung + 1, card.total)}
+              {t.packet.rungCounter(card.rung + 1, card.total)}
             </p>
 
             <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
@@ -249,7 +257,7 @@ export default function ThreadCard({
                   fontWeight: 500,
                 }}
               >
-                {copy.packet.stillStuck}
+                {t.packet.stillStuck}
               </button>
               <button
                 type="button"
@@ -263,13 +271,13 @@ export default function ThreadCard({
                   fontSize: 14.5,
                 }}
               >
-                {copy.packet.answeredIt}
+                {t.packet.answeredIt}
               </button>
             </div>
 
             {card.rung >= card.total - 1 && (
               <p style={{ marginTop: 12, fontSize: 13, color: "var(--app-text-dim)" }}>
-                {copy.packet.ladderExhausted}
+                {t.packet.ladderExhausted}
               </p>
             )}
           </div>
@@ -279,7 +287,7 @@ export default function ThreadCard({
     case "misconception": {
       const svg = sanitizeSvg(card.visualSvg);
       return (
-        <Shell title={copy.packet.discloseWhy} icon={AlertIcon}>
+        <Shell title={t.packet.discloseWhy} icon={AlertIcon}>
           <h3 style={{ fontSize: 15.5, marginBottom: 8 }}>{card.plainName}</h3>
           {card.note && <p style={{ fontSize: 15, lineHeight: 1.6 }}>{card.note}</p>}
           {svg && (
@@ -290,7 +298,7 @@ export default function ThreadCard({
             />
           )}
           <p style={{ marginTop: 16, fontSize: 15 }}>
-            <span style={{ color: "var(--accent-ink)" }}>{copy.packet.misconceptionRepair}: </span>
+            <span style={{ color: "var(--accent-ink)" }}>{t.packet.misconceptionRepair}: </span>
             {card.repairQuestion}
           </p>
         </Shell>
@@ -299,19 +307,19 @@ export default function ThreadCard({
 
     case "method_match":
       return (
-        <Shell title={copy.packet.discloseMethods} icon={ColumnsIcon}>
+        <Shell title={t.packet.discloseMethods} icon={ColumnsIcon}>
           <MethodMatch data={card.data} />
         </Shell>
       );
 
     case "teaching":
       return (
-        <Shell title={copy.packet.discloseTeaching} icon={BookIcon}>
+        <Shell title={t.packet.discloseTeaching} icon={BookIcon}>
           <p style={{ fontSize: 15, lineHeight: 1.6 }}>{card.opening}</p>
           {card.rest && (
             <details style={{ marginTop: 12 }}>
               <summary style={{ cursor: "pointer", fontSize: 13.5, color: "var(--app-text-dim)" }}>
-                {copy.packet.primerMore}
+                {t.packet.primerMore}
               </summary>
               <p style={{ fontSize: 15, lineHeight: 1.6, marginTop: 10 }}>{card.rest}</p>
             </details>
@@ -333,7 +341,7 @@ export default function ThreadCard({
 
     case "answer":
       return (
-        <Shell title={copy.packet.discloseAnswer} icon={LockIcon}>
+        <Shell title={t.packet.discloseAnswer} icon={LockIcon}>
           <LockedAnswer answer={card.answer} verification={card.verification} />
         </Shell>
       );
@@ -360,7 +368,7 @@ export default function ThreadCard({
 
     case "live_summary":
       return (
-        <Shell title={copy.live.summaryHeading} icon={CheckIcon} defaultOpen>
+        <Shell title={t.live.summaryHeading} icon={CheckIcon} defaultOpen>
           <p style={{ fontFamily: "var(--font-display)", fontSize: 34, color: "var(--accent-ink)", lineHeight: 1 }}>
             {card.autonomyScore.toFixed(2)}
           </p>
@@ -373,17 +381,17 @@ export default function ThreadCard({
             {countsLine(card.moveCounts)}
           </p>
           <p style={{ marginTop: 8, fontSize: 12.5, color: "var(--app-text-dim)" }}>
-            {copy.live.summaryProvenance}
+            {t.live.summaryProvenance}
           </p>
         </Shell>
       );
 
     case "park_it":
       return (
-        <article className="pp-card" style={{ borderColor: "var(--alert-fg)", borderLeftWidth: 3 }}>
+        <article className="pp-card" style={{ borderColor: "var(--alert-fg)", borderInlineStartWidth: 3 }}>
           <div className="pp-card-body" style={{ paddingTop: 16 }}>
-            <h3 style={{ fontSize: 16, color: "var(--alert-fg)", marginBottom: 8 }}>{copy.live.parkHeading}</h3>
-            <p style={{ fontSize: 15, lineHeight: 1.6 }}>{copy.live.parkBody}</p>
+            <h3 style={{ fontSize: 16, color: "var(--alert-fg)", marginBottom: 8 }}>{t.live.parkHeading}</h3>
+            <p style={{ fontSize: 15, lineHeight: 1.6 }}>{t.live.parkBody}</p>
             {card.teacherNote && (
               <p style={{ marginTop: 14, fontSize: 15, whiteSpace: "pre-wrap" }}>{card.teacherNote}</p>
             )}
@@ -437,6 +445,7 @@ function countsLine(counts: Record<string, number>): string {
  * between one tap and waiting again.
  */
 function Explainer({ card }: { card: Extract<Card, { kind: "explainer" }> }) {
+  const t = useMessages();
   const [child, setChild] = useState(false);
   const [more, setMore] = useState(false);
 
@@ -455,7 +464,7 @@ function Explainer({ card }: { card: Extract<Card, { kind: "explainer" }> }) {
         <div className="pp-explainer-actions">
           {card.more && !child && (
             <button type="button" className="pp-chip pp-chip-quiet" onClick={() => setMore((v) => !v)}>
-              {more ? copy.chat.explainerLess : copy.chat.explainerMore}
+              {more ? t.chat.explainerLess : t.chat.explainerMore}
             </button>
           )}
           {card.forNineYearOld && (
@@ -465,7 +474,7 @@ function Explainer({ card }: { card: Extract<Card, { kind: "explainer" }> }) {
               aria-pressed={child}
               onClick={() => setChild((v) => !v)}
             >
-              {child ? copy.chat.explainerAdult : copy.chat.explainerChild}
+              {child ? t.chat.explainerAdult : t.chat.explainerChild}
             </button>
           )}
         </div>

@@ -19,7 +19,8 @@ export type PromptName =
   | "classify-move"
   | "session-recap"
   | "teacher-note"
-  | "chat-turn";
+  | "chat-turn"
+  | "voice-turn";
 
 const cache = new Map<PromptName, string>();
 

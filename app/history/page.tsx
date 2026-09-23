@@ -3,7 +3,8 @@ import Link from "next/link";
 
 import HistoryList from "@/components/HistoryList";
 import { AppPage, AppSection } from "@/components/app/AppPage";
-import { copy } from "@/lib/copy";
+import { LocaleProvider } from "@/components/LocaleProvider";
+import { messages } from "@/lib/i18n";
 import { prisma, hasDatabase } from "@/lib/db";
 import { currentParent } from "@/lib/session";
 
@@ -12,6 +13,7 @@ export const metadata: Metadata = { title: "Past sessions" };
 
 export default async function HistoryPage() {
   const parent = await currentParent();
+  const t = messages(parent.language);
 
   const sessions =
     hasDatabase() && parent.id !== "anonymous"
@@ -52,11 +54,12 @@ export default async function HistoryPage() {
   }
 
   return (
-    <AppPage title={copy.history.heading}>
+    <LocaleProvider code={parent.language}>
+      <AppPage title={t.history.heading} locale={parent.language}>
       {parent.id === "anonymous" ? (
-        <AppSection title={copy.history.anonymous}>
+        <AppSection title={t.history.anonymous}>
           <Link href="/login" style={{ fontSize: 17 }}>
-            {copy.account.signIn}
+            {t.account.signIn}
           </Link>
         </AppSection>
       ) : (
@@ -74,6 +77,7 @@ export default async function HistoryPage() {
           }))}
         />
       )}
-    </AppPage>
+      </AppPage>
+    </LocaleProvider>
   );
 }

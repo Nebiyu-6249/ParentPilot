@@ -20,6 +20,9 @@ export interface ProblemView {
 
 export interface StandardView {
   code: string;
+  /** CCSS, ENC or CBSE. Shown to the parent when a match came from a
+   *  curriculum other than their child's. */
+  curriculum: string;
   grade: number;
   plainLanguage: string;
   expectedMethods: string[];

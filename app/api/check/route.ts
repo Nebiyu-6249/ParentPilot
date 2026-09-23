@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 
 import { analyseFinishedWork, isConfigured } from "@/lib/ai/provider";
 import { clientIp, consume, logFailure, validateUpload } from "@/lib/limits";
-import { copy } from "@/lib/copy";
 import { toDataUrl } from "@/lib/exif";
 import { currentParent } from "@/lib/session";
 import type { CheckResult } from "@/lib/ai/schemas";
+import { messages } from "@/lib/i18n";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
@@ -24,6 +24,12 @@ export interface CheckResponse extends CheckResult {
  * screen, where the friction is deliberate.
  */
 export async function POST(request: Request): Promise<Response> {
+  /* Every notice below is rendered in the parent's thread, so it is written in
+     the parent's language rather than in the server's. Read before the
+     validation branches, because those branches produce notices too. */
+  const parent = await currentParent();
+  const t = messages(parent.language);
+
   const form = await request.formData().catch(() => null);
   const file = form?.get("image");
   const upload = file instanceof File ? file : null;
@@ -32,10 +38,10 @@ export async function POST(request: Request): Promise<Response> {
   if (!valid.ok || !upload) {
     const message =
       valid.ok || valid.reason === "missing"
-        ? copy.errors.noProblem
+        ? t.errors.noProblem
         : valid.reason === "size"
-          ? copy.capture.tooLarge
-          : copy.capture.wrongType;
+          ? t.capture.tooLarge
+          : t.capture.wrongType;
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
@@ -43,13 +49,12 @@ export async function POST(request: Request): Promise<Response> {
   if (!verdict.allowed || !isConfigured()) {
     const notice = !verdict.allowed
       ? verdict.reason === "spend"
-        ? copy.limits.spendBanner
-        : copy.limits.banner
-      : copy.limits.unconfiguredBanner;
+        ? t.limits.spendBanner
+        : t.limits.banner
+      : t.limits.unconfiguredBanner;
     return NextResponse.json({ findings: [], allClear: false, notice } satisfies CheckResponse);
   }
 
-  const parent = await currentParent();
   const bytes = new Uint8Array(await upload.arrayBuffer());
 
   try {
@@ -57,7 +62,7 @@ export async function POST(request: Request): Promise<Response> {
       imageDataUrl: toDataUrl(bytes, upload.type),
       register: parent.register,
       language: parent.language,
-      grade: parent.child?.grade ?? 4,
+      grade: parent.child?.grade ?? null,
     });
     return NextResponse.json({ ...result, notice: null } satisfies CheckResponse);
   } catch (error) {
@@ -65,7 +70,7 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json({
       findings: [],
       allClear: false,
-      notice: copy.errors.modelTimeout,
+      notice: t.errors.modelTimeout,
     } satisfies CheckResponse);
   }
 }

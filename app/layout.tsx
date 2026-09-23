@@ -44,6 +44,21 @@ export const viewport: Viewport = {
 const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem("pp_theme");if(t==="dark"||t==="light"){document.documentElement.setAttribute("data-theme",t)}}catch(e){}})();`;
 
 /**
+ * Direction, before first paint, for the same reason the theme is.
+ *
+ * This layout is deliberately static: the marketing pages under app/(site)
+ * are English by decision and prerendered, and reading a cookie here to serve
+ * `dir="rtl"` on pages whose content is English would make every one of them
+ * dynamic to fix nothing. So the stored locale is applied the way the stored
+ * theme is, by a tiny script that runs ahead of everything.
+ *
+ * The list of right-to-left codes is inlined rather than imported because this
+ * string is not bundled. Keep it in step with `dir: "rtl"` in
+ * lib/i18n/locales.ts; the check suite asserts that they agree.
+ */
+const LOCALE_SCRIPT = `(function(){try{var l=localStorage.getItem("pp_locale");if(!l)return;var d=document.documentElement;d.setAttribute("lang",l);d.setAttribute("dir",["ar","ur"].indexOf(l)>-1?"rtl":"ltr")}catch(e){}})();`;
+
+/**
  * The root layout carries the document and nothing else.
  *
  * There are two surfaces and they do not share chrome: the marketing site in
@@ -53,13 +68,17 @@ const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem("pp_theme");if(
  */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    /* English and left to right is the served default, which is correct for
+       the prerendered marketing pages. LOCALE_SCRIPT corrects both before
+       first paint for a parent whose product surface is not English. */
+    <html lang="en" dir="ltr">
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: LOCALE_SCRIPT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Public+Sans:wght@400;500;600&family=Inter:wght@400;500;600&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Public+Sans:wght@400;500;600&family=Inter:wght@400;500;600&family=Noto+Sans+Arabic:wght@400;500;600&family=Noto+Sans+Ethiopic:wght@400;500;600&display=swap"
           rel="stylesheet"
         />
       </head>

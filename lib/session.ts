@@ -27,7 +27,14 @@ export interface ParentProfile {
   anxietyBand: number;
   language: string;
   /** The most recently added child, if any. There is no child account. */
-  child: { id: string; firstName: string | null; grade: number; curriculum: string } | null;
+  child: {
+    id: string;
+    firstName: string | null;
+    grade: number | null;
+    curriculum: string;
+    /** The worksheet's language. Null means it is the parent's. */
+    schoolLanguage: string | null;
+  } | null;
 }
 
 export const DEFAULT_PROFILE: ParentProfile = {
@@ -73,7 +80,13 @@ export async function currentParent(): Promise<ParentProfile> {
       anxietyBand: parent.anxietyBand,
       language: parent.language,
       child: child
-        ? { id: child.id, firstName: child.firstName, grade: child.grade, curriculum: child.curriculum }
+        ? {
+            id: child.id,
+            firstName: child.firstName,
+            grade: child.grade,
+            curriculum: child.curriculum,
+            schoolLanguage: child.schoolLanguage,
+          }
         : null,
     };
   } catch {

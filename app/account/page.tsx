@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import AccountScreen from "@/components/AccountScreen";
 import { prisma, hasDatabase } from "@/lib/db";
 import { currentParent } from "@/lib/session";
+import { LocaleProvider } from "@/components/LocaleProvider";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Your account" };
@@ -18,7 +19,8 @@ export default async function AccountPage() {
       : [];
 
   return (
-    <AccountScreen
+    <LocaleProvider code={parent.language}>
+      <AccountScreen
       email={parent.email}
       register={parent.register}
       language={parent.language}
@@ -28,7 +30,8 @@ export default async function AccountPage() {
         firstName: c.firstName,
         grade: c.grade,
         curriculum: c.curriculum,
-      }))}
-    />
+        }))}
+      />
+    </LocaleProvider>
   );
 }

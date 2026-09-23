@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 
 import StatusLine from "@/components/StatusLine";
 import { AppBanner, appButton, AppLabel, AppPage, AppSection } from "@/components/app/AppPage";
-import { copy } from "@/lib/copy";
+import { useMessages } from "@/components/LocaleProvider";
 import { LIMITS } from "@/lib/limits.client";
 import type { CheckResponse } from "@/app/api/check/route";
 
@@ -16,6 +16,7 @@ import type { CheckResponse } from "@/app/api/check/route";
  * goes to the problem screen and holds the button.
  */
 export default function CheckFlow() {
+  const t = useMessages();
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<CheckResponse | null>(null);
@@ -23,8 +24,8 @@ export default function CheckFlow() {
 
   async function onFile(file: File): Promise<void> {
     setError(null);
-    if (!file.type.startsWith("image/")) return setError(copy.capture.wrongType);
-    if (file.size > LIMITS.maxUploadBytes) return setError(copy.capture.tooLarge);
+    if (!file.type.startsWith("image/")) return setError(t.capture.wrongType);
+    if (file.size > LIMITS.maxUploadBytes) return setError(t.capture.tooLarge);
 
     setBusy(true);
     const form = new FormData();
@@ -36,7 +37,7 @@ export default function CheckFlow() {
       if (data.error) setError(data.error);
       else setResult(data);
     } catch {
-      setError(copy.errors.generic);
+      setError(t.errors.generic);
     } finally {
       setBusy(false);
     }
@@ -44,23 +45,23 @@ export default function CheckFlow() {
 
   if (busy) {
     return (
-      <AppPage title={copy.check.heading}>
-        <StatusLine step={copy.status.reading} />
+      <AppPage title={t.check.heading}>
+        <StatusLine step={t.status.reading} />
       </AppPage>
     );
   }
 
   return (
-    <AppPage title={copy.check.heading}>
-      <p className="pp-appview-note" style={{ marginBottom: 20 }}>{copy.check.help}</p>
+    <AppPage title={t.check.heading}>
+      <p className="pp-appview-note" style={{ marginBottom: 20 }}>{t.check.help}</p>
 
       {error && <AppBanner tone="alert" text={error} />}
       {result?.notice && <AppBanner text={result.notice} />}
 
       {result && (
-        <AppSection title={copy.check.resultHeading}>
+        <AppSection title={t.check.resultHeading}>
           {result.findings.length === 0 ? (
-            <p style={{ fontSize: 17 }}>{copy.check.clean}</p>
+            <p style={{ fontSize: 17 }}>{t.check.clean}</p>
           ) : (
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
               {result.findings.map((finding) => (
@@ -73,13 +74,13 @@ export default function CheckFlow() {
                   <p style={{ fontSize: 16, color: "var(--app-text-dim)", marginBottom: 12 }}>
                     {finding.errorType}
                   </p>
-                  <AppLabel>{copy.packet.misconceptionRepair}</AppLabel>
+                  <AppLabel>{t.packet.misconceptionRepair}</AppLabel>
                   <p style={{ fontSize: 17 }}>{finding.repairQuestion}</p>
                 </li>
               ))}
             </ul>
           )}
-          <p style={{ marginTop: 22, fontSize: 14, color: "var(--app-text-dim)" }}>{copy.check.noAnswers}</p>
+          <p style={{ marginTop: 22, fontSize: 14, color: "var(--app-text-dim)" }}>{t.check.noAnswers}</p>
         </AppSection>
       )}
 
@@ -96,7 +97,7 @@ export default function CheckFlow() {
           style={{ display: "none" }}
         />
         <button type="button" onClick={() => fileRef.current?.click()} style={appButton("primary", true)}>
-          {copy.check.submit}
+          {t.check.submit}
         </button>
       </div>
     </AppPage>
