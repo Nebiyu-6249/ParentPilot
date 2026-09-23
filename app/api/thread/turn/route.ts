@@ -147,7 +147,8 @@ export async function POST(request: Request): Promise<Response> {
           imageDataUrl: dataUrl,
           register: parent.register,
           language: parent.language,
-          grade: parent.child?.grade ?? 4,
+          grade: parent.child?.grade ?? null,
+          schoolLanguage: parent.child?.schoolLanguage ?? null,
         });
 
         const first = extraction.problems[0];
@@ -159,9 +160,29 @@ export async function POST(request: Request): Promise<Response> {
           return;
         }
 
+        /* No profile, or no database, is not a reason to show somebody else's
+           worksheet. The landing page promises a photograph works with no
+           account, and this used to answer that promise with the demo fixture:
+           the parent watched their own page be read, then got a packet about
+           1/4 + 2/3.
+
+           The one-off path already exists for typed problems, and a photograph
+           with nowhere to be stored is the same case. Nothing is persisted, so
+           the ladder cannot be advanced afterwards, which is the honest cost of
+           not needing a profile first. */
         if (!hasDatabase() || !parent.child) {
-          const bundle = await demoBundle(parent.register, copy.limits.demoBanner);
-          send({ type: "cards", cards: cardsForPacket(bundle, dataUrl) });
+          const bundle = await buildPacketFromText({
+            problemId: null,
+            printedText: first.printedText,
+            childWorkText: first.childWorkText,
+            childAnswer: first.childAnswer,
+            register: parent.register,
+            language: parent.language,
+            // Nobody has said. The standard this retrieves against supplies it.
+            grade: null,
+            onStep: (step: PacketStep) => send({ type: "status", text: STEP_TEXT[step] }),
+          });
+          send({ type: "cards", cards: cardsForPacket(bundle, dataUrl), notice: bundle.notice });
           return;
         }
 
@@ -194,6 +215,8 @@ export async function POST(request: Request): Promise<Response> {
           register: parent.register,
           language: parent.language,
           grade: parent.child.grade,
+          curriculum: parent.child.curriculum,
+          schoolLanguage: parent.child.schoolLanguage,
           onStep: (step: PacketStep) => send({ type: "status", text: STEP_TEXT[step] }),
         });
 
@@ -340,6 +363,8 @@ export async function POST(request: Request): Promise<Response> {
             register,
             language: owner.language,
             grade: owner.child?.grade ?? null,
+            curriculum: owner.child?.curriculum ?? null,
+            schoolLanguage: owner.child?.schoolLanguage ?? null,
             onStep: (step: PacketStep) => send({ type: "status", text: STEP_TEXT[step] }),
           });
 
@@ -358,6 +383,8 @@ export async function POST(request: Request): Promise<Response> {
               register,
               language: parent.language,
               grade: parent.child?.grade ?? null,
+          curriculum: parent.child?.curriculum ?? null,
+          schoolLanguage: parent.child?.schoolLanguage ?? null,
             }).catch(() => null)
           : null;
 
@@ -378,6 +405,9 @@ export async function POST(request: Request): Promise<Response> {
             misconception: bundle?.misconception?.plainName ?? null,
             rungsUsed: Math.min(rung + 1, ladder.length),
             rungsTotal: ladder.length,
+            /* The worksheet's language, which is often not the parent's. Null
+               when they are the same, which the provider also normalises. */
+            schoolLanguage: parent.child?.schoolLanguage ?? null,
             transcript: renderTranscript(parsed.data.transcript ?? [], said),
             register,
             language: parent.language,
@@ -512,6 +542,8 @@ async function bundleFor(
       register,
       language: parent.language,
       grade: parent.child?.grade ?? null,
+          curriculum: parent.child?.curriculum ?? null,
+          schoolLanguage: parent.child?.schoolLanguage ?? null,
     });
   }
 
@@ -520,5 +552,7 @@ async function bundleFor(
     register,
     language: parent.language,
     grade: parent.child?.grade ?? null,
+          curriculum: parent.child?.curriculum ?? null,
+          schoolLanguage: parent.child?.schoolLanguage ?? null,
   });
 }

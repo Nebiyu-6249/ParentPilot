@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { CloseIcon, CopyIcon } from "@/components/icons";
-import { copy } from "@/lib/copy";
+import { useMessages } from "@/components/LocaleProvider";
 import type { RegisterName } from "@/lib/ai/schemas";
 import type { CurrentProblem } from "@/lib/thread";
 
@@ -28,6 +28,7 @@ export default function ShareSheet({
   register: RegisterName;
   onClose: () => void;
 }) {
+  const t = useMessages();
   const ref = useRef<HTMLDialogElement>(null);
   const [note, setNote] = useState("");
   const [state, setState] = useState<"drafting" | "ready" | "failed">("drafting");
@@ -55,12 +56,12 @@ export default function ShareSheet({
           setNote(data.note);
           setState("ready");
         } else {
-          setMessage(data.message ?? copy.chat.shareFailed);
+          setMessage(data.message ?? t.chat.shareFailed);
           setState("failed");
         }
       } catch {
         if (!live) return;
-        setMessage(copy.chat.shareFailed);
+        setMessage(t.chat.shareFailed);
         setState("failed");
       }
     })();
@@ -85,12 +86,12 @@ export default function ShareSheet({
     <dialog ref={ref} className="pp-dialog" onClose={onClose} aria-labelledby="pp-share-heading">
       <div className="pp-dialog-head">
         <h2 id="pp-share-heading" className="pp-dialog-title">
-          {copy.chat.shareHeading}
+          {t.chat.shareHeading}
         </h2>
         <button
           type="button"
           className="pp-composer-btn"
-          aria-label={copy.chat.shareClose}
+          aria-label={t.chat.shareClose}
           onClick={() => ref.current?.close()}
           style={{ width: 32, height: 32 }}
         >
@@ -100,12 +101,12 @@ export default function ShareSheet({
 
       <div className="pp-dialog-body">
         <p style={{ fontSize: 13.5, color: "var(--app-text-dim)", margin: "0 0 14px" }}>
-          {copy.chat.shareHelp}
+          {t.chat.shareHelp}
         </p>
 
         {state === "drafting" && (
           <p role="status" aria-live="polite" style={{ fontSize: 14, color: "var(--app-text-dim)" }}>
-            {copy.chat.shareDrafting}
+            {t.chat.shareDrafting}
             <span aria-hidden="true">…</span>
           </p>
         )}
@@ -135,14 +136,14 @@ export default function ShareSheet({
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12 }}>
               <button type="button" className="pp-dialog-action" onClick={copyNote}>
                 <CopyIcon size={16} />
-                {copied ? copy.chat.shareCopied : copy.chat.shareCopy}
+                {copied ? t.chat.shareCopied : t.chat.shareCopy}
               </button>
             </div>
           </>
         )}
 
         <p style={{ fontSize: 12, color: "var(--app-text-dim)", margin: "16px 0 0" }}>
-          {copy.chat.shareFooter}
+          {t.chat.shareFooter}
         </p>
       </div>
     </dialog>

@@ -1,0 +1,55 @@
+{
+  "note": [
+    "What each photograph in this directory should read as. See README.md.",
+    "",
+    "Every entry needs `file`. Everything else is optional, and an omitted",
+    "field is not checked rather than checked against nothing: a fixture you",
+    "have not hand-verified the child's working on should leave `childWorkText`",
+    "out, not guess at it.",
+    "",
+    "FIELDS",
+    "  file            Filename in this directory.",
+    "  note            Free text for a human. Never asserted.",
+    "  unreadable      True for the one deliberately unreadable fixture. The",
+    "                  harness then requires the model either to return no",
+    "                  problems, or to report every ocrConfidence below",
+    "                  maxConfidence. Invented text is the failure.",
+    "  maxConfidence   Only with unreadable. Defaults to 0.7.",
+    "  problems[]      One per problem on the page, in reading order.",
+    "    index           Zero based, matching the model's own index.",
+    "    printedText     The printed question, as the prompt asks for it:",
+    "                    `/` for a stacked fraction, `x` for a multiplication",
+    "                    cross. Compared by normalised similarity, not equality.",
+    "    childWorkText   Everything the child wrote, one step per line.",
+    "                    Use null when the child wrote nothing, which asserts",
+    "                    that the model returns null rather than inventing.",
+    "    childAnswer     The child's final answer alone, or null.",
+    "    minConfidence   Floor for ocrConfidence on a legible fixture.",
+    "                    Defaults to 0.7.",
+    "",
+    "The two entries below are the shape, not the set. Replace them with the",
+    "real fixtures. The harness reports a page as MISSING rather than passing",
+    "it when the file is not on disk."
+  ],
+  "photos": [
+    {
+      "file": "fractions-unlike-denominators.jpg",
+      "note": "Printed question, pencil working underneath, clearly legible. The ordinary case.",
+      "problems": [
+        {
+          "index": 0,
+          "printedText": "1/4 + 2/3 =",
+          "childWorkText": "1 + 2 = 3\n4 + 3 = 7\nso 3/7",
+          "childAnswer": "3/7",
+          "minConfidence": 0.8
+        }
+      ]
+    },
+    {
+      "file": "blurry.jpg",
+      "note": "Deliberately out of focus. The fixture that proves the model refuses rather than invents.",
+      "unreadable": true,
+      "maxConfidence": 0.7
+    }
+  ]
+}

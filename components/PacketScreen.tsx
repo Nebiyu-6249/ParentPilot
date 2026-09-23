@@ -10,7 +10,7 @@ import MethodMatch from "@/components/MethodMatch";
 import RegisterControl from "@/components/RegisterControl";
 import { AlertIcon, BookIcon, ColumnsIcon, LockIcon, SpeechIcon } from "@/components/icons";
 import { Banner, Label, Page } from "@/components/ui";
-import { copy } from "@/lib/copy";
+import { useMessages } from "@/components/LocaleProvider";
 import { requestPacket } from "@/lib/client/packet";
 import { sanitizeSvg } from "@/lib/svg";
 import type { RegisterName } from "@/lib/ai/schemas";
@@ -29,6 +29,7 @@ import type { PacketBundle } from "@/lib/types";
  * product that feels like homework itself stops being opened.
  */
 export default function PacketScreen({ initial }: { initial: PacketBundle }) {
+  const t = useMessages();
   const [bundle, setBundle] = useState<PacketBundle>(initial);
   const [register, setRegister] = useState<RegisterName>(initial.packet.register);
   const [busy, setBusy] = useState(false);
@@ -86,7 +87,7 @@ export default function PacketScreen({ initial }: { initial: PacketBundle }) {
       {/* ---- The problem, small ------------------------------------- */}
       <header>
         <Label>{standard ? `Grade ${standard.grade}` : "Worksheet"}</Label>
-        <p style={{ fontSize: 20, marginTop: 2 }}>{problem.printedText}</p>
+        <p className="pp-transcript" style={{ fontSize: 20, marginTop: 2 }}>{problem.printedText}</p>
 
         {standard && (
           <div style={{ marginTop: 10 }}>
@@ -96,14 +97,15 @@ export default function PacketScreen({ initial }: { initial: PacketBundle }) {
 
         {problem.childWorkText && (
           <pre
+            className="pp-transcript"
             style={{
               margin: "10px 0 0",
               fontFamily: "var(--font-sans)",
               fontSize: "var(--type-small)",
               whiteSpace: "pre-wrap",
               color: "var(--text-on-sheet-muted)",
-              borderLeft: "1px solid var(--rule-on-sheet)",
-              paddingLeft: 12,
+              borderInlineStart: "1px solid var(--rule-on-sheet)",
+              paddingInlineStart: 12,
             }}
           >
             {problem.childWorkText}
@@ -114,14 +116,18 @@ export default function PacketScreen({ initial }: { initial: PacketBundle }) {
       {/* ---- The one thing on the screen ---------------------------- */}
       {solved ? (
         <section style={{ margin: "28px 0 0" }}>
-          <h1 style={{ fontSize: "var(--type-h1)", marginBottom: 10 }}>{copy.packet.solvedHeading}</h1>
-          <p style={{ fontSize: 17, marginBottom: 26 }}>{copy.packet.solvedBody}</p>
+          <h1 style={{ fontSize: "var(--type-h1)", marginBottom: 10 }}>{t.packet.solvedHeading}</h1>
+          <p style={{ fontSize: 17, marginBottom: 26 }}>{t.packet.solvedBody}</p>
 
-          <Label>{copy.packet.isomorphHeading}</Label>
+          <Label>{t.packet.isomorphHeading}</Label>
           <ul style={{ listStyle: "none", padding: 0, margin: "6px 0 0" }}>
             {packet.isomorphs.map((text) => (
               <li
                 key={text}
+                /* An isomorph is an expression the product generated, so it is
+                   isolated like a transcription: `2/5 + 1/4` must not be
+                   reordered by the Arabic paragraph around it. */
+                className="pp-expression"
                 style={{
                   padding: "12px 0",
                   borderBottom: "1px solid var(--rule-on-sheet)",
@@ -147,12 +153,12 @@ export default function PacketScreen({ initial }: { initial: PacketBundle }) {
               textUnderlineOffset: 3,
             }}
           >
-            {copy.packet.solvedAgain}
+            {t.packet.solvedAgain}
           </button>
         </section>
       ) : (
         <section style={{ margin: "26px 0 0", opacity: busy ? 0.45 : 1, transition: "opacity 200ms ease-out" }}>
-          <Label>{copy.packet.askLabel}</Label>
+          <Label>{t.packet.askLabel}</Label>
 
           {/* The largest text on the screen. This is the product. */}
           <p
@@ -175,7 +181,7 @@ export default function PacketScreen({ initial }: { initial: PacketBundle }) {
               color: "var(--text-on-sheet-muted)",
             }}
           >
-            {copy.packet.rungCounter(Math.min(rung, rungs.length - 1) + 1, rungs.length)}
+            {t.packet.rungCounter(Math.min(rung, rungs.length - 1) + 1, rungs.length)}
           </p>
 
           <div style={{ marginTop: 22 }}>
@@ -193,7 +199,7 @@ export default function PacketScreen({ initial }: { initial: PacketBundle }) {
                 border: "1px solid var(--action)",
               }}
             >
-              {copy.packet.stillStuck}
+              {t.packet.stillStuck}
             </button>
 
             <button
@@ -209,7 +215,7 @@ export default function PacketScreen({ initial }: { initial: PacketBundle }) {
                 border: "1px solid var(--border-interactive)",
               }}
             >
-              {copy.packet.answeredIt}
+              {t.packet.answeredIt}
             </button>
           </div>
 
@@ -221,7 +227,7 @@ export default function PacketScreen({ initial }: { initial: PacketBundle }) {
                 color: "var(--text-on-sheet-muted)",
               }}
             >
-              {copy.packet.ladderExhausted}
+              {t.packet.ladderExhausted}
             </p>
           )}
         </section>
@@ -232,12 +238,12 @@ export default function PacketScreen({ initial }: { initial: PacketBundle }) {
         <RegisterControl value={register} onChange={changeRegister} busy={busy} />
       </div>
 
-      {failed && <Banner text={copy.errors.generic} />}
+      {failed && <Banner text={t.errors.generic} />}
       {bundle.notice && <Banner text={bundle.notice} />}
 
       <div style={{ marginTop: 28 }}>
         {misconception && (
-          <Disclosure title={copy.packet.discloseWhy} icon={AlertIcon}>
+          <Disclosure title={t.packet.discloseWhy} icon={AlertIcon}>
             <h2 style={{ fontSize: "var(--type-h3)", marginBottom: 10 }}>{misconception.plainName}</h2>
             {packet.misconceptionNote && <p style={{ fontSize: 17 }}>{packet.misconceptionNote}</p>}
 
@@ -252,17 +258,17 @@ export default function PacketScreen({ initial }: { initial: PacketBundle }) {
             )}
 
             <div style={{ marginTop: 20 }}>
-              <Label>{copy.packet.misconceptionRepair}</Label>
+              <Label>{t.packet.misconceptionRepair}</Label>
               <p style={{ fontSize: 17 }}>{misconception.repairQuestion}</p>
             </div>
           </Disclosure>
         )}
 
-        <Disclosure title={copy.packet.discloseMethods} icon={ColumnsIcon}>
+        <Disclosure title={t.packet.discloseMethods} icon={ColumnsIcon}>
           <MethodMatch data={packet.methodMatch} />
         </Disclosure>
 
-        <Disclosure title={copy.packet.discloseTeaching} icon={BookIcon}>
+        <Disclosure title={t.packet.discloseTeaching} icon={BookIcon}>
           <div style={{ marginBottom: 20 }}>
             <AudioPrimer problemId={problem.id} register={register} />
           </div>
@@ -277,17 +283,17 @@ export default function PacketScreen({ initial }: { initial: PacketBundle }) {
                   color: "var(--text-on-sheet-muted)",
                 }}
               >
-                {copy.packet.primerMore}
+                {t.packet.primerMore}
               </summary>
               <p style={{ fontSize: 17, marginTop: 12 }}>{primerRest}</p>
             </details>
           )}
         </Disclosure>
 
-        <Disclosure title={copy.packet.discloseScripts} icon={SpeechIcon}>
+        <Disclosure title={t.packet.discloseScripts} icon={SpeechIcon}>
           {packet.scripts.map((script) => (
             <div key={script.avoid} style={{ marginBottom: 24 }}>
-              <Label>{copy.packet.scriptAvoid}</Label>
+              <Label>{t.packet.scriptAvoid}</Label>
               <p
                 style={{
                   fontSize: 17,
@@ -298,14 +304,14 @@ export default function PacketScreen({ initial }: { initial: PacketBundle }) {
                 {script.avoid}
               </p>
               <div style={{ marginTop: 10 }}>
-                <Label>{copy.packet.scriptUse}</Label>
+                <Label>{t.packet.scriptUse}</Label>
                 <p style={{ fontSize: 17 }}>{script.use}</p>
               </div>
             </div>
           ))}
         </Disclosure>
 
-        <Disclosure title={copy.packet.discloseAnswer} icon={LockIcon} tone="quiet">
+        <Disclosure title={t.packet.discloseAnswer} icon={LockIcon} tone="quiet">
           <LockedAnswer answer={packet.lockedAnswer} verification={bundle.verification} />
         </Disclosure>
       </div>
@@ -316,14 +322,14 @@ export default function PacketScreen({ initial }: { initial: PacketBundle }) {
         <p
           style={{
             margin: "26px 0 0",
-            paddingLeft: 12,
-            borderLeft: "2px solid var(--rule-on-sheet)",
+            paddingInlineStart: 12,
+            borderInlineStart: "2px solid var(--rule-on-sheet)",
             fontSize: "var(--type-micro)",
             color: "var(--text-on-sheet-muted)",
             maxWidth: "none",
           }}
         >
-          {bundle.source === "fixture" ? copy.provenance.fixture : copy.provenance.generic}
+          {bundle.source === "fixture" ? t.provenance.fixture : t.provenance.generic}
         </p>
       )}
     </Page>

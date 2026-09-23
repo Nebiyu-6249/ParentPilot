@@ -785,11 +785,48 @@ async function runLiveToggle(browser: Browser): Promise<void> {
     new URL(page.url()).pathname === "/app");
 
   await page.waitForTimeout(300);
-  const mic = page.locator(".pp-composer button[aria-pressed]");
-  ok("the composer carries the microphone as a toggle", (await mic.count()) === 1);
-  ok("and it starts off", (await mic.getAttribute("aria-pressed")) === "false");
-  ok("it is a button, not a link to somewhere else",
-    (await mic.evaluate((el) => el.tagName)) === "BUTTON");
+
+  /* Two mode controls now, and the assertion is that they are two. A parent
+     who taps the wrong one either believes they are being recorded when they
+     are not, or talks at a microphone that is only classifying, so the thing
+     worth checking is that nothing about them is shared: not the control, not
+     the label, not the icon. */
+  const voiceBtn = page.locator('.pp-composer button[aria-label="Hold to talk"]');
+  const liveBtn = page.locator(".pp-topbar-live");
+
+  ok("Voice Mode is in the composer, which is per message", (await voiceBtn.count()) === 1);
+  ok("Live Mode is in the top bar, which is per session", (await liveBtn.count()) === 1);
+  ok("and the composer holds only one mode control",
+    (await page.locator(".pp-composer button[aria-pressed]").count()) === 1);
+
+  const labels = [
+    (await voiceBtn.getAttribute("aria-label")) ?? "",
+    (await liveBtn.getAttribute("aria-label")) ?? "",
+  ];
+  ok(`each names its own mode  (${labels.join(" | ")})`,
+    labels[0] !== labels[1] && labels.every((l) => l.length > 0));
+  ok("both start off",
+    (await voiceBtn.getAttribute("aria-pressed")) === "false" &&
+      (await liveBtn.getAttribute("aria-pressed")) === "false");
+  ok("they are buttons, not links to somewhere else",
+    (await voiceBtn.evaluate((el) => el.tagName)) === "BUTTON" &&
+      (await liveBtn.evaluate((el) => el.tagName)) === "BUTTON");
+
+  /* Different glyphs. Two microphone-shaped controls is the failure this
+     split exists to prevent, and it is invisible to every assertion about
+     labels. */
+  const glyphs = [
+    await voiceBtn.locator("svg").innerHTML(),
+    await liveBtn.locator("svg").innerHTML(),
+  ];
+  ok("and they do not share an icon", glyphs[0] !== glyphs[1]);
+
+  /* The safety toggle is on the composer rather than in Settings, and it is
+     on by default. A parent who has to go and find it is a parent who never
+     sees it. */
+  const canHear = page.locator('.pp-voice-toggle[role="switch"]').first();
+  ok("the she can hear this toggle is on the composer", (await canHear.count()) === 1);
+  ok("and it defaults to on", (await canHear.getAttribute("aria-checked")) === "true");
 
   /* The old screen is gone rather than orphaned. A component still in the tree
      with its own copy of the session logic is the thing that drifts. */

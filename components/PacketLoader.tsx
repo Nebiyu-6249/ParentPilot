@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import PacketScreen from "@/components/PacketScreen";
 import StatusLine from "@/components/StatusLine";
 import { Banner, Page } from "@/components/ui";
-import { copy } from "@/lib/copy";
+import { useMessages } from "@/components/LocaleProvider";
 import { requestPacket } from "@/lib/client/packet";
 import type { RegisterName } from "@/lib/ai/schemas";
 import type { PacketBundle } from "@/lib/types";
@@ -24,8 +24,9 @@ export default function PacketLoader({
   problemId: string;
   register: RegisterName;
 }) {
+  const t = useMessages();
   const [bundle, setBundle] = useState<PacketBundle | null>(null);
-  const [step, setStep] = useState<string>(copy.status.reading);
+  const [step, setStep] = useState<string>(t.status.reading);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -50,7 +51,7 @@ export default function PacketLoader({
 
   return (
     <Page>
-      {failed ? <Banner text={copy.errors.generic} /> : <StatusLine step={step} />}
+      {failed ? <Banner text={t.errors.generic} /> : <StatusLine step={step} />}
     </Page>
   );
 }

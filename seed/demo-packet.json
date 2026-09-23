@@ -23,7 +23,8 @@
       "Use a common denominator found from the two denominators",
       "Show both on the same number line before adding"
     ],
-    "parentMethod": "Find the lowest common denominator, convert both, then add the numerators."
+    "parentMethod": "Find the lowest common denominator, convert both, then add the numerators.",
+    "curriculum": "CCSS"
   },
   "misconception": {
     "id": "whole-number-bias-fraction-addition",

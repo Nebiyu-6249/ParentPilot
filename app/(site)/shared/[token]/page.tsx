@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { LogoMark } from "@/components/Logo";
 import { Label, Page, Section } from "@/components/ui";
-import { copy } from "@/lib/copy";
+import { copy, gradeLabel } from "@/lib/copy";
 import { readSharedSession } from "@/lib/share";
 import type { MoveLabelName } from "@/lib/ai/schemas";
 
@@ -67,7 +67,7 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
           })}
           {" · "}
           {s.minutes} minutes
-          {s.grade !== null ? ` · ${s.grade === 0 ? "Kindergarten" : `Grade ${s.grade}`}` : ""}
+          {s.grade !== null ? ` · ${gradeLabel(s.grade)}` : ""}
         </p>
         <p
           style={{

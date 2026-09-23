@@ -15,7 +15,8 @@
     "postinstall": "prisma generate",
     "check": "tsx scripts/check.ts",
     "check:db": "tsx scripts/check-db.ts",
-    "check:ui": "tsx scripts/check-ui.ts"
+    "check:ui": "tsx scripts/check-ui.ts",
+    "eval": "tsx scripts/eval.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",

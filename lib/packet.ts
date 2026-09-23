@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { prisma, hasDatabase } from "@/lib/db";
 import { demoBundle } from "@/lib/demo";
 import { copy, sanitizeDeep } from "@/lib/copy";
+import { messages } from "@/lib/i18n";
 import { generatePacket, isConfigured, ModelError } from "@/lib/ai/provider";
 import { matchMisconception, misconceptionById } from "@/lib/misconception";
 import { nearestStandards, standardByCode } from "@/lib/standards";
@@ -89,6 +90,11 @@ export interface BuildPacketArgs {
   register: RegisterName;
   language: string;
   grade: number | null;
+  /** The child's curriculum. Null searches the whole corpus, which is what an
+   *  anonymous parent gets. */
+  curriculum?: string | null;
+  /** The language the worksheet is written in. Null means it is the parent's. */
+  schoolLanguage?: string | null;
   onStep?: (step: PacketStep) => void;
 }
 
@@ -111,6 +117,8 @@ export interface BuildFromTextArgs {
   register: RegisterName;
   language: string;
   grade: number | null;
+  curriculum?: string | null;
+  schoolLanguage?: string | null;
   onStep?: (step: PacketStep) => void;
 }
 
@@ -141,6 +149,8 @@ export async function buildPacket(args: BuildPacketArgs): Promise<PacketBundle> 
     register,
     language,
     grade: args.grade,
+    curriculum: args.curriculum ?? null,
+    schoolLanguage: args.schoolLanguage ?? null,
     onStep,
   });
 }
@@ -176,9 +186,18 @@ export async function buildPacketFromText(args: BuildFromTextArgs): Promise<Pack
   // Step 2: find the standard the problem belongs to.
   onStep?.("matching");
   let standardCode = problem.standardCode;
+  /* Set when the match came from outside the child's curriculum, so the
+     assembled bundle can say so. A useful match from the wrong syllabus is
+     worth having; a useful match from the wrong syllabus that looks like the
+     right one is not. */
+  let curriculumFellBack = false;
+
   if (!standardCode) {
-    const matches = await nearestStandards(printedText, grade, 1).catch(() => []);
-    standardCode = matches[0]?.code ?? null;
+    const match = await nearestStandards(printedText, grade, 1, args.curriculum ?? null).catch(
+      () => null,
+    );
+    standardCode = match?.standards[0]?.code ?? null;
+    curriculumFellBack = match?.fellBack ?? false;
     if (standardCode && problemId) {
       await prisma.problem
         .update({ where: { id: problemId }, data: { standardCode } })
@@ -220,7 +239,16 @@ export async function buildPacketFromText(args: BuildFromTextArgs): Promise<Pack
       misconceptionNote: null,
     } as unknown as PacketPayload;
 
-    return assemble(problem, standard, misconception, payload, register, language, null, "cache");
+    return assemble(
+      problem,
+      standard,
+      misconception,
+      payload,
+      register,
+      language,
+      curriculumFellBack ? curriculumNotice(args.curriculum ?? null, standard, language) : null,
+      "cache",
+    );
   }
 
   if (!isConfigured()) {
@@ -243,7 +271,11 @@ export async function buildPacketFromText(args: BuildFromTextArgs): Promise<Pack
       misconception: misconception?.signature ?? misconception?.plainName ?? null,
       register,
       language,
-      grade: grade ?? standard?.grade ?? 4,
+      schoolLanguage: args.schoolLanguage ?? null,
+      /* The standard the problem just retrieved against is a better source
+         for the year group than any default, and when nothing matched, null
+         is the truth. Neither is 4. */
+      grade: grade ?? standard?.grade ?? null,
     });
   } catch (error) {
     const kind = error instanceof ModelError ? error.kind : "upstream";
@@ -306,7 +338,36 @@ export async function buildPacketFromText(args: BuildFromTextArgs): Promise<Pack
       .catch(() => undefined);
   }
 
-  return assemble(problem, standard, misconception, payload, register, language, null, "live", checked.status);
+  return assemble(
+    problem,
+    standard,
+    misconception,
+    payload,
+    register,
+    language,
+    curriculumFellBack ? curriculumNotice(args.curriculum ?? null, standard, language) : null,
+    "live",
+    checked.status,
+  );
+}
+
+/**
+ * Says which syllabus this match came from, when it was not the child's.
+ *
+ * The one sentence that turns a mismatch from misleading into useful. Written
+ * through the catalogue so a parent reading Arabic is told about it in Arabic,
+ * and it names both curricula rather than apologising: a parent who knows the
+ * match came from the Common Core can judge how much of it transfers.
+ */
+function curriculumNotice(
+  requested: string | null,
+  standard: PacketBundle["standard"],
+  language: string,
+): string {
+  const t = messages(language);
+  return t.limits.curriculumFallback
+    .replace("{theirs}", requested ?? "")
+    .replace("{ours}", standard?.curriculum ?? "");
 }
 
 function assemble(

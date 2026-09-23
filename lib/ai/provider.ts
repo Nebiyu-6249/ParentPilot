@@ -14,6 +14,7 @@ import {
   packetSchema,
   recapSchema,
   teacherNoteSchema,
+  voiceTurnSchema,
   type ChatTurn,
   type CheckResult,
   type Classification,
@@ -22,6 +23,7 @@ import {
   type PacketPayload,
   type Recap,
   type RegisterName,
+  type VoiceTurn,
 } from "@/lib/ai/schemas";
 
 /**
@@ -197,17 +199,37 @@ async function complete<T>({
   throw new ModelError("upstream", message);
 }
 
+/**
+ * Is the school's language the parent's language?
+ *
+ * Compared by base tag, so `es-MX` and `es` are the same language and a
+ * packet for that family carries no parenthesised glosses. A parent whose
+ * child is taught in their own language should not be shown every term
+ * twice.
+ */
+function sameLanguage(parent: string, school: string | null): boolean {
+  if (!school) return true;
+  const base = (code: string): string => code.split(/[-_]/)[0]?.toLowerCase() ?? code;
+  return base(parent) === base(school);
+}
+
 export interface ExtractArgs {
   imageDataUrl: string;
   register: RegisterName;
   language: string;
-  grade: number;
+  /** Null when nobody has said. The prompt is told so, rather than being
+   *  handed a year group the parent never gave. */
+  grade: number | null;
+  /** The language on the page. The prose around the transcription is written
+   *  in the parent's language; the transcription itself stays in this one. */
+  schoolLanguage: string | null;
 }
 
 export async function extractWorksheet(args: ExtractArgs): Promise<Extraction> {
   const system = await loadPrompt("extract-worksheet", {
     REGISTER: args.register,
     LANGUAGE: args.language,
+    SCHOOL_LANGUAGE: sameLanguage(args.language, args.schoolLanguage) ? null : args.schoolLanguage,
     GRADE: args.grade,
   });
 
@@ -242,14 +264,20 @@ export interface PacketArgs {
   computedAnswer: string | null;
   misconception: string | null;
   register: RegisterName;
+  /** The parent's language. Everything written to them is in this. */
   language: string;
-  grade: number;
+  /** The worksheet's language. Null means it is the same as the parent's,
+   *  which is the ordinary case and needs no disambiguation. */
+  schoolLanguage: string | null;
+  /** Null when nobody has said and no standard matched. */
+  grade: number | null;
 }
 
 export async function generatePacket(args: PacketArgs): Promise<PacketPayload> {
   const system = await loadPrompt("generate-packet", {
     REGISTER: args.register,
     LANGUAGE: args.language,
+    SCHOOL_LANGUAGE: sameLanguage(args.language, args.schoolLanguage) ? null : args.schoolLanguage,
     GRADE: args.grade,
     PRINTED_TEXT: args.printedText,
     CHILD_WORK: args.childWorkText,
@@ -378,6 +406,8 @@ export interface ChatTurnArgs {
   transcript: string;
   register: RegisterName;
   language: string;
+  /** The worksheet's language, when it differs from the parent's. */
+  schoolLanguage: string | null;
 }
 
 /**
@@ -420,6 +450,7 @@ async function chatTurnCall(
   const system = await loadPrompt("chat-turn", {
     REGISTER: args.register,
     LANGUAGE: args.language,
+    SCHOOL_LANGUAGE: sameLanguage(args.language, args.schoolLanguage) ? null : args.schoolLanguage,
     CHILD_NAME: args.childName,
     PRINTED_TEXT: args.printedText,
     CHILD_WORK: args.childWorkText,
@@ -560,6 +591,55 @@ export function partialReply(raw: string): string | null {
   return out;
 }
 
+export interface VoiceTurnArgs {
+  /** The reply that was already written into the thread. */
+  writtenReply: string;
+  printedText: string | null;
+  misconception: string | null;
+  childName: string | null;
+  /** The "she can hear this" toggle. True unless the parent said otherwise. */
+  childCanHear: boolean;
+  register: RegisterName;
+  language: string;
+  schoolLanguage: string | null;
+}
+
+/**
+ * The same turn, rendered for a room.
+ *
+ * A second call rather than a second field on `chatTurn`, for two reasons.
+ * The written reply streams and a parent should not wait for a spoken
+ * rendering they may never play; and the spoken half is only produced when
+ * Voice Mode is on, so folding it into every typed turn would pay for it on
+ * every turn.
+ *
+ * The output has one field and the caller checks it before synthesising. The
+ * prompt asks; `lib/voice.ts` decides.
+ */
+export async function voiceTurn(args: VoiceTurnArgs): Promise<VoiceTurn> {
+  const system = await loadPrompt("voice-turn", {
+    REGISTER: args.register,
+    LANGUAGE: args.language,
+    SCHOOL_LANGUAGE: sameLanguage(args.language, args.schoolLanguage) ? null : args.schoolLanguage,
+    CHILD_NAME: args.childName,
+    CHILD_CAN_HEAR: String(args.childCanHear),
+    WRITTEN_REPLY: args.writtenReply,
+    PRINTED_TEXT: args.printedText,
+    MISCONCEPTION: args.misconception,
+  });
+
+  return complete({
+    task: "classify",
+    schema: voiceTurnSchema,
+    temperature: 0.3,
+    maxTokens: 400,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: "Say that turn out loud." },
+    ],
+  });
+}
+
 export interface MisconceptionJudgeArgs {
   printedText: string;
   childWorkText: string;
@@ -618,7 +698,7 @@ export interface CheckArgs {
   imageDataUrl: string;
   register: RegisterName;
   language: string;
-  grade: number;
+  grade: number | null;
 }
 
 /**
@@ -638,7 +718,9 @@ export async function analyseFinishedWork(args: CheckArgs): Promise<CheckResult>
     `3. Register: ${args.register}. PLAIN is short everyday sentences, STANDARD is a school newsletter, TECHNICAL may use correct mathematical vocabulary.`,
     `4. Language: ${args.language}.`,
     "5. Never guess. An empty findings list is a valid and common answer.",
-    `Grade: ${args.grade}.`,
+    args.grade === null
+      ? "Grade: not known. Read what is on the page and do not assume a year group."
+      : `Grade: ${args.grade}.`,
     "",
     "**You must never state a correct answer, and never state what the child should have written as a final value.**",
     "Name the kind of mistake and give one question the parent can ask that would surface it.",
@@ -693,11 +775,35 @@ export async function embedBatch(texts: string[]): Promise<number[][]> {
     .map((d) => d.embedding);
 }
 
-/** The voice the primer is read in. */
+/** The voice the primer is read in when nothing more specific applies. */
 export const DEFAULT_TTS_VOICE = "nova";
 
-export function ttsVoice(): string {
-  return process.env.OPENAI_TTS_VOICE ?? DEFAULT_TTS_VOICE;
+/**
+ * One voice per launch language.
+ *
+ * The provider's voices are trained predominantly on English and all of them
+ * will read Arabic or Amharic after a fashion, so this is a choice between
+ * imperfect options rather than a lookup. They are picked for steadiness on
+ * non-Latin script rather than for character: a voice that sounds charming in
+ * English and mangles a word a parent needs to recognise is the wrong trade
+ * in a product whose spoken half exists for parents who read less comfortably
+ * than they listen.
+ *
+ * Overridable per deployment, and worth overriding once somebody has listened
+ * to all four. That listening has not happened yet; docs/i18n.md says so.
+ */
+const VOICES: Record<string, string> = {
+  en: "nova",
+  es: "nova",
+  ar: "shimmer",
+  am: "shimmer",
+};
+
+export function ttsVoice(language?: string | null): string {
+  const override = process.env.OPENAI_TTS_VOICE;
+  if (override) return override;
+  const base = (language ?? "").split(/[-_]/)[0]?.toLowerCase() ?? "";
+  return VOICES[base] ?? DEFAULT_TTS_VOICE;
 }
 
 export interface SpokenPrimer {
@@ -710,16 +816,20 @@ export interface SpokenPrimer {
 }
 
 /**
- * Reads a primer aloud.
+ * Reads text aloud.
  *
  * The highest-value thing in the product for a parent who cannot read English
  * comfortably: the same explanation, through their ears, while they cook.
  *
- * No prompt file, because this is not a prompt. The text spoken is the primer
- * the packet already generated, unchanged, so there is nothing for a model to
- * decide and nothing to instruct it with.
+ * No prompt file, because this is not a prompt. The text is already written,
+ * by `generatePacket` for a primer and by `voiceTurn` for a spoken reply, so
+ * there is nothing for a model to decide and nothing to instruct it with.
+ *
+ * **Nothing reaches here unchecked.** A spoken reply passes `safeSpoken` in
+ * lib/voice.ts first, and the route is the only caller. Synthesis is the last
+ * irreversible step: once it is audio, it is in the room.
  */
-export async function speakPrimer(text: string, voice: string): Promise<SpokenPrimer> {
+export async function speak(text: string, voice: string): Promise<SpokenPrimer> {
   const openai = getClient();
   const model = MODELS.speech;
 

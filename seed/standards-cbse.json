@@ -1,0 +1,26 @@
+{
+  "$note": [
+    "CBSE, grades 3 to 6.",
+    "",
+    "EMPTY ON PURPOSE. See seed/README.md for the field definitions and for why",
+    "nothing here is model written. Fill this in from the published programmes",
+    "of study and run: npm run seed -- --reembed",
+    "",
+    "The entry below is a shape, not content. Delete it when you add real ones;",
+    "the seeder skips any entry whose id starts with EXAMPLE."
+  ],
+  "standards": [
+    {
+      "id": "EXAMPLE-DELETE-ME",
+      "code": "CBSE.5.NUM.3",
+      "curriculum": "CBSE",
+      "grade": 4,
+      "plainLanguage": "One or two sentences in the words a parent would use, describing what the child is learning.",
+      "expectedMethods": [
+        "How the classroom teaches it",
+        "A second classroom method, if there is one"
+      ],
+      "parentMethod": "How an adult was most likely taught the same thing."
+    }
+  ]
+}

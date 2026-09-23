@@ -89,8 +89,20 @@ model Child {
   id         String   @id @default(cuid())
   parentId   String
   firstName  String? // optional, used only in scripts
-  grade      Int // 0 = K, 1..8
+  /// Null when nobody has said. The pipeline infers it from the standard
+  /// the problem retrieves against rather than assuming a year group, so a
+  /// parent who has not finished setup still gets their own worksheet read.
+  grade      Int? // 0 = K, 1..8, or null for unknown
   curriculum String   @default("CCSS")
+
+  /// The language the worksheet is written in, which is often not the
+  /// language the parent wants to be spoken to in. A mother who reads Arabic
+  /// comfortably and whose daughter is taught in English needs the coaching
+  /// in Arabic and the vocabulary in English, in the same sentence. Null
+  /// means it is the same as the parent's language, which is the ordinary
+  /// case and should not have to be stated.
+  schoolLanguage String?
+
   subjects   String[]
   parent     Parent   @relation(fields: [parentId], references: [id], onDelete: Cascade)
 
@@ -215,6 +227,13 @@ model Misconception {
 model Standard {
   id              String   @id
   code            String   @unique // e.g. CCSS.MATH.4.NF.B.3
+
+  /// Which curriculum this belongs to: CCSS, ENC (England National
+  /// Curriculum), CBSE. Retrieval is scoped to the child's, because a
+  /// parent in Delhi being told what the Common Core expects is worse than
+  /// being told nothing: it is confidently the wrong school.
+  curriculum      String   @default("CCSS")
+
   grade           Int
   plainLanguage   String
   expectedMethods String[]
@@ -228,6 +247,7 @@ model Standard {
   embedding Unsupported("vector(1536)")?
 
   @@index([grade])
+  @@index([curriculum, grade])
 }
 
 model RateBucket {
