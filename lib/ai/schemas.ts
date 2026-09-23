@@ -182,6 +182,22 @@ export type Strategy = z.infer<typeof strategySchema>;
 
 export type ChatTurn = z.infer<typeof chatTurnSchema>;
 
+/**
+ * A turn, rendered for the air rather than for a screen.
+ *
+ * One field, and deliberately only one. There is nowhere here to put an
+ * answer, a misconception label or a correction, for the same reason
+ * `checkResultSchema` has nowhere to put a correct answer: a shape that
+ * cannot carry a thing is a stronger guarantee than a prompt asking it not
+ * to. What the shape cannot enforce, `lib/voice.ts` checks before anything
+ * is synthesised.
+ */
+export const voiceTurnSchema = z.object({
+  spoken: z.string().min(1),
+});
+
+export type VoiceTurn = z.infer<typeof voiceTurnSchema>;
+
 export const misconceptionJudgeSchema = z.object({
   misconceptionId: z.string().nullable(),
   confidence: z.number().min(0).max(1),

@@ -207,6 +207,32 @@ export const es: LocaleOverlay = {
       "No he podido escribir un resumen nuevo para este, así que esta es la explicación general guardada para el tema. Es correcta, pero no está hecha a partir de lo que escribió tu hija.",
   },
 
+  voice: {
+    hold: "Mantén pulsado para hablar",
+    holding: "Te escucho, suelta para enviar",
+    thinking: "Pensando qué decirte",
+    speaking: "Hablando",
+    stop: "Parar",
+    activeVoice: "Modo voz. Te contesto en voz alta.",
+    activeLive: "Modo en directo. Escucho y te acompaño, no contesto.",
+    keepListening: "Dejar el micro abierto después de contestar",
+    keepListeningHelp:
+      "Lo deja abierto unos segundos para que puedas seguir sin volver a coger el móvil.",
+    childCanHear: "Ella puede oír esto",
+    childCanHearHelp:
+      "Activado, nunca digo el resultado en voz alta, nunca digo en qué se ha equivocado y nunca uso su nombre. La versión completa se queda en tu pantalla, donde solo la lees tú.",
+    childCanHearOffHelp:
+      "Desactivado, puedo ser más directa en voz alta. El resultado sigue saliendo solo de la pulsación larga.",
+    onScreen: "Está en tu pantalla, detrás de la pulsación.",
+    unconfigured: "Esta instalación todavía no puede hablar. Lo demás funciona.",
+    limit: "Hemos llegado al límite de voz de hoy. Escribir sigue funcionando.",
+    nothingHeard: "No te he pillado. Mantén el botón pulsado mientras hablas.",
+    tooLong: "Esa ha sido larga. Prueba otra vez en una o dos frases.",
+    failed: "Eso no ha llegado. Dímelo otra vez.",
+    micDenied: "Tu navegador no nos ha dado el micrófono. El modo voz lo necesita.",
+    unsupported: "Este navegador no puede grabar audio, así que el modo voz está apagado. Escribir sí funciona.",
+  },
+
   live: {
     heading: "Modo en directo",
     intro:

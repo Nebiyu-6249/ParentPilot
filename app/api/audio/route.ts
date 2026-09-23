@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { isConfigured, speakPrimer, ttsVoice } from "@/lib/ai/provider";
+import { isConfigured, speak, ttsVoice } from "@/lib/ai/provider";
 import { clientIp, consume, logFailure, spendCeilingReached } from "@/lib/limits";
 import { prisma, hasDatabase } from "@/lib/db";
 import { demoBundle } from "@/lib/demo";
@@ -56,7 +56,11 @@ export async function GET(request: Request): Promise<Response> {
     primer = packet.primer;
   }
 
-  const audioKey = `${cacheKey}:${ttsVoice()}`;
+  /* One voice per language, so the voice is part of the key. `cacheKey`
+     already carries the language; without the voice, changing the mapping
+     would serve a parent audio in the old one until the row expired. */
+  const voice = ttsVoice(language);
+  const audioKey = `${cacheKey}:${voice}`;
 
   if (hasDatabase()) {
     const cached = await prisma.audioPrimer.findUnique({ where: { cacheKey: audioKey } }).catch(() => null);
@@ -85,14 +89,14 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   try {
-    const spoken = await speakPrimer(primer, ttsVoice());
+    const spoken = await speak(primer, voice);
 
     if (hasDatabase()) {
       await prisma.audioPrimer
         .create({
           data: {
             cacheKey: audioKey,
-            voice: ttsVoice(),
+            voice,
             mimeType: spoken.mimeType,
             bytes: spoken.bytes,
             // A rough duration for the UI, at a typical reading pace.
