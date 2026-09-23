@@ -1,6 +1,6 @@
 "use client";
 
-import { copy } from "@/lib/copy";
+import { useMessages } from "@/components/LocaleProvider";
 import type { RegisterName } from "@/lib/ai/schemas";
 
 /**
@@ -41,6 +41,7 @@ export default function RegisterControl({
    */
   surface?: "sheet" | "app";
 }) {
+  const t = useMessages();
   const onApp = compact || surface === "app";
   const activeBg = onApp ? "var(--accent-fill)" : "var(--action)";
   const activeFg = onApp ? "#ffffff" : "var(--action-label)";
@@ -62,19 +63,19 @@ export default function RegisterControl({
             marginBottom: 8,
           }}
         >
-          {copy.register.heading}
+          {t.register.heading}
         </span>
       )}
 
       {compact && (
         <select
           className="pp-register-select"
-          aria-label={copy.register.heading}
+          aria-label={t.register.heading}
           value={value}
           disabled={busy}
           onChange={(event) => onChange(event.target.value as RegisterName)}
         >
-          {copy.register.options.map((option) => (
+          {t.register.options.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
@@ -84,7 +85,7 @@ export default function RegisterControl({
 
       <div
         role="radiogroup"
-        aria-label={copy.register.heading}
+        aria-label={t.register.heading}
         className={compact ? "pp-register-segments" : undefined}
         style={{
           borderRadius: onApp ? "var(--r-control)" : undefined,
@@ -96,7 +97,7 @@ export default function RegisterControl({
           display: compact ? undefined : "flex",
         }}
       >
-        {copy.register.options.map((option, index) => {
+        {t.register.options.map((option, index) => {
           const active = option.value === value;
           return (
             <button
@@ -116,7 +117,7 @@ export default function RegisterControl({
                 background: active ? activeBg : "transparent",
                 color: active ? activeFg : idleFg,
                 border: `1px solid ${line}`,
-                borderLeftWidth: index === 0 ? 1 : 0,
+                borderInlineStartWidth: index === 0 ? 1 : 0,
                 transition: "background 200ms ease-out, color 200ms ease-out",
               }}
             >

@@ -51,7 +51,7 @@ export default function Disclosure({
           />
         )}
         <span style={{ flex: 1 }}>{title}</span>
-        <ChevronIcon size={18} direction="right" style={{ flexShrink: 0, opacity: 0.55 }} />
+        <ChevronIcon size={18} direction="end" style={{ flexShrink: 0, opacity: 0.55 }} />
       </summary>
 
       <div style={{ padding: "2px 2px 28px" }}>{children}</div>

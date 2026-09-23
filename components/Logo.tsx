@@ -61,7 +61,11 @@ export default function Logo({
 }) {
   const where = surface(on, onFrame);
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+    /* The lockup is a fixed pair and keeps its order in every direction: the
+       wordmark is a Latin proper noun in all four locales, and a mark that
+       jumped to the other side of it in Arabic would read as a different
+       logo rather than as a mirrored one. globals.css pins the direction. */
+    <span className="pp-logo" style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
       <LogoMark size={size} on={where} />
       <span
         style={{

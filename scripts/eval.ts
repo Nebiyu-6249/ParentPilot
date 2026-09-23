@@ -17,6 +17,7 @@
  *   chat       four ways of asking for the answer, none of which get it
  *   live       one anxiety statement, correctly labelled
  *   note       a teacher note with no duration invents no duration
+ *   locales    retrieval and packet generation in each launch language
  *
  * Every item prints a verdict. Anything that fails prints why, with the text
  * that failed, because a failure you cannot read is a failure you will argue
@@ -39,6 +40,7 @@ import {
   isConfigured,
 } from "../lib/ai/provider";
 import { nearestStandards } from "../lib/standards";
+import { TRANSLATED_LOCALES, DEFAULT_LOCALE } from "../lib/i18n/locales";
 import { resolveIntent, revealsAnswer } from "../lib/thread";
 import { computeAnswer } from "../lib/verify";
 import { hasDatabase } from "../lib/db";
@@ -126,6 +128,10 @@ interface Probe {
 
 interface ProbeFile {
   topics: Record<string, Probe[]>;
+  /** Probes written the way a worksheet in that language writes them, keyed
+   *  by locale. The corpus stays English, so these test whether the embedding
+   *  model crosses languages. */
+  localised?: Record<string, Probe[]>;
 }
 
 interface ExpectedProblem {
@@ -268,6 +274,15 @@ function mentionsDuration(text: string): string | null {
  */
 const RETRIEVAL_FLOOR = 0.8;
 
+/**
+ * The curriculum the probes are written against.
+ *
+ * Common Core, because that is the only corpus seeded so far. When England
+ * and CBSE are loaded this becomes a loop over `eval/probes.json`'s own
+ * curricula, and the probe file gains a `curriculum` per topic.
+ */
+const CURRICULUM = "CCSS";
+
 interface Miss {
   topic: string;
   text: string;
@@ -302,7 +317,10 @@ async function runRetrieval(): Promise<void> {
          not told us a year group, and the filter in `nearestStandards` is
          skipped entirely in that case, which is the harder retrieval and the
          one the anonymous path now takes. */
-      const got = await counted("embedding", () => nearestStandards(probe.text, null, 3));
+      const match = await counted("embedding", () =>
+        nearestStandards(probe.text, null, 3, CURRICULUM),
+      );
+      const got = match.standards;
 
       const top = got[0];
       const hit = top !== undefined && probe.expect.includes(top.code);
@@ -402,6 +420,7 @@ async function runVision(): Promise<void> {
         imageDataUrl: dataUrl(file),
         register: REGISTER,
         language: LANGUAGE,
+        schoolLanguage: null,
         // Nobody has said, which is the state the anonymous path is in.
         grade: null,
       }),
@@ -574,6 +593,7 @@ async function runPacket(): Promise<void> {
         misconception: null,
         register: REGISTER,
         language: LANGUAGE,
+        schoolLanguage: null,
         grade: null,
       }),
     );
@@ -641,6 +661,7 @@ async function runChat(): Promise<void> {
         transcript: `Parent: ${said}`,
         register: REGISTER,
         language: LANGUAGE,
+        schoolLanguage: null,
       }),
     );
 
@@ -752,6 +773,148 @@ async function runNote(): Promise<void> {
   );
 }
 
+
+// ---------------------------------------------------------------------------
+// 7. The launch locales
+// ---------------------------------------------------------------------------
+
+/**
+ * Does this text actually use the script the locale is written in?
+ *
+ * The commonest multilingual failure is not a bad translation. It is a model
+ * that is asked for Arabic, agrees, and answers in English. That failure is
+ * invisible to every assertion about content and obvious to one about script,
+ * so this is the check that earns its place.
+ *
+ * A threshold rather than a presence test, because a legitimate Arabic packet
+ * contains Latin characters: the problem is `1/4 + 2/3` and a bilingual term
+ * carries an English word in parentheses on purpose. What it cannot be is
+ * mostly Latin.
+ *
+ * **This cannot detect the failure for Spanish**, which shares a script with
+ * English, so `es` passes this assertion on an English packet. That is a real
+ * hole and it is left open rather than papered over with a word list: the
+ * thing that closes it is a human reading one Spanish packet, which is the
+ * same person the copy is waiting on anyway. For Arabic and Amharic the check
+ * is exact.
+ */
+const SCRIPT_RANGES: Record<string, RegExp> = {
+  arabic: /[\u0600-\u06ff\u0750-\u077f]/g,
+  ethiopic: /[\u1200-\u137f]/g,
+  latin: /[a-z\u00c0-\u024f]/gi,
+};
+
+function scriptShare(text: string, script: string): number {
+  const pattern = SCRIPT_RANGES[script];
+  if (!pattern) return 1;
+  const letters = text.replace(/[^\p{L}]/gu, "");
+  if (letters.length === 0) return 0;
+  return (text.match(pattern)?.length ?? 0) / letters.length;
+}
+
+/** At least this much of a packet's prose must be in the locale's own script. */
+const SCRIPT_FLOOR = 0.6;
+
+/** The problem every locale is asked about, so the runs are comparable. */
+const LOCALE_PROBLEM = "1/4 + 2/3 =";
+
+async function runLocales(): Promise<void> {
+  section("Launch locales", "retrieval and packet generation in each");
+
+  const answer = computeAnswer(LOCALE_PROBLEM);
+  if (answer === null) {
+    skipSection("locales", `computeAnswer could not evaluate ${LOCALE_PROBLEM}.`);
+    return;
+  }
+
+  const probes = readJson<ProbeFile>("probes.json");
+
+  for (const locale of TRANSLATED_LOCALES) {
+    if (locale.code === DEFAULT_LOCALE) continue;
+    console.log(`\n  ${locale.code}  ${locale.english}  (${locale.script}, ${locale.dir})`);
+
+    /* Retrieval on a problem written the way it appears on that child's
+       worksheet. The corpus is English, so this is asking whether the
+       embedding model crosses languages, which is the question that decides
+       whether any of this works outside the United States. */
+    const localised = probes?.localised?.[locale.code] ?? [];
+    if (!hasDatabase()) {
+      verdict("skip", `${locale.code}: retrieval`, "DATABASE_URL is not set, so there is no corpus to search.");
+    } else if (localised.length === 0) {
+      verdict("skip", `${locale.code}: retrieval`, `eval/probes.json has no localised probes for ${locale.code}.`);
+    } else {
+      let hits = 0;
+      const misses: Miss[] = [];
+      for (const probe of localised) {
+        const match = await counted("embedding", () =>
+          nearestStandards(probe.text, null, 3, CURRICULUM),
+        );
+        const top = match.standards[0];
+        if (top && probe.expect.includes(top.code)) hits += 1;
+        else misses.push({ topic: locale.code, text: probe.text, expected: probe.expect, got: match.standards });
+      }
+      assert(
+        `${locale.code}: retrieval, ${hits}/${localised.length} probes land on the right standard`,
+        hits === localised.length,
+        misses
+          .map((m) => `${m.text}\n  wanted ${m.expected.join(" or ")}\n  got    ${m.got.map((g) => g.code).join(", ") || "nothing"}`)
+          .join("\n"),
+      );
+    }
+
+    /* Packet generation. The parent reads this locale; the worksheet is in
+       English, which is the case the bilingual rule in the prompt exists for. */
+    const packet = await counted("packet", () =>
+      generatePacket({
+        printedText: LOCALE_PROBLEM,
+        childWorkText: "1 + 2 = 3\n4 + 3 = 7\nso 3/7",
+        childAnswer: "3/7",
+        standardCode: "CCSS.MATH.5.NF.A.1",
+        standardPlain: "Adding and subtracting fractions with different denominators.",
+        expectedMethods: [],
+        parentMethod: null,
+        computedAnswer: answer,
+        // Canonical English, which the prompt is told to render in LANGUAGE.
+        misconception: "Numerators added together and denominators added together.",
+        register: REGISTER,
+        language: locale.code,
+        schoolLanguage: "en",
+        grade: 5,
+      }),
+    );
+
+    const prose = prosePieces(packet).map((p) => p.text).join(" ");
+    const share = scriptShare(prose, locale.script);
+    assert(
+      `${locale.code}: the packet is written in ${locale.script} (${(share * 100).toFixed(0)}%)`,
+      share >= SCRIPT_FLOOR,
+      [
+        `Less than ${(SCRIPT_FLOOR * 100).toFixed(0)}% of the letters are in this locale's script,`,
+        "which usually means the model agreed to the language and answered in English.",
+        `primer: ${truncate(packet.primer, 260)}`,
+      ].join("\n"),
+    );
+
+    /* The guarantee does not weaken in translation. This is the assertion
+       that would catch a locale where the prompt's constraints were lost. */
+    const leaked = prosePieces(packet).filter((piece) => revealsAnswer(piece.text, answer));
+    assert(
+      `${locale.code}: the answer ${answer} is still absent from the prose`,
+      leaked.length === 0,
+      leaked.map((piece) => `${piece.label}: ${truncate(piece.text)}`).join("\n"),
+    );
+
+    /* The misconception is held in English and must not reach the parent in
+       English. A packet that quotes the seed file back at an Arabic reader
+       has translated nothing. */
+    assert(
+      `${locale.code}: the misconception is not quoted in English`,
+      !prose.includes("Numerators added together"),
+      "The canonical English description appears verbatim in the packet.",
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 
 const SECTIONS: Record<string, () => Promise<void>> = {
@@ -761,6 +924,7 @@ const SECTIONS: Record<string, () => Promise<void>> = {
   chat: runChat,
   live: runLive,
   note: runNote,
+  locales: runLocales,
 };
 
 function parseOnly(argv: string[]): string[] {

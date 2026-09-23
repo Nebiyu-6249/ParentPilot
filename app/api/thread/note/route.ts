@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { clientIp, consume, logFailure } from "@/lib/limits";
-import { copy } from "@/lib/copy";
 import { currentParent } from "@/lib/session";
 import { demoBundle } from "@/lib/demo";
 import { generateTeacherNote, isConfigured } from "@/lib/ai/provider";
@@ -10,6 +9,7 @@ import { prisma, hasDatabase } from "@/lib/db";
 import { misconceptionById } from "@/lib/misconception";
 import { standardByCode } from "@/lib/standards";
 import { REGISTERS } from "@/lib/ai/schemas";
+import { messages } from "@/lib/i18n";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
@@ -34,12 +34,17 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request): Promise<Response> {
+  /* Every notice below is rendered in the parent's thread, so it is written in
+     the parent's language rather than in the server's. Read before the
+     validation branches, because those branches produce notices too. */
+  const parent = await currentParent();
+  const t = messages(parent.language);
+
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ ok: false, message: copy.chat.shareEmpty }, { status: 400 });
+    return NextResponse.json({ ok: false, message: t.chat.shareEmpty }, { status: 400 });
   }
 
-  const parent = await currentParent();
   const register = parsed.data.register ?? parent.register;
   const { problemId } = parsed.data;
 
@@ -49,18 +54,18 @@ export async function POST(request: Request): Promise<Response> {
   // deployment with no key and a deployment over its ceiling are different
   // situations and only one of them is worth retrying.
   if (!isConfigured()) {
-    return NextResponse.json({ ok: false, message: copy.chat.shareUnconfigured });
+    return NextResponse.json({ ok: false, message: t.chat.shareUnconfigured });
   }
 
   const verdict = await consume(clientIp(request.headers), "packet");
   if (!verdict.allowed) {
-    return NextResponse.json({ ok: false, message: copy.chat.shareLimit });
+    return NextResponse.json({ ok: false, message: t.chat.shareLimit });
   }
 
   try {
     const facts = await problemFacts(problemId, register);
     if (!facts) {
-      return NextResponse.json({ ok: false, message: copy.chat.shareEmpty }, { status: 404 });
+      return NextResponse.json({ ok: false, message: t.chat.shareEmpty }, { status: 404 });
     }
 
     const note = await generateTeacherNote({
@@ -80,7 +85,7 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json({ ok: true, note });
   } catch (error) {
     await logFailure("thread-note", error instanceof Error ? error.message : String(error));
-    return NextResponse.json({ ok: false, message: copy.chat.shareFailed });
+    return NextResponse.json({ ok: false, message: t.chat.shareFailed });
   }
 }
 

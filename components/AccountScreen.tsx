@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 
 import { AccountIcon, HistoryIcon, SettingsIcon } from "@/components/icons";
 import { appButton, AppLabel, AppPage, AppSection } from "@/components/app/AppPage";
-import { copy, gradeLabel } from "@/lib/copy";
+import {gradeLabel } from "@/lib/copy";
+import { useMessages } from "@/components/LocaleProvider";
 import type { RegisterName } from "@/lib/ai/schemas";
 
 interface ChildProfile {
@@ -35,6 +36,7 @@ export default function AccountScreen({
   anxietyBand: number;
   children: ChildProfile[];
 }) {
+  const t = useMessages();
   const router = useRouter();
 
   async function signOut(): Promise<void> {
@@ -44,9 +46,9 @@ export default function AccountScreen({
   }
 
   return (
-    <AppPage title={copy.account.heading}>
+    <AppPage title={t.account.heading}>
 
-      <AppSection title={email ? copy.account.signedInAs : copy.account.signIn}>
+      <AppSection title={email ? t.account.signedInAs : t.account.signIn}>
         {email ? (
           <>
             <p style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 17 }}>
@@ -54,22 +56,22 @@ export default function AccountScreen({
               {email}
             </p>
             <button type="button" onClick={signOut} style={{ ...appButton("quiet"), marginTop: 20 }}>
-              {copy.account.signOut}
+              {t.account.signOut}
             </button>
           </>
         ) : (
           <>
-            <p style={{ fontSize: 17, marginBottom: 18 }}>{copy.account.anonymous}</p>
+            <p style={{ fontSize: 17, marginBottom: 18 }}>{t.account.anonymous}</p>
             <Link href="/login" style={{ ...appButton("primary"), textDecoration: "none", display: "inline-block" }}>
-              {copy.account.signIn}
+              {t.account.signIn}
             </Link>
           </>
         )}
       </AppSection>
 
-      <AppSection title={copy.account.childrenHeading} note={copy.account.childNote}>
+      <AppSection title={t.account.childrenHeading} note={t.account.childNote}>
         {children.length === 0 ? (
-          <p style={{ color: "var(--app-text-dim)" }}>{copy.account.noChildren}</p>
+          <p style={{ color: "var(--app-text-dim)" }}>{t.account.noChildren}</p>
         ) : (
           <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
             {children.map((child) => (
@@ -94,13 +96,13 @@ export default function AccountScreen({
         )}
       </AppSection>
 
-      <AppSection title={copy.account.preferencesHeading}>
+      <AppSection title={t.account.preferencesHeading}>
         <p style={{ fontSize: 17, marginBottom: 6 }}>
-          {copy.register.options.find((o) => o.value === register)?.label ?? register}
+          {t.register.options.find((o) => o.value === register)?.label ?? register}
           {" · "}
           {language.toUpperCase()}
           {" · "}
-          {copy.setup.step2.options.find((o) => o.band === anxietyBand)?.label ?? ""}
+          {t.setup.step2.options.find((o) => o.band === anxietyBand)?.label ?? ""}
         </p>
         <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 18 }}>
           <Link href="/settings" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: "var(--type-small)" }}>

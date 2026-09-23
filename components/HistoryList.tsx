@@ -5,7 +5,8 @@ import { useState } from "react";
 
 import { CopyIcon, ShareIcon } from "@/components/icons";
 import { appButton, AppLabel } from "@/components/app/AppPage";
-import { copy, gradeLabel } from "@/lib/copy";
+import {gradeLabel } from "@/lib/copy";
+import { useMessages } from "@/components/LocaleProvider";
 
 export interface HistoryRow {
   id: string;
@@ -25,6 +26,7 @@ export interface HistoryRow {
  * cannot take back is not a link they will create.
  */
 export default function HistoryList({ sessions }: { sessions: HistoryRow[] }) {
+  const t = useMessages();
   const [rows, setRows] = useState(sessions);
   const [copied, setCopied] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -65,7 +67,7 @@ export default function HistoryList({ sessions }: { sessions: HistoryRow[] }) {
   }
 
   if (rows.length === 0) {
-    return <p style={{ color: "var(--app-text-dim)", fontSize: 17 }}>{copy.history.empty}</p>;
+    return <p style={{ color: "var(--app-text-dim)", fontSize: 17 }}>{t.history.empty}</p>;
   }
 
   return (
@@ -86,13 +88,13 @@ export default function HistoryList({ sessions }: { sessions: HistoryRow[] }) {
                 <p style={{ fontSize: "var(--type-small)", color: "var(--app-text-dim)", marginTop: 4 }}>
                   {gradeLabel(row.grade)}
                   {" · "}
-                  {copy.history.problemsLabel}: {row.moves}
+                  {t.history.problemsLabel}: {row.moves}
                   {row.parked ? " · stopped early" : ""}
                 </p>
               </div>
 
-              <div style={{ textAlign: "right" }}>
-                <AppLabel>{copy.history.ratioLabel}</AppLabel>
+              <div style={{ textAlign: "end" }}>
+                <AppLabel>{t.history.ratioLabel}</AppLabel>
                 <p
                   style={{
                     fontFamily: "var(--font-display)",
@@ -108,7 +110,7 @@ export default function HistoryList({ sessions }: { sessions: HistoryRow[] }) {
 
             <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 16, alignItems: "center" }}>
               <Link href={`/recap/${row.id}`} style={{ fontSize: "var(--type-small)" }}>
-                {copy.history.openRecap}
+                {t.history.openRecap}
               </Link>
 
               {shareUrl ? (
@@ -133,7 +135,7 @@ export default function HistoryList({ sessions }: { sessions: HistoryRow[] }) {
                     }}
                   >
                     <CopyIcon size={16} />
-                    {copied === row.id ? copy.history.shareCopied : copy.history.shareCopy}
+                    {copied === row.id ? t.history.shareCopied : t.history.shareCopy}
                   </button>
                   <button
                     type="button"
@@ -149,7 +151,7 @@ export default function HistoryList({ sessions }: { sessions: HistoryRow[] }) {
                       padding: 0,
                     }}
                   >
-                    {copy.history.shareRevoke}
+                    {t.history.shareRevoke}
                   </button>
                 </>
               ) : (
@@ -167,7 +169,7 @@ export default function HistoryList({ sessions }: { sessions: HistoryRow[] }) {
                   }}
                 >
                   <ShareIcon size={16} />
-                  {copy.history.shareCreate}
+                  {t.history.shareCreate}
                 </button>
               )}
             </div>

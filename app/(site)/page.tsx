@@ -188,7 +188,7 @@ export default async function LandingPage() {
                 color: "var(--text-on-sheet-muted)",
               }}
             >
-              <ChevronIcon size={16} direction="right" />
+              <ChevronIcon size={16} direction="end" />
               {copy.landing.researchMoreLabel}
             </summary>
 

@@ -32,6 +32,12 @@ import {
   threadTranscript,
 } from "../lib/thread";
 import { resolveAppUrl } from "../lib/app-url";
+import { coverage, type LocaleOverlay } from "../lib/i18n";
+import { LOCALES, localeFor } from "../lib/i18n/locales";
+import { formatNumber, formatPercent, localiseExpression } from "../lib/i18n/numbers";
+import { ar } from "../lib/i18n/messages/ar";
+import { am } from "../lib/i18n/messages/am";
+import { es } from "../lib/i18n/messages/es";
 import type { MoveLabelName } from "../lib/ai/schemas";
 
 let failures = 0;
@@ -72,6 +78,19 @@ function listFiles(dir: string, match: RegExp): string[] {
   };
   walk(root);
   return out;
+}
+
+/**
+ * Does this source read that catalogue key?
+ *
+ * Product components read `t.packet.stillStuck` through the locale hook and
+ * marketing components read `copy.packet.stillStuck` from the English
+ * catalogue directly. Both are correct and the assertion is about which
+ * string is rendered where, not about the name of the binding it came
+ * through, so it accepts either.
+ */
+function reads(source: string, key: string): boolean {
+  return source.includes(`copy.${key}`) || source.includes(`t.${key}`);
 }
 
 function readSeed<T>(name: string): T {
@@ -729,7 +748,7 @@ section("The problem screen is one question, not an essay");
 
   // Everything that used to open the screen is now behind a closed control.
   for (const key of ["discloseWhy", "discloseMethods", "discloseTeaching", "discloseScripts", "discloseAnswer"] as const) {
-    ok(`${key} is rendered as a disclosure`, screen.includes(`copy.packet.${key}`));
+    ok(`${key} is rendered as a disclosure`, reads(screen, `packet.${key}`));
   }
 
   // Closed by default, and never opened by an attribute.
@@ -738,23 +757,23 @@ section("The problem screen is one question, not an essay");
 
   // The answer is the escape hatch, so it is the last thing on the screen.
   const order = ["discloseWhy", "discloseMethods", "discloseTeaching", "discloseScripts", "discloseAnswer"]
-    .map((k) => screen.indexOf(`copy.packet.${k}`));
+    .map((k) => Math.max(screen.indexOf(`copy.packet.${k}`), screen.indexOf(`t.packet.${k}`)));
   ok("the answer disclosure is last, furthest from the thumb",
     order.every((pos, i) => i === 0 || pos > (order[i - 1] ?? -1)));
 
   // One primary action. "Still stuck" continues the flow and is filled;
   // "She answered it" is the quiet end of the task.
-  ok("Still stuck is the primary action", screen.includes("copy.packet.stillStuck"));
-  ok("She answered it is present but secondary", screen.includes("copy.packet.answeredIt"));
+  ok("Still stuck is the primary action", reads(screen, "packet.stillStuck"));
+  ok("She answered it is present but secondary", reads(screen, "packet.answeredIt"));
   ok("the ladder advances one rung at a time, never as a list",
     screen.includes("Math.min(n + 1, rungs.length - 1)"));
 
   // The primer no longer opens the screen, and is truncated by default.
   ok("the primer is cut to its opening sentences by default",
-    screen.includes("primerOpening") && screen.includes("copy.packet.primerMore"));
+    screen.includes("primerOpening") && reads(screen, "packet.primerMore"));
 
   // Isomorphs belong to the solved state, where their own copy says they do.
-  const solvedAt = screen.indexOf("copy.packet.solvedHeading");
+  const solvedAt = Math.max(screen.indexOf("copy.packet.solvedHeading"), screen.indexOf("t.packet.solvedHeading"));
   const isomorphAt = screen.indexOf("packet.isomorphs");
   ok("the isomorphs sit on the solved path, not the stuck path",
     solvedAt !== -1 && isomorphAt > solvedAt);
@@ -878,9 +897,9 @@ section("Audio primer, Studio panel and citations");
     ok(`the Studio panel does not offer ${refused}s`, !offered && pattern.test(studio) === pattern.test(studio));
   }
   ok("the Studio panel offers the teacher note, the share link and the audio primer",
-    studio.includes("copy.studio.teacherNote") &&
-      studio.includes("copy.studio.shareLink") &&
-      studio.includes("copy.studio.audioPrimer"));
+    reads(studio, "studio.teacherNote") &&
+      reads(studio, "studio.shareLink") &&
+      reads(studio, "studio.audioPrimer"));
 
   ok("citations expand in place rather than navigating away",
     citation.includes("useState") && !citation.includes("<a "));
@@ -1346,7 +1365,7 @@ section("Live Mode is part of the thread rather than a screen beside it");
 
   ok("the summary says what it was written from",
     /summaryProvenance/.test(cards) && /No recording was kept/.test(
-      readFileSync(path.join(process.cwd(), "lib", "copy.ts"), "utf8")));
+      readFileSync(path.join(process.cwd(), "lib", "i18n", "messages", "en.ts"), "utf8")));
 
   // The enum that persists a thread has to know about the new kind, or a
   // stored thread could not hold the one turn Live Mode produces.
@@ -1626,7 +1645,7 @@ section("Free text holds the thesis under conversational pressure");
         new RegExp(name).test(route));
   }
   ok("the old placeholder is gone",
-    !/not switched on yet/i.test(readFileSync(path.join(process.cwd(), "lib", "copy.ts"), "utf8")));
+    !/not switched on yet/i.test(readFileSync(path.join(process.cwd(), "lib", "i18n", "messages", "en.ts"), "utf8")));
 }
 
 // ---------------------------------------------------------------------------
@@ -1678,7 +1697,7 @@ section("The thread has a top bar, and it is a bar rather than a floating contro
   /* The visible label is display:none at phone width, which takes it out of
      the accessibility tree along with the pixels. */
   ok("the Share button is named on the button, not only by its visible label",
-    /aria-label=\{copy\.chat\.share\}/.test(bar));
+    /aria-label=\{(?:copy|t)\.chat\.share\}/.test(bar));
 
   // Three segments need about 240px and a 390px bar does not have them.
   ok("the register control renders a narrow variant as well",
@@ -1825,6 +1844,182 @@ for (const name of ["extract-worksheet", "generate-packet", "classify-move", "se
   ok(`${name}: carries the register instruction`, flat.includes("REGISTER:") || /\bRegister\b/.test(flat));
   ok(`${name}: carries the language instruction`, flat.includes("LANGUAGE:") || /\bLanguage\b/.test(flat));
   ok(`${name}: contains no em dash of its own`, !/—|―/.test(flat));
+}
+
+
+// ---------------------------------------------------------------------------
+
+section("Locales, and the parts of them that rot quietly");
+
+{
+  const overlays = { ar, am, es } as Record<string, LocaleOverlay>;
+
+  /* An overlay scheme fails by drifting back towards English one un-translated
+     string at a time, and nothing on screen says so. A number does. The floor
+     is the product surface, which is what the launch translates; the marketing
+     pages are English by decision and are the rest of the difference. */
+  const COVERAGE_FLOOR = 0.6;
+  for (const code of Object.keys(overlays)) {
+    const c = coverage(code);
+    const share = c.translated / c.total;
+    ok(
+      `${code} covers at least ${(COVERAGE_FLOOR * 100).toFixed(0)}% of the catalogue  (${c.translated}/${c.total}, ${(share * 100).toFixed(0)}%)`,
+      share >= COVERAGE_FLOOR,
+    );
+  }
+  ok("en is complete by definition", coverage("en").translated === coverage("en").total);
+
+  // The ban is on every string the product writes, not only the English ones.
+  for (const [code, overlay] of Object.entries(overlays)) {
+    const flat = JSON.stringify(overlay);
+    ok(`${code} contains no em dash`, !/—|―/.test(flat));
+  }
+
+  /* Two lists of right-to-left codes exist: the registry, and the inline
+     script in app/layout.tsx, which cannot import it because it is a string
+     that never gets bundled. They have to agree, and the only thing that can
+     make them agree is a check. */
+  const layout = readFileSync(path.join(process.cwd(), "app", "layout.tsx"), "utf8");
+  const inScript = layout.match(/\["([a-z",]+)"\]\.indexOf\(l\)/)?.[1]?.split('","') ?? [];
+  const inRegistry = LOCALES.filter((l) => l.dir === "rtl").map((l) => l.code);
+  ok(
+    `the layout's rtl list matches the registry  (${inScript.join(",")} vs ${inRegistry.join(",")})`,
+    inRegistry.every((c) => inScript.includes(c)) && inScript.length === inRegistry.length,
+  );
+
+  // Every locale a picker offers has to resolve, including the ones whose
+  // interface is English.
+  for (const locale of LOCALES) {
+    ok(`${locale.code} resolves to itself`, localeFor(locale.code).code === locale.code);
+    ok(`${locale.code} has a name in its own language`, locale.endonym.length > 0);
+  }
+  ok("a regional tag falls back to its base language", localeFor("es-MX").code === "es");
+  ok("an unknown tag falls back to English", localeFor("zz-ZZ").code === "en");
+
+  // Number notation, which is the half of a locale that a translator never
+  // sees and a parent notices immediately.
+  eq("en groups with commas and points the decimal", formatNumber(1234.5, "en"), "1,234.5");
+  eq("es groups with points and commas the decimal", formatNumber(1234.5, "es"), "1.234,5");
+  eq("ar uses Arabic-Indic digits and its own separators", formatNumber(1234.5, "ar"), "١٬٢٣٤٫٥");
+  eq("am uses Western digits, as Ethiopian textbooks do", formatNumber(1234.5, "am"), "1,234.5");
+  eq("ar percent uses U+066A", formatPercent(42, "ar"), "٤٢٪");
+  eq("grouping can be turned off for a step number", formatNumber(2024, "en", { grouped: false }), "2024");
+  eq("an operator in generated prose takes the locale's sign", localiseExpression("6 x 40", "en"), "6 × 40");
+  eq("and its digits", localiseExpression("6 x 40", "ar"), "٦ × ٤٠");
+  // The one thing notation must never touch.
+  ok(
+    "a transcription is never re-notated: printedText does not pass through localiseExpression",
+    !listFiles("lib", /\.ts$/)
+      .concat(listFiles("components", /\.tsx$/))
+      .some((f) => /localiseExpression\((?:[^)]*printedText|[^)]*childWorkText)/.test(readFileSync(f, "utf8"))),
+  );
+}
+
+section("Right to left");
+
+{
+  const css = readFileSync(path.join(process.cwd(), "app", "globals.css"), "utf8");
+
+  /* Physical properties are the whole of an RTL bug. `left: 50%` with a
+     centring translate is the documented exception and is allowed by name. */
+  /* A physical property is a bug except in two places: inside a rule already
+     scoped to an explicit direction, where a side is stated on purpose, and
+     `left: 50%` with a centring translate, which is correct either way. */
+  const lines = css.split("\n");
+  let inDirectionRule = false;
+  const physical: { line: string; n: number }[] = [];
+
+  for (const [i, raw] of lines.entries()) {
+    const line = raw.trim();
+    if (line.includes("{")) inDirectionRule = /\[dir=/.test(line) || (inDirectionRule && !line.includes("}"));
+    if (line === "}") inDirectionRule = false;
+    if (inDirectionRule) continue;
+    if (line === "left: 50%;") continue;
+    if (
+      /^(margin|padding|border)-(left|right)\s*:/.test(line) ||
+      /^(left|right)\s*:/.test(line) ||
+      /^text-align:\s*(left|right)/.test(line)
+    ) {
+      physical.push({ line, n: i + 1 });
+    }
+  }
+  ok(
+    `globals.css uses logical properties throughout${physical.length ? `  (${physical.map((p) => `${p.n}: ${p.line}`).join(", ")})` : ""}`,
+    physical.length === 0,
+  );
+
+  const inline = listFiles("components", /\.tsx$/)
+    .concat(listFiles("app", /\.tsx$/))
+    .filter((f) => !f.includes("(site)"))
+    .filter((f) =>
+      /\b(marginLeft|marginRight|paddingLeft|paddingRight|borderLeft|borderRight)\b/.test(readFileSync(f, "utf8")) ||
+      /textAlign:\s*"(left|right)"/.test(readFileSync(f, "utf8")));
+  ok(
+    `the product surface has no physical inline styles${inline.length ? `  (${inline.join(", ")})` : ""}`,
+    inline.length === 0,
+  );
+
+  ok("the document carries a direction", /dir=\{?["{]/.test(readFileSync(path.join(process.cwd(), "app", "layout.tsx"), "utf8")));
+  ok("a directional chevron is flipped for rtl", /\[dir="rtl"\] \.pp-chevron-start/.test(css));
+  ok("the logo lockup keeps its order", /\[dir="rtl"\] \.pp-logo/.test(css));
+  ok("handwriting is never mirrored", /\[dir="rtl"\] \.pp-handwriting/.test(css));
+  ok("a quoted expression is isolated from the bidi algorithm",
+    /\.pp-transcript[\s\S]{0,120}unicode-bidi: isolate/.test(css));
+
+  /* The bug this catches: `1/4 + 2/3 =` inside an Arabic card renders as
+     `= 2/3 + 1/4`, which is a different problem from the one on the page.
+     Every place that prints a transcription or a generated expression has to
+     carry the class, so the check is on the render sites rather than on the
+     stylesheet alone. */
+  for (const [file, needle] of [
+    ["components/app/Cards.tsx", "card.printedText"],
+    ["components/app/Cards.tsx", "card.childWorkText"],
+    ["components/PacketScreen.tsx", "problem.printedText"],
+    ["components/PacketScreen.tsx", "problem.childWorkText"],
+    ["components/LockedAnswer.tsx", "{answer}"],
+  ] as const) {
+    const src = readFileSync(path.join(process.cwd(), file), "utf8");
+    const at = src.indexOf(needle);
+    const window = at === -1 ? "" : src.slice(Math.max(0, at - 700), at + 40);
+    ok(`${file}: ${needle} is isolated`, /pp-(transcript|expression)/.test(window));
+  }
+
+  ok("the font stacks cover Arabic", /Noto Sans Arabic/.test(css));
+  ok("and Ethiopic", /Noto Sans Ethiopic/.test(css));
+  ok(
+    "and the document requests both",
+    /Noto\+Sans\+Arabic/.test(readFileSync(path.join(process.cwd(), "app", "layout.tsx"), "utf8")) &&
+      /Noto\+Sans\+Ethiopic/.test(readFileSync(path.join(process.cwd(), "app", "layout.tsx"), "utf8")),
+  );
+}
+
+section("Misconceptions stay canonical");
+
+{
+  const raw = readFileSync(path.join(process.cwd(), "seed", "misconceptions.json"), "utf8");
+
+  /* The seed file is English and is translated at generation time. A single
+     Arabic or Ethiopic character in here means somebody translated the data
+     rather than the prompt, which forks the description a match is judged
+     against. */
+  ok(
+    "the misconception seed carries no non-Latin script",
+    !/[؀-ۿሀ-፿Ѐ-ӿ一-鿿]/.test(raw),
+  );
+  ok(
+    "and the packet prompt is told to render it in the parent's language",
+    /SUSPECTED_MISCONCEPTION[\s\S]{0,400}?render it in\s+LANGUAGE/i.test(
+      readFileSync(path.join(process.cwd(), "prompts", "generate-packet.md"), "utf8").replace(/\s+/g, " "),
+    ) ||
+      /canonical data[\s\S]{0,300}?English/i.test(
+        readFileSync(path.join(process.cwd(), "prompts", "generate-packet.md"), "utf8"),
+      ),
+  );
+
+  for (const name of ["generate-packet", "chat-turn", "extract-worksheet"]) {
+    const text = readFileSync(path.join(process.cwd(), "prompts", `${name}.md`), "utf8");
+    ok(`${name}: carries the school language`, text.includes("SCHOOL_LANGUAGE"));
+  }
 }
 
 // ---------------------------------------------------------------------------

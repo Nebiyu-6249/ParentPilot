@@ -4,7 +4,7 @@ import Link from "next/link";
 import Logo from "@/components/Logo";
 import ThemeToggle from "@/components/ThemeToggle";
 import { ChevronIcon } from "@/components/icons";
-import { copy } from "@/lib/copy";
+import { messages } from "@/lib/i18n";
 
 /**
  * A settled page on the product surface.
@@ -24,24 +24,30 @@ export function AppPage({
   title,
   children,
   wide = false,
+  locale = null,
 }: {
   title: string;
   children: ReactNode;
   /** For screens whose content is a grid rather than a column. */
   wide?: boolean;
+  /* A server component, so it is handed the locale rather than reading one
+     from a hook. Null means the caller has no profile in hand, which is the
+     honest state on the anonymous screens. */
+  locale?: string | null;
 }) {
+  const t = messages(locale);
   return (
     <div className="pp-appview">
       <header className="pp-topbar">
-        <Link href="/app" className="pp-back" aria-label={copy.common.backToThread}>
-          <ChevronIcon direction="left" size={16} />
-          <span className="pp-back-label">{copy.common.backToThread}</span>
+        <Link href="/app" className="pp-back" aria-label={t.common.backToThread}>
+          <ChevronIcon direction="start" size={16} />
+          <span className="pp-back-label">{t.common.backToThread}</span>
         </Link>
 
         <span className="pp-topbar-title">{title}</span>
 
         <div className="pp-topbar-actions">
-          <Link href="/" aria-label={copy.brand.name} style={{ display: "flex", textDecoration: "none" }}>
+          <Link href="/" aria-label={t.brand.name} style={{ display: "flex", textDecoration: "none" }}>
             <Logo size={20} on="app" />
           </Link>
           <ThemeToggle />

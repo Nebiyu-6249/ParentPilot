@@ -35,6 +35,8 @@ const demoPacketSchema = z.object({
   }),
   standard: z.object({
     code: z.string(),
+    // Defaulted rather than required, so an older fixture still parses.
+    curriculum: z.string().default("CCSS"),
     grade: z.number(),
     plainLanguage: z.string(),
     expectedMethods: z.array(z.string()),

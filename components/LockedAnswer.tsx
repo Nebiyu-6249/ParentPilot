@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { copy } from "@/lib/copy";
+import { useMessages } from "@/components/LocaleProvider";
 
 const HOLD_MS = 1500;
 
@@ -25,6 +25,7 @@ export default function LockedAnswer({
   answer: string;
   verification: "checked" | "unverified" | "not-applicable";
 }) {
+  const t = useMessages();
   const [progress, setProgress] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const holdingRef = useRef(false);
@@ -67,8 +68,8 @@ export default function LockedAnswer({
   if (verification === "unverified") {
     return (
       <div style={{ border: "1px solid var(--alert)", padding: "18px 20px" }}>
-        <Badge tone="alert">{copy.packet.unverifiedBadge}</Badge>
-        <p style={{ marginTop: 12, fontSize: 17 }}>{copy.packet.unverifiedHelp}</p>
+        <Badge tone="alert">{t.packet.unverifiedBadge}</Badge>
+        <p style={{ marginTop: 12, fontSize: 17 }}>{t.packet.unverifiedHelp}</p>
       </div>
     );
   }
@@ -76,10 +77,15 @@ export default function LockedAnswer({
   if (revealed) {
     return (
       <div className="pp-settle" style={{ border: "1px solid var(--rule)", padding: "18px 20px" }}>
-        {verification === "checked" && <Badge tone="ok">{copy.packet.verifiedBadge}</Badge>}
-        <p style={{ marginTop: verification === "checked" ? 12 : 0, fontSize: 19 }}>{answer}</p>
+        {verification === "checked" && <Badge tone="ok">{t.packet.verifiedBadge}</Badge>}
+        {/* The computed answer is an expression. Reordering it is the same
+            class of bug as reordering the problem, and worse here, because
+            this is the number a parent stopped teaching to read. */}
+        <p className="pp-expression" style={{ marginTop: verification === "checked" ? 12 : 0, fontSize: 19 }}>
+          {answer}
+        </p>
         {verification === "checked" && (
-          <p style={{ marginTop: 10, fontSize: 14, color: "var(--muted)" }}>{copy.packet.verifiedHelp}</p>
+          <p style={{ marginTop: 10, fontSize: 14, color: "var(--muted)" }}>{t.packet.verifiedHelp}</p>
         )}
       </div>
     );
@@ -105,7 +111,7 @@ export default function LockedAnswer({
         onKeyUp={(event) => {
           if (event.key === "Enter" || event.key === " ") stop();
         }}
-        aria-label={copy.packet.answerHold}
+        aria-label={t.packet.answerHold}
         style={{
           position: "relative",
           width: "100%",
@@ -131,10 +137,10 @@ export default function LockedAnswer({
           }}
         />
         <span style={{ position: "relative" }}>
-          {progress > 0 ? copy.packet.answerHolding : copy.packet.answerHold}
+          {progress > 0 ? t.packet.answerHolding : t.packet.answerHold}
         </span>
       </button>
-      <p style={{ marginTop: 12, fontSize: 14, color: "var(--muted)" }}>{copy.packet.answerWhy}</p>
+      <p style={{ marginTop: 12, fontSize: 14, color: "var(--muted)" }}>{t.packet.answerWhy}</p>
     </div>
   );
 }

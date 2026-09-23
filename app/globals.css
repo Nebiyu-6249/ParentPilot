@@ -22,8 +22,18 @@
   --color-muted: #6e665a;
   --color-alert: #a8422f;
 
-  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
-  --font-sans: "Public Sans", system-ui, -apple-system, sans-serif;
+  /* Fraunces and Public Sans cover Latin and nothing else, so each stack
+     carries Noto for Arabic and Ethiopic behind them. The browser falls
+     through per character, which is what makes a bilingual key term work:
+     "denominador (denominator)" is one font, and the Arabic sentence around
+     an English term in parentheses is two, without markup. Noto Sans Arabic
+     stands in for Fraunces in the display stack because Fraunces has no
+     Arabic and a serif substitute chosen by the system is usually worse than
+     a matching sans. */
+  --font-display: "Fraunces", "Noto Sans Arabic", "Noto Sans Ethiopic", Georgia,
+    "Times New Roman", serif;
+  --font-sans: "Public Sans", "Noto Sans Arabic", "Noto Sans Ethiopic", system-ui,
+    -apple-system, sans-serif;
 
   /* A bounded radius scale. The cap is 4px, so nothing in the system can
      reach for a pill or a blob, and surfaces still default to square. */
@@ -187,7 +197,8 @@
   --shadow-card: 0 1px 2px rgb(20 20 18 / 0.05), 0 1px 3px rgb(20 20 18 / 0.06);
   --shadow-composer: 0 2px 10px rgb(20 20 18 / 0.08), 0 0 0 1px var(--app-border-interactive);
 
-  --font-ui: "Inter", system-ui, -apple-system, sans-serif;
+  --font-ui: "Inter", "Noto Sans Arabic", "Noto Sans Ethiopic", system-ui,
+    -apple-system, sans-serif;
 
   color-scheme: light;
 }
@@ -597,7 +608,7 @@ hr {
 
 .pp-method-steps {
   margin: 0;
-  padding-left: 20px;
+  padding-inline-start: 20px;
   font-size: 16px;
 }
 
@@ -611,7 +622,7 @@ hr {
   }
   .pp-method-steps {
     font-size: 15px;
-    padding-left: 17px;
+    padding-inline-start: 17px;
   }
 }
 
@@ -660,7 +671,7 @@ hr {
 .pp-worksheet::before {
   content: "";
   position: absolute;
-  left: 28px;
+  inset-inline-start: 28px;
   top: 0;
   bottom: 0;
   width: 1px;
@@ -675,19 +686,20 @@ hr {
   /* Overlaps the sheet enough to read as stacked paper, but never far enough
      to cover the pen ring and its caret, which are the point of the hero. */
   margin-top: 18px;
-  margin-left: 14%;
+  margin-inline-start: 14%;
 }
 
 @media (max-width: 900px) {
   .pp-coach-card {
     margin-top: 16px;
-    margin-left: 0;
+    margin-inline-start: 0;
   }
   .pp-worksheet {
-    padding: 22px 18px 26px 38px;
+    padding-block: 22px 26px;
+    padding-inline: 38px 18px;
   }
   .pp-worksheet::before {
-    left: 24px;
+    inset-inline-start: 24px;
   }
 }
 
@@ -852,8 +864,8 @@ hr {
 .pp-step-note {
   margin: 12px 0 0;
   max-width: 58ch;
-  padding-left: 14px;
-  border-left: 2px solid var(--annotation);
+  padding-inline-start: 14px;
+  border-inline-start: 2px solid var(--annotation);
   font-size: var(--type-small);
   color: var(--text-on-sheet-muted);
   line-height: 1.6;
@@ -1083,7 +1095,7 @@ hr {
 
 .pp-rail {
   background: var(--app-rail);
-  border-right: 1px solid var(--app-line);
+  border-inline-end: 1px solid var(--app-line);
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -1107,7 +1119,7 @@ hr {
 .pp-rail-item {
   display: block;
   width: 100%;
-  text-align: left;
+  text-align: start;
   padding: 9px 10px;
   border: 0;
   background: transparent;
@@ -1308,6 +1320,11 @@ hr {
 }
 
 /* A parent's own turn: right aligned, bubbled, like every chat they know. */
+/* The parent's own turn hugs the end of the line, which is the right edge in
+   English and the left edge in Arabic. flex-end already follows the flex
+   container's direction, so this is correct in both without a rule of its
+   own; it is spelled out here because it is the one piece of thread layout
+   somebody would otherwise "fix" to a physical side. */
 .pp-turn-parent {
   align-self: flex-end;
   max-width: 78%;
@@ -1345,7 +1362,7 @@ hr {
   font-size: 14px;
   font-weight: 500;
   color: var(--app-text);
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 
@@ -1464,7 +1481,7 @@ hr {
    because it arrives unasked for and a filled card mid-thread reads as an
    alarm. */
 .pp-card-coach {
-  border-left: 3px solid var(--accent);
+  border-inline-start: 3px solid var(--accent);
 }
 
 .pp-composer-note {
@@ -1526,7 +1543,7 @@ hr {
    is just short paragraphs. */
 .pp-md-list {
   margin: 0 0 12px;
-  padding-left: 22px;
+  padding-inline-start: 22px;
   list-style: revert;
 }
 
@@ -1559,7 +1576,7 @@ ul.pp-md-list {
   display: inline-block;
   width: 7px;
   height: 1.05em;
-  margin-left: 2px;
+  margin-inline-start: 2px;
   vertical-align: text-bottom;
   background: var(--accent);
   animation: pp-blink 1.1s steps(1) infinite;
@@ -1578,7 +1595,7 @@ ul.pp-md-list {
 
 /* A definition. */
 .pp-card-explainer {
-  border-left: 3px solid var(--accent);
+  border-inline-start: 3px solid var(--accent);
 }
 
 .pp-explainer-term {
@@ -1626,7 +1643,7 @@ ul.pp-md-list {
 
 .pp-example-steps {
   margin: 0;
-  padding-left: 22px;
+  padding-inline-start: 22px;
   list-style-type: decimal;
 }
 
@@ -1668,7 +1685,7 @@ ul.pp-md-list {
 /* Teaching moves, and the one thing not to say. */
 .pp-strategy {
   margin: 0;
-  padding-left: 22px;
+  padding-inline-start: 22px;
   list-style-type: decimal;
 }
 
@@ -1751,7 +1768,9 @@ ul.pp-md-list {
   color: var(--app-text);
 }
 
-/* Shown only once the parent has scrolled away from the bottom. */
+/* Shown only once the parent has scrolled away from the bottom.
+   `left: 50%` with a -50% translate is a centring trick rather than a reading
+   edge, so it is correct in both directions and stays physical. */
 .pp-jump {
   position: absolute;
   left: 50%;
@@ -1861,4 +1880,86 @@ ul.pp-md-list {
     background: rgb(0 0 0 / 0.38);
     cursor: pointer;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Right to left
+   --------------------------------------------------------------------------- */
+
+/* A chevron that means "back" or "onward" points at the start or the end of
+   the line, and which physical side that is depends on the document. The
+   component renders the left-to-right rotation and this flips it, so the icon
+   file stays a server component. The `!important` beats the inline transform
+   the component writes, which is the only way to override an inline style
+   without moving the rotation into JavaScript. */
+[dir="rtl"] .pp-chevron-start {
+  transform: rotate(270deg) !important;
+}
+
+[dir="rtl"] .pp-chevron-end {
+  transform: rotate(90deg) !important;
+}
+
+/* Handwriting is drawn left to right and stays that way: it is a picture of
+   what a child wrote, not a piece of the interface. Mirroring it would show a
+   parent a page their child did not write. */
+[dir="rtl"] .pp-handwriting,
+[dir="rtl"] .pp-worksheet-scan {
+  direction: ltr;
+}
+
+/* A transcription, an expression, or anything else quoted off the page.
+ *
+ * The bidi algorithm reorders a run of neutral characters by the direction of
+ * the paragraph around it, so `1/4 + 2/3 =` inside an Arabic card renders as
+ * `= 2/3 + 1/4`. That is not a cosmetic flaw. It is a different problem from
+ * the one the child is looking at, shown under a heading that says this is
+ * what we read off their page.
+ *
+ * `isolate` rather than `embed`, so the run cannot affect the direction of the
+ * text around it either. The alignment follows the card, not the run, because
+ * the card is the interface and the run is the quotation. */
+.pp-transcript,
+.pp-expression {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+[dir="rtl"] .pp-transcript,
+[dir="rtl"] .pp-expression {
+  text-align: right;
+}
+
+/* Prose the model wrote, which is usually in the parent's language and is
+   sometimes not.
+ *
+ * `plaintext` takes each paragraph's direction from its own first strong
+ * character rather than from the interface, which is the only rule that gets
+ * all three cases right: an Arabic reply reads right to left, an English one
+ * that slipped through reads left to right instead of with its punctuation
+ * thrown to the far end, and the bilingual key term the prompt asks for,
+ * Arabic with an English word in parentheses, keeps the parenthesis attached
+ * to the word it belongs to. */
+.pp-ask-question,
+.pp-md-p,
+.pp-md-list,
+.pp-turn-text {
+  unicode-bidi: plaintext;
+}
+
+/* Ethiopic and Arabic both carry more vertical detail than Latin at the same
+   size, so a line height tuned for Public Sans crowds them. A little more
+   leading, scoped to the documents that need it rather than paid for by
+   every page. */
+[lang="am"] body,
+[lang="ar"] body {
+  line-height: 1.75;
+}
+
+/* "ParentPilot" is a Latin proper noun in every locale, so the lockup keeps
+   its order and its direction even inside an Arabic document. Only the space
+   around it mirrors. Without this the mark hops to the right of the wordmark
+   and the pair reads as a different logo rather than a mirrored one. */
+[dir="rtl"] .pp-logo {
+  direction: ltr;
 }

@@ -190,10 +190,32 @@ export function PauseIcon(props: IconProps) {
   );
 }
 
-export function ChevronIcon({ direction = "down", ...props }: IconProps & { direction?: "up" | "down" | "left" | "right" }) {
-  const rotate = { down: 0, left: 90, up: 180, right: 270 }[direction];
+/**
+ * A chevron, pointing one of four ways.
+ *
+ * `start` and `end` are the two that matter in a bidirectional interface: a
+ * back control points at the beginning of the line, which is left in English
+ * and right in Arabic. Both are rendered pointing the left-to-right way and
+ * flipped by a rule in globals.css under `[dir="rtl"]`.
+ *
+ * Deliberately CSS rather than a hook. Reading the direction in JavaScript
+ * would make this a client component, and every icon in this file with it,
+ * which is a client boundary on every marketing page to rotate one arrow.
+ *
+ * `left` and `right` stay literal, for the places that mean a physical side.
+ */
+export function ChevronIcon({
+  direction = "down",
+  ...props
+}: IconProps & { direction?: "up" | "down" | "left" | "right" | "start" | "end" }) {
+  const logical = direction === "start" || direction === "end";
+  const rotate = { down: 0, left: 90, up: 180, right: 270, start: 90, end: 270 }[direction];
   return (
-    <Icon {...props} style={{ transform: `rotate(${rotate}deg)`, ...props.style }}>
+    <Icon
+      {...props}
+      className={logical ? `pp-chevron-${direction}` : undefined}
+      style={{ transform: `rotate(${rotate}deg)`, ...props.style }}
+    >
       <path d="M5 9l7 7 7-7" />
     </Icon>
   );

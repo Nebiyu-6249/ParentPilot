@@ -3,9 +3,12 @@
 import { useState } from "react";
 
 import { AppBanner, appButton, appInput, AppLabel, AppPage } from "@/components/app/AppPage";
-import { copy } from "@/lib/copy";
+import { useMessages } from "@/components/LocaleProvider";
+import type { Messages } from "@/lib/i18n";
 
-type LoginCopyKey = keyof typeof copy.login;
+/* A key into the catalogue rather than a string, so the page can name a
+   failure without choosing a language for it. */
+type LoginCopyKey = keyof Messages["login"];
 
 /**
  * Email, and a link. No password to forget and nothing to reset.
@@ -14,10 +17,11 @@ type LoginCopyKey = keyof typeof copy.login;
  * cannot be used to find out who has an account.
  */
 export default function LoginForm({ errorKey }: { errorKey: LoginCopyKey | null }) {
+  const t = useMessages();
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "done">("idle");
   const [message, setMessage] = useState<string | null>(
-    errorKey ? String(copy.login[errorKey]) : null,
+    errorKey ? String(t.login[errorKey]) : null,
   );
   const [failed, setFailed] = useState(Boolean(errorKey));
 
@@ -39,25 +43,25 @@ export default function LoginForm({ errorKey }: { errorKey: LoginCopyKey | null 
       setFailed(!data.ok);
       setState(data.ok ? "done" : "idle");
     } catch {
-      setMessage(copy.login.failed);
+      setMessage(t.login.failed);
       setFailed(true);
       setState("idle");
     }
   }
 
   return (
-    <AppPage title={copy.login.heading}>
-      <p className="pp-appview-note" style={{ marginBottom: 20 }}>{copy.login.help}</p>
+    <AppPage title={t.login.heading}>
+      <p className="pp-appview-note" style={{ marginBottom: 20 }}>{t.login.help}</p>
 
       {message && <AppBanner text={message} tone={failed ? "alert" : "quiet"} />}
 
       {state === "done" ? (
         <p style={{ marginTop: 20, color: "var(--app-text-dim)", fontSize: "var(--type-small)" }}>
-          {copy.login.sentQuiet}
+          {t.login.sentQuiet}
         </p>
       ) : (
         <form onSubmit={submit} style={{ marginTop: 22 }}>
-          <AppLabel>{copy.login.emailLabel}</AppLabel>
+          <AppLabel>{t.login.emailLabel}</AppLabel>
           <input
             type="email"
             required
@@ -68,7 +72,7 @@ export default function LoginForm({ errorKey }: { errorKey: LoginCopyKey | null 
             style={{ ...appInput, marginBottom: 16 }}
           />
           <button type="submit" disabled={state === "sending"} style={appButton("primary", true)}>
-            {state === "sending" ? copy.common.loading : copy.login.submit}
+            {state === "sending" ? t.common.loading : t.login.submit}
           </button>
         </form>
       )}
@@ -82,7 +86,7 @@ export default function LoginForm({ errorKey }: { errorKey: LoginCopyKey | null 
           color: "var(--app-text-dim)",
         }}
       >
-        {copy.login.anonymousNote}
+        {t.login.anonymousNote}
       </p>
     </AppPage>
   );

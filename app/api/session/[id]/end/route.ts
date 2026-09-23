@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 
 import { generateRecap, generateTeacherNote, isConfigured } from "@/lib/ai/provider";
 import { autonomyReading, autonomyScore, countMoves } from "@/lib/autonomy";
-import { copy } from "@/lib/copy";
 import { logFailure } from "@/lib/limits";
 import { prisma, hasDatabase } from "@/lib/db";
 import { currentParent } from "@/lib/session";
 import type { MoveLabelName } from "@/lib/ai/schemas";
+import { messages } from "@/lib/i18n";
 
 export const maxDuration = 45;
 export const runtime = "nodejs";
@@ -32,6 +32,12 @@ export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ): Promise<Response> {
+  /* Every notice below is rendered in the parent's thread, so it is written in
+     the parent's language rather than in the server's. Read before the
+     validation branches, because those branches produce notices too. */
+  const parent = await currentParent();
+  const t = messages(parent.language);
+
   const { id } = await context.params;
   const body = (await request.json().catch(() => null)) as { parked?: boolean } | null;
 
@@ -51,7 +57,7 @@ export async function POST(
     .findUnique({ where: { id }, include: { moves: true, child: true } })
     .catch(() => null);
 
-  if (!session) return NextResponse.json({ error: copy.errors.notFound }, { status: 404 });
+  if (!session) return NextResponse.json({ error: t.errors.notFound }, { status: 404 });
 
   const labels = session.moves.map((m) => m.label as MoveLabelName);
   const counts = countMoves(labels);
@@ -76,7 +82,6 @@ export async function POST(
     })
     .catch(() => undefined);
 
-  const parent = await currentParent();
 
   let recap: string | null = null;
   let oneThingToTry: string | null = null;
