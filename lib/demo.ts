@@ -27,6 +27,10 @@ const demoPacketSchema = z.object({
     childAnswer: z.string().nullable(),
     ocrConfidence: z.number().nullable(),
     standardCode: z.string().nullable(),
+    /* The saved example is hand matched, not searched, so it has no score.
+       Null reads as "not known", which keeps the chip plain rather than
+       hedging about a standard somebody chose deliberately. */
+    standardSimilarity: z.number().nullable().default(null),
     expectedMethod: z.string().nullable(),
     verified: z.boolean(),
     computedAnswer: z.string().nullable(),

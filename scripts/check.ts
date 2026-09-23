@@ -32,6 +32,7 @@ import {
   threadTranscript,
 } from "../lib/thread";
 import { resolveAppUrl } from "../lib/app-url";
+import { STANDARD_CERTAIN_AT, standardIsUncertain } from "../lib/types";
 import { overheardSafety, safeSpoken, soundsLikeAVerdict } from "../lib/voice";
 import { coverage, type LocaleOverlay } from "../lib/i18n";
 import { LOCALES, localeFor } from "../lib/i18n/locales";
@@ -2141,6 +2142,98 @@ section("Voice Mode, and what may be said in a room");
   ok("voice-turn: forbids naming the misconception", /never name what the child got wrong/i.test(prompt));
   ok("voice-turn: forbids the child's name", /never use the child's name/i.test(prompt));
   ok("voice-turn: contains no em dash of its own", !/—|―/.test(prompt));
+}
+
+
+// ---------------------------------------------------------------------------
+
+section("Standard selection, and saying so when it is a guess");
+
+{
+  eq("a strong match asserts the standard", standardIsUncertain(0.82), false);
+  eq("a weak one hedges", standardIsUncertain(0.41), true);
+  eq("the threshold itself is certain", standardIsUncertain(STANDARD_CERTAIN_AT), false);
+  eq("just below it is not", standardIsUncertain(STANDARD_CERTAIN_AT - 0.001), true);
+  /* Null is a problem matched before scores were recorded. Not known is not
+     the same as low, and a backfilled hedge would be a guess on screen. */
+  eq("an unscored match neither asserts nor hedges", standardIsUncertain(null), false);
+
+  const pkt = readFileSync(path.join(process.cwd(), "lib", "packet.ts"), "utf8");
+
+  ok("retrieval asks for three candidates",
+    /nearestStandards\(printedText, grade, 3,/.test(pkt));
+  ok("and hands all three to generation", /candidates,/.test(pkt));
+
+  /* The one that matters. A model that returns a code it was never offered
+     would otherwise put a citation on screen for a standard that does not
+     exist, which is worse than the nearest match rather than better. */
+  ok("the model's choice is checked against what it was offered",
+    /candidates\.find\(\(c\) => c\.code === payload\.standardCode\)/.test(pkt));
+  ok("and an unrecognised code falls back rather than being shown",
+    pkt.indexOf("if (chosen) {") > pkt.indexOf("payload.standardCode && !chosen"));
+  ok("an invented code is logged rather than swallowed", /logFailure\(\s*"packet-standard"/.test(pkt));
+
+  ok("the chosen standard is persisted after the choice, not before",
+    pkt.indexOf("const chosen = candidates.find") < pkt.indexOf('data: { standardCode, standardSimilarity'));
+
+  const schemas = readFileSync(path.join(process.cwd(), "lib", "ai", "schemas.ts"), "utf8");
+  ok("the packet schema carries the choice", /standardCode: z\.string\(\)\.nullable\(\)/.test(schemas));
+  /* Nullable with a default, so a payload cached before the model chose still
+     parses rather than failing validation on every old row. */
+  ok("and an older cached payload still parses", /standardCode: z\.string\(\)\.nullable\(\)\.default\(null\)/.test(schemas));
+
+  const prompt = readFileSync(path.join(process.cwd(), "prompts", "generate-packet.md"), "utf8");
+  ok("the prompt is given candidates rather than one standard",
+    prompt.includes("{{STANDARD_CANDIDATES}}") && !prompt.includes("{{STANDARD_CODE}}"));
+  ok("it is told similarity is a hint rather than an instruction",
+    /[Ss]imilarity is a hint, not an instruction/.test(prompt));
+  ok("and told never to invent a code", /[Nn]ever invent one/.test(prompt));
+  ok("it is told to use the chosen candidate's methods",
+    /chosen candidate's `expectedMethods`/.test(prompt));
+
+  const citation = readFileSync(path.join(process.cwd(), "components", "Citation.tsx"), "utf8");
+  ok("the chip hedges rather than asserting when the search was weak",
+    reads(citation, "packet.standardClosest"));
+  ok("and says why, once opened", reads(citation, "packet.standardUncertainHelp"));
+  /* Dashed as well as greyed, so the hedge survives greyscale and a reader
+     who does not distinguish the two greens. */
+  ok("the hedge is not carried by colour alone", /1px dashed/.test(citation));
+
+  const evalSrc = readFileSync(path.join(process.cwd(), "scripts", "eval.ts"), "utf8");
+  ok("the eval reports top-1 and top-3 separately",
+    /top-1 retrieved/.test(evalSrc) && /top-3 retrieved/.test(evalSrc));
+  ok("and asserts on the selected standard rather than the nearest",
+    /selected standard correct in at least/.test(evalSrc));
+  ok("it also checks that choosing did not lose ground the search had found",
+    /choosing does not lose ground/.test(evalSrc));
+}
+
+section("Language identification, where the script check cannot see");
+
+{
+  const evalSrc = readFileSync(path.join(process.cwd(), "scripts", "eval.ts"), "utf8");
+  ok("a model identifies the language of the generated prose",
+    /identifyLanguage\(prose\)/.test(evalSrc));
+  /* The script test is exact for Arabic and Amharic and blind for Spanish,
+     which shares an alphabet with English. It stays as a free fast fail for
+     the two it can judge. */
+  ok("the script test is kept as a pre-filter for non-Latin locales",
+    /const nonLatin = locale\.script !== "latin"/.test(evalSrc));
+  ok("and it is skipped for Latin ones rather than passing them vacuously",
+    /Spanish there is nothing to pre-filter/.test(evalSrc));
+  ok("a failed pre-filter does not then pay for the model call",
+    evalSrc.indexOf("Skipping the language check") < evalSrc.indexOf("identifyLanguage(prose)"));
+  ok("a half translated packet fails as its own thing", /as one language rather than two/.test(evalSrc));
+
+  const provider = readFileSync(path.join(process.cwd(), "lib", "ai", "provider.ts"), "utf8");
+  const fn = provider.slice(provider.indexOf("export async function identifyLanguage"));
+  ok("the classifier is told to judge prose, not notation",
+    /Mathematical notation, digits, operators/.test(fn.slice(0, 2000)));
+  /* The product deliberately writes a key term twice, parent's language with
+     the school's in brackets. A classifier that counted that as mixing would
+     fail every bilingual packet the prompt was asked to produce. */
+  ok("and told a bilingual key term is not a second language",
+    /not evidence/.test(fn.slice(0, 2500)) && /parentheses/.test(fn.slice(0, 2500)));
 }
 
 // ---------------------------------------------------------------------------

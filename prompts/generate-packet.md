@@ -68,12 +68,37 @@ class is there once, in parentheses, and never again in that paragraph.
 PROBLEM: {{PRINTED_TEXT}}
 CHILD_WORK: {{CHILD_WORK}}
 CHILD_ANSWER: {{CHILD_ANSWER}}
-STANDARD_CODE: {{STANDARD_CODE}}
-STANDARD_PLAIN_LANGUAGE: {{STANDARD_PLAIN}}
-EXPECTED_METHODS: {{EXPECTED_METHODS}}
-PARENT_METHOD: {{PARENT_METHOD}}
 VERIFIED_ANSWER: {{COMPUTED_ANSWER}}
 SUSPECTED_MISCONCEPTION: {{MISCONCEPTION}}
+
+STANDARD_CANDIDATES:
+{{STANDARD_CANDIDATES}}
+
+## Choosing the standard
+
+A vector search over the curriculum returned the three nearest standards,
+ordered by similarity to the problem text. **Pick the one this problem is
+actually about, and say which you picked in `standardCode`.**
+
+The search orders by how close the wording is, which is not the same question
+as which standard a teacher would file this under. The nearest by wording is
+usually right and is sometimes not: `6 x 40` is worded like a times table
+fact and is filed under multiplying by a multiple of ten, and a word problem
+about sharing sweets is worded like a story and is filed under division.
+
+- Read the plain language of all three before choosing. Do not stop at the
+  first.
+- Similarity is a hint, not an instruction. A candidate at 0.71 that is
+  plainly about this problem beats one at 0.78 that is about the wording.
+- **Use the chosen candidate's `expectedMethods` for the school column** of
+  the method comparison, and its `parentMethod` for the parent column. Not a
+  blend of the three.
+- If none of the three is really about this problem, pick the closest anyway
+  and say so in one plain line at the end of the primer. The software already
+  marks the match as uncertain when the search was weak; you do not need to
+  apologise for it or explain the mechanism.
+- `standardCode` must be one of the codes given. Never invent one, and never
+  return a code for a standard you were not offered.
 
 ## The parts
 
@@ -183,6 +208,7 @@ Return strict JSON only. No prose before or after, no code fence.
 
 ```json
 {
+  "standardCode": "one of the candidate codes",
   "primer": "string",
   "methodMatch": {
     "parentMethod": { "title": "string", "steps": ["string"] },

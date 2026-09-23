@@ -213,7 +213,13 @@ export default function ThreadCard({
                 {t.packet.verifiedBadge}
               </span>
             )}
-            {card.standardCode && <Citation code={card.standardCode} plainLanguage={card.standardPlain} />}
+            {card.standardCode && (
+              <Citation
+                code={card.standardCode}
+                plainLanguage={card.standardPlain}
+                uncertain={card.standardUncertain}
+              />
+            )}
           </div>
         </Shell>
       );

@@ -134,6 +134,13 @@ model Problem {
   childAnswer     String?
   ocrConfidence   Float?
   standardCode    String?
+
+  /// How close the retrieval that produced `standardCode` actually was, from
+  /// 0 to 1. Stored rather than recomputed because the threshold below which
+  /// the chip reads as uncertain is a product decision that will move, and a
+  /// stored score can be re-thresholded without re-embedding every problem.
+  standardSimilarity Float?
+
   expectedMethod  String?
   verified        Boolean    @default(false)
   computedAnswer  String?
