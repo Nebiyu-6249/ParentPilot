@@ -32,7 +32,7 @@ import {
   threadTranscript,
 } from "../lib/thread";
 import { resolveAppUrl } from "../lib/app-url";
-import { STANDARD_CERTAIN_AT, standardIsUncertain } from "../lib/types";
+import { STANDARD_CERTAIN_AT, STANDARD_UNSCOPED_CERTAIN_AT, standardIsUncertain } from "../lib/types";
 import { overheardSafety, safeSpoken, soundsLikeAVerdict } from "../lib/voice";
 import { coverage, type LocaleOverlay } from "../lib/i18n";
 import { LOCALES, localeFor } from "../lib/i18n/locales";
@@ -2150,13 +2150,63 @@ section("Voice Mode, and what may be said in a room");
 section("Standard selection, and saying so when it is a guess");
 
 {
-  eq("a strong match asserts the standard", standardIsUncertain(0.82), false);
-  eq("a weak one hedges", standardIsUncertain(0.41), true);
-  eq("the threshold itself is certain", standardIsUncertain(STANDARD_CERTAIN_AT), false);
-  eq("just below it is not", standardIsUncertain(STANDARD_CERTAIN_AT - 0.001), true);
+  /** A search that knew the child's curriculum and stayed inside it. */
+  const scoped = { requested: "CCSS", fellBack: false, mixed: false };
+  /** The anonymous path: no profile, so no curriculum to scope by. */
+  const unscoped = { requested: null, fellBack: false, mixed: false };
+
+  eq("a strong match asserts the standard", standardIsUncertain(0.82, scoped), false);
+  eq("a weak one hedges", standardIsUncertain(0.41, scoped), true);
+  eq("the threshold itself is certain", standardIsUncertain(STANDARD_CERTAIN_AT, scoped), false);
+  eq("just below it is not", standardIsUncertain(STANDARD_CERTAIN_AT - 0.001, scoped), true);
   /* Null is a problem matched before scores were recorded. Not known is not
      the same as low, and a backfilled hedge would be a guess on screen. */
-  eq("an unscored match neither asserts nor hedges", standardIsUncertain(null), false);
+  eq("an unscored match neither asserts nor hedges", standardIsUncertain(null, scoped), false);
+
+  /* The anonymous path searches the whole corpus, because there is no profile
+     to scope by. That is where cross-curriculum leakage actually happens: the
+     eval's unscoped control shows around half the Common Core probes and a
+     quarter of the England ones landing on the other country's standard. The
+     chip cannot prevent it, so it stops short of asserting instead. */
+  ok("the unscoped bar is higher than the scoped one",
+    STANDARD_UNSCOPED_CERTAIN_AT > STANDARD_CERTAIN_AT);
+  eq("a match that would assert when scoped hedges when nothing scoped it",
+    standardIsUncertain(0.68, unscoped), true);
+  eq("and the same match still asserts when it was scoped",
+    standardIsUncertain(0.68, scoped), false);
+  eq("a strong unscoped match still asserts",
+    standardIsUncertain(STANDARD_UNSCOPED_CERTAIN_AT, unscoped), false);
+  eq("just below the unscoped bar it does not",
+    standardIsUncertain(STANDARD_UNSCOPED_CERTAIN_AT - 0.001, unscoped), true);
+  /* Evidence beats the threshold. A shortlist holding two curricula says the
+     syllabus was close to a tie however high the score, and there is no honest
+     way to name one of them on a chip. */
+  eq("a shortlist spanning curricula hedges however strong the match",
+    standardIsUncertain(0.97, { requested: null, fellBack: false, mixed: true }), true);
+  /* A fallback is the same situation as no scope at all: the search left the
+     child's curriculum, so the citation may be from another country's. */
+  eq("a fallback out of the child's curriculum is held to the unscoped bar",
+    standardIsUncertain(0.68, { requested: "ENC", fellBack: true, mixed: false }), true);
+  eq("an unscored unscoped match still neither asserts nor hedges",
+    standardIsUncertain(null, unscoped), false);
+
+  const types = readFileSync(path.join(process.cwd(), "lib", "types.ts"), "utf8");
+  /* Required rather than optional on purpose. A caller that has not thought
+     about where its answer came from is the caller that should not be
+     asserting a child's curriculum on screen, and an optional argument lets it
+     skip the question silently. */
+  ok("the scope is a required argument rather than an optional one",
+    /standardIsUncertain\(similarity: number \| null, scope: StandardScope\)/.test(types));
+
+  const thread = readFileSync(path.join(process.cwd(), "lib", "thread.ts"), "utf8");
+  ok("the worksheet card passes the bundle's scope rather than similarity alone",
+    /standardIsUncertain\(problem\.standardSimilarity, bundle\.standardScope\)/.test(thread));
+
+  const pktScope = readFileSync(path.join(process.cwd(), "lib", "packet.ts"), "utf8");
+  ok("the scope is built beside the search that produced it",
+    /mixed: new Set\(candidates\.map\(\(c\) => c\.curriculum\)\)\.size > 1/.test(pktScope));
+  ok("and a problem that needed no search still reports the curriculum it would have used",
+    pktScope.indexOf("let scope: StandardScope") < pktScope.indexOf("if (!standardCode) {"));
 
   const pkt = readFileSync(path.join(process.cwd(), "lib", "packet.ts"), "utf8");
 

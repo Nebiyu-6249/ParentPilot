@@ -98,6 +98,15 @@ export async function demoBundle(register: RegisterName, notice: string | null =
     standard: fixture.standard,
     misconception: fixture.misconception,
     packet: { register, language: fixture.language, ...packet },
+    /* A fixture is not a search. It asserts one standard by construction, so
+       the honest scope is that standard's own curriculum: nothing was chosen
+       between and nothing fell back. The fixture carries no similarity either,
+       so the chip neither asserts nor hedges on a score it does not have. */
+    standardScope: {
+      requested: fixture.standard?.curriculum ?? null,
+      fellBack: false,
+      mixed: false,
+    },
     notice,
     source: "fixture",
     verification: "checked",

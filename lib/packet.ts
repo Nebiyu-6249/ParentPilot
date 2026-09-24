@@ -10,7 +10,7 @@ import { nearestStandards, standardByCode } from "@/lib/standards";
 import { verifyAnswer } from "@/lib/verify";
 import { logFailure } from "@/lib/limits";
 import type { PacketPayload, RegisterName } from "@/lib/ai/schemas";
-import type { PacketBundle, PacketSource, ProblemView, StandardCandidate } from "@/lib/types";
+import type { PacketBundle, PacketSource, ProblemView, StandardCandidate, StandardScope } from "@/lib/types";
 
 /**
  * Capture to packet, orchestrated.
@@ -204,12 +204,27 @@ export async function buildPacketFromText(args: BuildFromTextArgs): Promise<Pack
   let candidates: StandardCandidate[] = [];
   let similarity = problem.standardSimilarity;
 
+  /* What the search was allowed to look at, which is what decides whether the
+     chip asserts a standard or hedges it. On the anonymous path there is no
+     profile and therefore no curriculum, so the search picked a syllabus as
+     well as a standard and the screen has to stop short of claiming one. */
+  let scope: StandardScope = {
+    requested: args.curriculum ?? null,
+    fellBack: false,
+    mixed: false,
+  };
+
   if (!standardCode) {
     const match = await nearestStandards(printedText, grade, 3, args.curriculum ?? null).catch(
       () => null,
     );
     candidates = match?.standards ?? [];
     curriculumFellBack = match?.fellBack ?? false;
+    scope = {
+      requested: args.curriculum ?? null,
+      fellBack: curriculumFellBack,
+      mixed: new Set(candidates.map((c) => c.curriculum)).size > 1,
+    };
     // The nearest, as a provisional answer. Generation may pick another.
     standardCode = candidates[0]?.code ?? null;
     similarity = candidates[0]?.similarity ?? null;
@@ -268,6 +283,7 @@ export async function buildPacketFromText(args: BuildFromTextArgs): Promise<Pack
       payload,
       register,
       language,
+      scope,
       curriculumFellBack ? curriculumNotice(args.curriculum ?? null, standard, language) : null,
       "cache",
     );
@@ -322,7 +338,9 @@ export async function buildPacketFromText(args: BuildFromTextArgs): Promise<Pack
       misconceptionNote: null,
     } as unknown as PacketPayload;
 
-    return assemble(problem, standard, misconception, genericPayload, register, language, notice, "generic");
+    return assemble(
+      problem, standard, misconception, genericPayload, register, language, scope, notice, "generic",
+    );
   }
 
   /* The model's choice, checked against what it was actually offered.
@@ -392,6 +410,7 @@ export async function buildPacketFromText(args: BuildFromTextArgs): Promise<Pack
     payload,
     register,
     language,
+    scope,
     curriculumFellBack ? curriculumNotice(args.curriculum ?? null, standard, language) : null,
     "live",
     checked.status,
@@ -424,6 +443,7 @@ function assemble(
   payload: PacketPayload,
   register: RegisterName,
   language: string,
+  scope: StandardScope,
   notice: string | null,
   source: PacketSource,
   verification?: PacketBundle["verification"],
@@ -447,6 +467,7 @@ function assemble(
       isomorphs: payload.isomorphs,
       misconceptionNote: payload.misconceptionNote,
     }),
+    standardScope: scope,
     notice,
     source,
     verification: status,
