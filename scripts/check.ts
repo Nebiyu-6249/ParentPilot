@@ -2238,6 +2238,146 @@ section("Language identification, where the script check cannot see");
 
 // ---------------------------------------------------------------------------
 
+section("A second curriculum, on one age normalised scale");
+
+{
+  interface SeedStandard {
+    id: string;
+    code: string;
+    curriculum?: string;
+    grade: number;
+    plainLanguage: string;
+  }
+
+  const england = readSeed<SeedStandard[]>("standards-england.json");
+  const ccss = readSeed<SeedStandard[] | { standards: SeedStandard[] }>("standards.json");
+  const ccssRows = Array.isArray(ccss) ? ccss : ccss.standards;
+
+  ok(`the England corpus is filled in (${england.length} standards)`, england.length >= 50);
+
+  /* One file per curriculum, and the seeder throws if a row disagrees with the
+     file it is in. The value has to be the one the seeder maps that file to,
+     not a longer name that reads better: `lib/standards.ts` scopes by exact
+     string, so ENC and NC_ENGLAND are two different curricula as far as
+     retrieval is concerned and one of them holds nothing. */
+  const seedSrc = readFileSync(path.join(process.cwd(), "scripts", "seed.ts"), "utf8");
+  const mapped = /\{ file: "standards-england\.json", curriculum: "([A-Z_]+)" \}/.exec(seedSrc)?.[1];
+  ok(`the seeder maps standards-england.json to one curriculum (${mapped ?? "none"})`, mapped !== undefined);
+
+  const labels = [...new Set(england.map((s) => s.curriculum ?? "(absent)"))];
+  ok(
+    `every England row is labelled with that curriculum (${labels.join(", ")})`,
+    mapped !== undefined && labels.length === 1 && labels[0] === mapped,
+  );
+
+  /* The whole point of converting year groups on the way in. A Year 4 child in
+     England is the age of a US grade 3 child, and `nearestStandards` filters
+     one year either side of whatever number is stored, so two corpora on two
+     scales would silently search the wrong age band whenever the curriculum
+     scope falls back to the whole corpus. seed/README.md is where this is
+     written down. */
+  const readme = readFileSync(path.join(process.cwd(), "seed", "README.md"), "utf8");
+  ok("seed/README.md states the year group conversion",
+    /England Year 4 is `grade: 3`/.test(readme));
+
+  const misfiled = england.filter((s) => {
+    const year = /\.Y(\d)\./.exec(s.code)?.[1];
+    return year === undefined || s.grade !== Number(year) - 1;
+  });
+  ok(
+    `every England code's year group matches its stored grade, Year N as grade N-1` +
+      `${misfiled.length > 0 ? ` (${misfiled.slice(0, 3).map((s) => `${s.code} at ${s.grade}`).join(", ")})` : ""}`,
+    misfiled.length === 0,
+  );
+
+  /* Both corpora are upserted by id into one table, so a shared id is not a
+     duplicate row, it is one curriculum's standard overwritten by the other's. */
+  const ccssIds = new Set(ccssRows.map((s) => s.id));
+  const clashes = england.filter((s) => ccssIds.has(s.id));
+  ok(`no England id collides with a Common Core one${clashes.length > 0 ? ` (${clashes[0]?.id})` : ""}`,
+    clashes.length === 0);
+
+  ok("every England row carries the fields the seeder reads",
+    england.every((s) => s.id === s.code && s.plainLanguage.trim().length > 0 && Number.isInteger(s.grade)));
+}
+
+section("Retrieval probes, one set per curriculum");
+
+{
+  interface Probe { text: string; expect: string[] }
+  interface ProbeFileShape {
+    curricula: Record<string, { topics: Record<string, Probe[]> }>;
+    localised?: Record<string, Probe[]>;
+  }
+
+  const probes = JSON.parse(
+    readFileSync(path.join(process.cwd(), "eval", "probes.json"), "utf8"),
+  ) as ProbeFileShape;
+
+  const names = Object.keys(probes.curricula ?? {});
+  ok(`probes are grouped by curriculum (${names.join(", ")})`, names.length >= 2);
+  ok("Common Core and England are both probed",
+    names.includes("CCSS") && names.includes("ENC"));
+
+  /* A probe whose expected code is not in the corpus can never pass, and it
+     fails as a retrieval miss rather than as the typo it is. */
+  const corpus = new Map<string, Set<string>>([
+    ["CCSS", new Set(
+      (() => {
+        const raw = readSeed<{ code: string }[] | { standards: { code: string }[] }>("standards.json");
+        return (Array.isArray(raw) ? raw : raw.standards).map((s) => s.code);
+      })(),
+    )],
+    ["ENC", new Set(readSeed<{ code: string }[]>("standards-england.json").map((s) => s.code))],
+  ]);
+
+  for (const [name, set] of Object.entries(probes.curricula ?? {})) {
+    const all = Object.values(set.topics ?? {}).flat();
+    const codes = corpus.get(name);
+    if (!codes) continue;
+    const unknown = all.flatMap((p) => p.expect).filter((c) => !codes.has(c));
+    ok(
+      `${name}: ${all.length} probes, every expected code exists in that corpus` +
+        `${unknown.length > 0 ? ` (${[...new Set(unknown)].slice(0, 3).join(", ")})` : ""}`,
+      all.length > 0 && unknown.length === 0,
+    );
+    /* Cross-curriculum expectations would make the scoped search unpassable,
+       since it can only ever return codes from inside the scope. */
+    const other = [...corpus.entries()].filter(([n]) => n !== name);
+    const leaked = all.flatMap((p) => p.expect).filter((c) => other.some(([, s]) => s.has(c)));
+    ok(`${name}: no probe expects another curriculum's code`, leaked.length === 0);
+  }
+
+  const evalSrc = readFileSync(path.join(process.cwd(), "scripts", "eval.ts"), "utf8");
+  ok("the eval runs retrieval per curriculum rather than against one constant",
+    /Object\.entries\(probes\.curricula/.test(evalSrc) && !/const CURRICULUM = /.test(evalSrc));
+  ok("and reports each curriculum's numbers separately",
+    /selected standard correct in at least/.test(evalSrc) && /\$\{r\.curriculum\}: selected/.test(evalSrc));
+  /* The silent failure the second corpus introduces: a scoped search that
+     answers from the other syllabus, which every accuracy number above would
+     score as an ordinary miss. */
+  ok("it asserts the scope held rather than only measuring accuracy",
+    /no candidate came from another curriculum while scoped/.test(evalSrc));
+  ok("and that no probe had to fall back to the whole corpus",
+    /every probe was answered from inside its own curriculum/.test(evalSrc));
+  /* Scoping that is never tested against an unscoped search is unfalsifiable:
+     zero leaks is what the query shape guarantees, not what it earns. */
+  ok("the unscoped search is run as the control",
+    /nearestStandards\(probe\.text, null, 1, null\)/.test(evalSrc));
+
+  const dbSrc = readFileSync(path.join(process.cwd(), "scripts", "check-db.ts"), "utf8");
+  ok("check:db asserts every standard in the database carries a curriculum",
+    /every standard carries a curriculum/.test(dbSrc));
+  ok("and that both corpora are actually loaded",
+    /corpus is loaded/.test(dbSrc) && /for \(const wanted of \["CCSS", "ENC"\]\)/.test(dbSrc));
+  /* A corpus that is present but unembedded is worse than one that is absent:
+     the scope finds nothing, the search falls back, and the count looks fine. */
+  ok("and that each corpus is embedded rather than just present",
+    /standards are embedded/.test(dbSrc));
+}
+
+// ---------------------------------------------------------------------------
+
 console.log(
   failures === 0
     ? `\n${checks} checks, all passing.`

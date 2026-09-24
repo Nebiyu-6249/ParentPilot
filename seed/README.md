@@ -62,9 +62,14 @@ documents and not a child's homework.
 
 ### Scope
 
-Grades 3 to 6 for England and CBSE, matching the existing Common Core corpus.
-Roughly 60 to 70 entries each, weighted the way the Common Core file is:
-number and fractions heaviest, geometry lightest.
+Year 3 to Year 6 for England, which is `grade: 2` to `grade: 5` once
+converted, and grades 3 to 6 for CBSE. Roughly 60 to 100 entries each,
+weighted the way the Common Core file is: number and fractions heaviest,
+geometry lightest.
+
+England is filled in: 95 standards, heaviest on fractions (22) and on
+multiplication and division (13), lightest on algebra and on position and
+direction (3 each). CBSE is still a template.
 
 ## `misconceptions.json`
 

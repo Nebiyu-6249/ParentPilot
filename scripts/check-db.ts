@@ -157,6 +157,84 @@ async function main(): Promise<void> {
     );
   }
 
+  section("Curricula, one scale and no unlabelled rows");
+  {
+    /* Retrieval scopes by curriculum and falls back to the whole corpus when
+       the scope is empty. A row with no curriculum, or with a curriculum
+       spelled some other way, can therefore never be scoped to and can only
+       ever be reached by that fallback: it is a standard from one country
+       being shown to a parent in another, and nothing on the screen says so.
+       The seeder throws on a mismatch, but a hand-edited row or a restored
+       dump has not been through the seeder. */
+    const byCurriculum = await prisma.$queryRaw<{ curriculum: string | null; n: bigint; embedded: bigint }[]>`
+      SELECT curriculum,
+             COUNT(*)::bigint AS n,
+             COUNT(embedding)::bigint AS embedded
+      FROM "Standard"
+      GROUP BY curriculum
+      ORDER BY curriculum
+    `;
+
+    const unlabelled = byCurriculum.find((r) => r.curriculum === null || r.curriculum.trim() === "");
+    ok(
+      `every standard carries a curriculum${unlabelled ? ` (${Number(unlabelled.n)} do not)` : ""}`,
+      unlabelled === undefined,
+    );
+
+    /* The three the seeder knows about. Anything else is a typo that the
+       product will scope to and never find, such as NC_ENGLAND where the rest
+       of the codebase says ENC. */
+    const KNOWN = ["CCSS", "ENC", "CBSE"];
+    const unknown = byCurriculum
+      .map((r) => r.curriculum)
+      .filter((c): c is string => c !== null && c.trim() !== "" && !KNOWN.includes(c));
+    ok(
+      `no curriculum outside ${KNOWN.join(", ")}${unknown.length > 0 ? ` (found ${unknown.join(", ")})` : ""}`,
+      unknown.length === 0,
+    );
+
+    const present = new Map(byCurriculum.map((r) => [r.curriculum ?? "", Number(r.n)]));
+    for (const wanted of ["CCSS", "ENC"]) {
+      ok(
+        `the ${wanted} corpus is loaded (${present.get(wanted) ?? 0} standards)`,
+        (present.get(wanted) ?? 0) > 0,
+      );
+    }
+
+    /* Embedded per curriculum, not in total. A corpus that is present but
+       wholly unembedded is the worst of the three states: scoping finds no
+       rows, the search falls back to the curriculum that is embedded, and
+       every parent on the new corpus silently reads another country's
+       standards while the overall count looks healthy. */
+    for (const row of byCurriculum) {
+      // An unlabelled row is already reported above; it has no name to print.
+      if (row.curriculum === null || row.curriculum.trim() === "" || Number(row.n) === 0) continue;
+      const n = Number(row.n);
+      const e = Number(row.embedded);
+      ok(`${row.curriculum}: all ${n} standards are embedded (${e})`, e === n);
+    }
+
+    /* Both corpora are stored on one age-normalised scale, so that the grade
+       window in `nearestStandards` means the same thing in both. England year
+       groups are converted on the way in: Year 4 is grade 3, per seed/README.md. */
+    const outOfRange = await prisma.$queryRaw<{ code: string; grade: number }[]>`
+      SELECT code, grade FROM "Standard" WHERE grade < 0 OR grade > 8 ORDER BY code LIMIT 5
+    `;
+    ok(
+      `every grade is on the 0 to 8 scale${outOfRange.length > 0 ? ` (${outOfRange.map((r) => `${r.code} at ${r.grade}`).join(", ")})` : ""}`,
+      outOfRange.length === 0,
+    );
+
+    const spans = await prisma.$queryRaw<{ curriculum: string; lo: number; hi: number }[]>`
+      SELECT curriculum, MIN(grade) AS lo, MAX(grade) AS hi
+      FROM "Standard" WHERE curriculum IS NOT NULL
+      GROUP BY curriculum ORDER BY curriculum
+    `;
+    console.log(
+      `  note  grade spans: ${spans.map((s) => `${s.curriculum} ${s.lo} to ${s.hi}`).join(", ")}`,
+    );
+  }
+
   await shareChecks();
   await deleteCascadeChecks();
 

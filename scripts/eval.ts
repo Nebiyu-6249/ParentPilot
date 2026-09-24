@@ -130,8 +130,19 @@ interface Probe {
   expect: string[];
 }
 
-interface ProbeFile {
+/** One curriculum's probes, grouped by the domain its codes use. */
+interface ProbeSet {
+  /** Prose in the file explaining how that curriculum's probes were written.
+   *  Read by a person, not by this script. */
+  note?: string[];
   topics: Record<string, Probe[]>;
+}
+
+interface ProbeFile {
+  /** Keyed by curriculum, because a probe only means anything against the
+   *  corpus it was written for. The retrieval section runs each one on its
+   *  own and reports them separately. */
+  curricula: Record<string, ProbeSet>;
   /** Probes written the way a worksheet in that language writes them, keyed
    *  by locale. The corpus stays English, so these test whether the embedding
    *  model crosses languages. */
@@ -276,17 +287,22 @@ function mentionsDuration(text: string): string | null {
  * primer about the wrong standard however well the search did. Four in five
  * is the least that is worth shipping. Move it up as the golden set fills,
  * not down when a run goes red.
+ *
+ * It applies per curriculum, not to the two averaged together. An England
+ * corpus retrieving at half the rate of the Common Core one is a real
+ * regression for every English parent, and an average large enough to hide
+ * it is exactly the number not to report.
  */
 const RETRIEVAL_FLOOR = 0.8;
 
 /**
- * The curriculum the probes are written against.
+ * The curriculum the sections that are not about retrieval stand in for.
  *
- * Common Core, because that is the only corpus seeded so far. When England
- * and CBSE are loaded this becomes a loop over `eval/probes.json`'s own
- * curricula, and the probe file gains a `curriculum` per topic.
+ * Common Core, because the golden set, the fallback problems and the
+ * localised probes are all written against it. The retrieval section does not
+ * use this: it loops over whatever curricula `eval/probes.json` holds.
  */
-const CURRICULUM = "CCSS";
+const DEFAULT_CURRICULUM = "CCSS";
 
 interface Miss {
   topic: string;
@@ -295,15 +311,47 @@ interface Miss {
   got: StandardView[];
 }
 
+/** One probe, run and scored. */
+interface Outcome {
+  topic: string;
+  probe: Probe;
+  /** The three the search offered, scoped to this curriculum. */
+  candidates: StandardCandidate[];
+  /** True when the scoped search found nothing and the whole corpus was used. */
+  fellBack: boolean;
+  /** What the model picked, or null when generation failed. */
+  selected: string | null;
+  /** The curriculum of the nearest match when no scope is applied at all.
+   *  Null when the unscoped search found nothing. */
+  unscopedCurriculum: string | null;
+}
+
+/** What one curriculum's run came to. */
+interface CurriculumResult {
+  curriculum: string;
+  total: number;
+  topOne: number;
+  topThree: number;
+  chosen: number;
+  fellBack: number;
+  /** Candidates offered from some other curriculum while scoped. */
+  offCurriculum: number;
+  /** Probes whose unscoped nearest match stayed inside this curriculum. */
+  unscopedStayed: number;
+}
+
 async function runRetrieval(): Promise<void> {
   section(
     "Standard retrieval",
-    "five probes per domain, retrieved as three candidates and chosen between",
+    "per curriculum, retrieved as three candidates and chosen between",
   );
   console.log(
     "  This section generates a packet per probe, because the number that matters is\n" +
       "  which standard a parent is actually shown, not which one the vector search\n" +
-      "  put first. That is one packet call per probe: the most expensive section here.",
+      "  put first. That is one packet call per probe: the most expensive section here.\n" +
+      "  Each probe is also searched a second time with no curriculum scope at all, one\n" +
+      "  embedding and no generation, which is what the anonymous path does and the only\n" +
+      "  way to tell a scope that is holding from a scope that never had to do anything.",
   );
 
   const probes = readJson<ProbeFile>("probes.json");
@@ -316,26 +364,110 @@ async function runRetrieval(): Promise<void> {
     return;
   }
 
-  interface Outcome {
-    topic: string;
-    probe: Probe;
-    candidates: StandardCandidate[];
-    /** What the model picked, or null when generation failed. */
-    selected: string | null;
+  const sets = Object.entries(probes.curricula ?? {});
+  if (sets.length === 0) {
+    skipSection("retrieval", "eval/probes.json holds no curricula.");
+    return;
   }
+
+  const results: CurriculumResult[] = [];
+  for (const [curriculum, set] of sets) {
+    const result = await retrieveOneCurriculum(curriculum, set);
+    if (result) results.push(result);
+  }
+
+  if (results.length === 0) {
+    skipSection("retrieval", "no curriculum in eval/probes.json had any probes.");
+    return;
+  }
+
+  if (results.length > 1) reportSideBySide(results);
+
+  for (const r of results) {
+    /* The assertion is on what a parent is shown. Top-1 and top-3 are reported
+       because they say where a failure lives, but a product that retrieves the
+       right standard third and then picks the wrong one is not a product that
+       retrieves well. */
+    assert(
+      `${r.curriculum}: selected standard correct in at least ${(RETRIEVAL_FLOOR * 100).toFixed(0)}% of probes`,
+      r.chosen / r.total >= RETRIEVAL_FLOOR,
+      `${((r.chosen / r.total) * 100).toFixed(1)}% over ${r.total} probes, ${r.total - r.chosen} missed.`,
+    );
+
+    /* Selection must not make things worse than the search it is choosing from.
+       A model that reorders a correct top-1 into a wrong answer has taken a
+       working retrieval and broken it, and that is a distinct failure from a
+       search that never found the standard. */
+    assert(
+      `${r.curriculum}: choosing does not lose ground the search had found  (top-1 ${r.topOne}, selected ${r.chosen})`,
+      r.chosen >= r.topOne,
+      "The model picked worse than taking the nearest candidate unread would have.",
+    );
+
+    /* Grade is null on every probe, so the scoped query has no filter beyond
+       the curriculum itself. Against a seeded corpus it can only come back
+       empty if the corpus is not there, which makes a fallback here a missing
+       seed rather than a thin year group. */
+    assert(
+      `${r.curriculum}: every probe was answered from inside its own curriculum`,
+      r.fellBack === 0,
+      `${r.fellBack} of ${r.total} probes fell back to the whole corpus, which means ` +
+        `the ${r.curriculum} corpus is not seeded. Run "npm run seed".`,
+    );
+
+    /* The silent failure this whole section exists for. A scoped search that
+       returns another curriculum's standard puts a parent in front of a
+       different country's syllabus with nothing on the screen saying so, and
+       it would pass every other assertion here. */
+    assert(
+      `${r.curriculum}: no candidate came from another curriculum while scoped`,
+      r.offCurriculum === 0,
+      `${r.offCurriculum} candidate(s) were outside ${r.curriculum}. The curriculum ` +
+        "filter in lib/standards.ts is not being applied.",
+    );
+  }
+}
+
+/**
+ * One curriculum, probed end to end.
+ *
+ * Returns null when the file lists the curriculum but gives it no probes,
+ * which is the state a half-written probe file is in and is not a failure.
+ */
+async function retrieveOneCurriculum(
+  curriculum: string,
+  set: ProbeSet,
+): Promise<CurriculumResult | null> {
+  const topics = Object.entries(set.topics ?? {});
+  const probeCount = topics.reduce((n, [, list]) => n + list.length, 0);
+  if (probeCount === 0) {
+    verdict("skip", `${curriculum}: retrieval`, `eval/probes.json has no ${curriculum} probes.`);
+    return null;
+  }
+
+  console.log(`\n  ${curriculum}  ${probeCount} probes across ${topics.length} domains`);
 
   const outcomes: Outcome[] = [];
 
-  for (const [topic, list] of Object.entries(probes.topics)) {
+  for (const [topic, list] of topics) {
     for (const probe of list) {
       /* Grade is deliberately null. A parent photographing a page has often
          not told us a year group, and the filter in `nearestStandards` is
          skipped entirely in that case, which is the harder retrieval and the
          one the anonymous path now takes. */
       const match = await counted("embedding", () =>
-        nearestStandards(probe.text, null, 3, CURRICULUM),
+        nearestStandards(probe.text, null, 3, curriculum),
       );
       const candidates = match.standards;
+
+      /* The same search with the scope removed. This is not a second opinion
+         on the answer, it is the control: if the unscoped nearest match is
+         the same standard every time, the curriculum filter is decorative,
+         and if it is another curriculum's standard then the filter is the
+         only thing standing between a parent and the wrong syllabus. */
+      const unscoped = await counted("embedding", () =>
+        nearestStandards(probe.text, null, 1, null),
+      );
 
       let selected: string | null = null;
       if (candidates.length > 0) {
@@ -362,13 +494,20 @@ async function runRetrieval(): Promise<void> {
             ? packet.standardCode
             : (candidates[0]?.code ?? null);
         } catch (error) {
-          verdict("fail", `${topic}: generation failed for ${JSON.stringify(probe.text)}`,
+          verdict("fail", `${curriculum} ${topic}: generation failed for ${JSON.stringify(probe.text)}`,
             error instanceof Error ? error.message : String(error));
           selected = candidates[0]?.code ?? null;
         }
       }
 
-      outcomes.push({ topic, probe, candidates, selected });
+      outcomes.push({
+        topic,
+        probe,
+        candidates,
+        fellBack: match.fellBack,
+        selected,
+        unscopedCurriculum: unscoped.standards[0]?.curriculum ?? null,
+      });
     }
 
     const topicOutcomes = outcomes.filter((o) => o.topic === topic);
@@ -377,36 +516,52 @@ async function runRetrieval(): Promise<void> {
   }
 
   const total = outcomes.length;
-  if (total === 0) {
-    skipSection("retrieval", "eval/probes.json contains no probes.");
-    return;
-  }
+  const result: CurriculumResult = {
+    curriculum,
+    total,
+    topOne: outcomes.filter((o) => o.candidates[0] && o.probe.expect.includes(o.candidates[0].code)).length,
+    topThree: outcomes.filter((o) => o.candidates.some((c) => o.probe.expect.includes(c.code))).length,
+    chosen: outcomes.filter((o) => o.selected && o.probe.expect.includes(o.selected)).length,
+    fellBack: outcomes.filter((o) => o.fellBack).length,
+    offCurriculum: outcomes
+      .filter((o) => !o.fellBack)
+      .reduce((n, o) => n + o.candidates.filter((c) => c.curriculum !== curriculum).length, 0),
+    unscopedStayed: outcomes.filter((o) => o.unscopedCurriculum === curriculum).length,
+  };
 
-  const topOne = outcomes.filter((o) => o.candidates[0] && o.probe.expect.includes(o.candidates[0].code)).length;
-  const topThree = outcomes.filter((o) => o.candidates.some((c) => o.probe.expect.includes(c.code))).length;
-  const chosen = outcomes.filter((o) => o.selected && o.probe.expect.includes(o.selected)).length;
+  reportOneCurriculum(result, outcomes);
+  return result;
+}
 
-  const pct = (n: number): string => `${n}/${total}  ${((n / total) * 100).toFixed(1)}%`;
+/** The numbers for one curriculum, then every miss it made. */
+function reportOneCurriculum(r: CurriculumResult, outcomes: Outcome[]): void {
+  const pct = (n: number): string => `${n}/${r.total}  ${((n / r.total) * 100).toFixed(1)}%`;
 
   console.log("");
-  console.log(`  top-1 retrieved   ${pct(topOne)}   the nearest by wording`);
-  console.log(`  top-3 retrieved   ${pct(topThree)}   the right answer was somewhere in the shortlist`);
-  console.log(`  selected          ${pct(chosen)}   what a parent is actually shown`);
+  console.log(`  ${r.curriculum}  top-1 retrieved   ${pct(r.topOne)}   the nearest by wording`);
+  console.log(`  ${r.curriculum}  top-3 retrieved   ${pct(r.topThree)}   the right answer was somewhere in the shortlist`);
+  console.log(`  ${r.curriculum}  selected          ${pct(r.chosen)}   what a parent is actually shown`);
 
   /* The gap between top-3 and selected is the only number here that is about
      the model rather than the embedding. A wide gap means the shortlist was
      right and the choice was not, which is a prompt problem; a narrow one
      under a low top-3 means the corpus or the embedding is the limit. */
-  if (topThree > 0) {
+  if (r.topThree > 0) {
     console.log(
-      `  chose correctly when the shortlist contained the answer: ${chosen}/${topThree}  ` +
-        `${((chosen / topThree) * 100).toFixed(1)}%`,
+      `  ${r.curriculum}  chose correctly when the shortlist contained the answer: ${r.chosen}/${r.topThree}  ` +
+        `${((r.chosen / r.topThree) * 100).toFixed(1)}%`,
     );
   }
 
+  console.log(`  ${r.curriculum}  left the curriculum   ${r.fellBack}/${r.total} probes fell back, ` +
+    `${r.offCurriculum} off-curriculum candidate(s) while scoped`);
+  console.log(
+    `  ${r.curriculum}  with no scope at all  ${pct(r.unscopedStayed)} of nearest matches still landed in ${r.curriculum}`,
+  );
+
   const misses = outcomes.filter((o) => !o.selected || !o.probe.expect.includes(o.selected));
   if (misses.length > 0) {
-    console.log("\n  Every miss, with the shortlist it chose from:");
+    console.log(`\n  Every ${r.curriculum} miss, with the shortlist it chose from:`);
     for (const miss of misses) {
       console.log(`\n    ${miss.topic}  ${JSON.stringify(miss.probe.text)}`);
       console.log(`      wanted    ${miss.probe.expect.join(" or ")}`);
@@ -425,26 +580,31 @@ async function runRetrieval(): Promise<void> {
     }
     console.log("");
   }
+}
 
-  /* The assertion is on what a parent is shown. Top-1 and top-3 are reported
-     because they say where a failure lives, but a product that retrieves the
-     right standard third and then picks the wrong one is not a product that
-     retrieves well. */
-  assert(
-    `selected standard correct in at least ${(RETRIEVAL_FLOOR * 100).toFixed(0)}% of probes`,
-    chosen / total >= RETRIEVAL_FLOOR,
-    `${((chosen / total) * 100).toFixed(1)}% over ${total} probes, ${misses.length} missed.`,
-  );
-
-  /* Selection must not make things worse than the search it is choosing from.
-     A model that reorders a correct top-1 into a wrong answer has taken a
-     working retrieval and broken it, and that is a distinct failure from a
-     search that never found the standard. */
-  assert(
-    `choosing does not lose ground the search had found  (top-1 ${topOne}, selected ${chosen})`,
-    chosen >= topOne,
-    "The model picked worse than taking the nearest candidate unread would have.",
-  );
+/**
+ * The curricula next to each other.
+ *
+ * Printed only when there is more than one, because the comparison is the
+ * point: a single averaged figure would let one corpus carry the other, and
+ * the parent on the weaker one would never appear in the number.
+ */
+function reportSideBySide(results: CurriculumResult[]): void {
+  const rows: [string, (r: CurriculumResult) => string][] = [
+    ["probes", (r) => String(r.total)],
+    ["top-1", (r) => `${r.topOne} (${((r.topOne / r.total) * 100).toFixed(0)}%)`],
+    ["top-3", (r) => `${r.topThree} (${((r.topThree / r.total) * 100).toFixed(0)}%)`],
+    ["selected", (r) => `${r.chosen} (${((r.chosen / r.total) * 100).toFixed(0)}%)`],
+    ["fell back", (r) => String(r.fellBack)],
+    ["off-curriculum", (r) => String(r.offCurriculum)],
+    ["unscoped stayed", (r) => `${r.unscopedStayed} (${((r.unscopedStayed / r.total) * 100).toFixed(0)}%)`],
+  ];
+  const width = 16;
+  console.log("\n  Side by side");
+  console.log(`    ${"".padEnd(18)}${results.map((r) => r.curriculum.padEnd(width)).join("")}`);
+  for (const [label, value] of rows) {
+    console.log(`    ${label.padEnd(18)}${results.map((r) => value(r).padEnd(width)).join("")}`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -621,7 +781,7 @@ const FALLBACK_PACKET_PROBLEMS = [
 function candidateFor(code: string): StandardCandidate {
   return {
     code,
-    curriculum: CURRICULUM,
+    curriculum: DEFAULT_CURRICULUM,
     grade: 5,
     plainLanguage: "Adding and subtracting fractions with different denominators.",
     expectedMethods: [],
@@ -937,7 +1097,7 @@ async function runLocales(): Promise<void> {
       const misses: Miss[] = [];
       for (const probe of localised) {
         const match = await counted("embedding", () =>
-          nearestStandards(probe.text, null, 3, CURRICULUM),
+          nearestStandards(probe.text, null, 3, DEFAULT_CURRICULUM),
         );
         const top = match.standards[0];
         if (top && probe.expect.includes(top.code)) hits += 1;
