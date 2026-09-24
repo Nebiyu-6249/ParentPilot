@@ -1,10 +1,11 @@
 name: Demo video
 
 # Manual only, and deliberately so. A recording drives the live deployment end
-# to end: it reads the saved worksheet, asks for both methods, holds to reveal
-# the answer, types a message and drafts a note for the teacher. Every one of
-# those is a real model call against real spend, which is not something to do
-# on every push to a branch.
+# to end across nineteen chapters: it reads the saved worksheet, walks the hint
+# ladder, holds to reveal the answer, asks two questions in the composer, runs
+# Live Mode and Voice Mode, marks a page on /check and drafts a note for the
+# teacher. Every one of those is a real model call against real spend, which is
+# not something to do on every push to a branch.
 on:
   workflow_dispatch:
     inputs:
@@ -22,7 +23,9 @@ concurrency:
 jobs:
   record:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Nineteen chapters, most of them waiting on a model call with a cold
+    # cache, and a slow-preset encode of a 2560x1600 source at the end.
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
@@ -69,36 +72,72 @@ jobs:
           DEMO_URL: ${{ steps.target.outputs.url }}
         run: node scripts/record-demo.mjs
 
-      # webm plays in browsers and in not much else. The mp4 is the copy that
-      # can be dropped into a deck, a Slack message or a phone.
+      # The webm plays in browsers and in not much else. The mp4 is the copy
+      # that can be dropped into a deck, a Slack message or a phone.
       #
       # Runs even when the recording failed, because the script writes what it
       # got before it rethrows, and a partial video is usually how you find out
-      # which scene broke.
+      # which chapter broke.
       - name: Convert to mp4
         if: always()
         run: |
-          if [ ! -s recordings/demo.webm ]; then
+          if [ ! -s recordings/tour.webm ]; then
             echo "::warning::No video was written, so there is nothing to convert."
             exit 0
           fi
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
-          # yuv420p rather than the default, or QuickTime and most phones show
-          # a black frame. faststart puts the index first so it streams.
-          ffmpeg -nostdin -v error -y -i recordings/demo.webm \
-            -c:v libx264 -preset slow -crf 20 -pix_fmt yuv420p \
+
+          # The capture is 2560x1600, because the page renders at
+          # deviceScaleFactor 2 and this product is almost entirely text.
+          # Downsampling that to 1920x1200 with Lanczos is what keeps a stem
+          # looking like a stem; bilinear at 1x was why the first cut was soft.
+          #
+          # -r 30 rather than a screencast setting, because the screencast has
+          # no frame rate option: it emits frames as the page paints, which
+          # lands around 25fps. This resamples that to a constant 30.
+          #
+          # crf 18 and preset slow are both a long way from the defaults. At
+          # crf 23 the thin strokes in the handwriting artifact and the hairline
+          # rules between cards break up, and this file is watched far more
+          # often than it is encoded.
+          #
+          # yuv420p or QuickTime and most phones show a black frame. faststart
+          # puts the index first so it streams rather than downloading whole.
+          ffmpeg -nostdin -v error -y -i recordings/tour.webm \
+            -r 30 \
+            -vf scale=1920:1200:flags=lanczos \
+            -c:v libx264 -crf 18 -preset slow \
+            -pix_fmt yuv420p \
             -movflags +faststart \
-            recordings/demo.mp4
+            recordings/tour.mp4
+
+          ffprobe -v error -select_streams v:0 \
+            -show_entries stream=width,height,r_frame_rate,pix_fmt \
+            -of default=noprint_wrappers=1 recordings/tour.mp4
           ls -lh recordings/
+
+      # Printed into the job log as well as uploaded, so the chapter list and
+      # any abort reason are readable without downloading an artifact.
+      - name: Chapter list
+        if: always()
+        run: |
+          if [ -s recordings/chapters.txt ]; then
+            cat recordings/chapters.txt
+          else
+            echo "::warning::No chapter list was written."
+          fi
 
       - name: Upload the recording
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: demo-video
-          path: recordings/
-          # A warning rather than an error: when a scene fails, the scene
+          path: |
+            recordings/tour.webm
+            recordings/tour.mp4
+            recordings/chapters.txt
+          # A warning rather than an error: when a chapter fails, the chapter
           # failure is the thing to read, not a second one about an empty
           # upload.
           if-no-files-found: warn
