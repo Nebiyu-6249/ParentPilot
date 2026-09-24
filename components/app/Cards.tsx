@@ -73,6 +73,12 @@ export default function ThreadCard({
       return (
         <article
           className="pp-card"
+          /* Machine readable as well as legible. The demo recorder aborts
+             rather than filming a tour of fallbacks, and matching on the copy
+             would mean matching four translations of six different notices.
+             This says "something on this screen is not the real thing" in one
+             attribute, whatever language it is saying it in. */
+          data-degraded="true"
           style={{
             borderColor: "var(--app-alert-line)",
             background: "var(--app-alert-bg)",

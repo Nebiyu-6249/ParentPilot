@@ -2428,6 +2428,107 @@ section("Retrieval probes, one set per curriculum");
 
 // ---------------------------------------------------------------------------
 
+section("The feature tour, and the settings that make it watchable");
+
+{
+  const tour = readFileSync(path.join(process.cwd(), "scripts", "record-demo.mjs"), "utf8");
+  const flow = readFileSync(path.join(process.cwd(), ".github", "workflows", "demo-video.yml"), "utf8");
+
+  const titles = [...tour.matchAll(/^\s{4}title: "(.+)",$/gm)].map((m) => m[1]);
+  ok(`the tour has its chapters (${titles.length})`, titles.length === 19);
+  /* Order is the argument the video makes. The research chapter earns the
+     product before anything is demonstrated, and privacy closes it. */
+  ok("it opens on the landing page and closes on privacy",
+    titles[0] === "Opening" && titles[titles.length - 1] === "Private by design");
+
+  /* The trap this rerun existed to fix, written down as an assertion because
+     the wrong one looks more correct. Playwright's deviceScaleFactor is
+     emulation the screencast never sees: it pads a 1280 wide surface into
+     whatever frame you asked for and fills the rest with grey, so the capture
+     is nominally 2560 and actually contains a 1280 wide picture. The browser
+     flag scales the compositor surface itself. */
+  ok("the capture is scaled by the browser flag, not by deviceScaleFactor",
+    /--force-device-scale-factor=\$\{SCALE\}/.test(tour) && !/deviceScaleFactor:\s*2/.test(tour));
+  ok("and the requested frame is the viewport times that same scale",
+    /const CAPTURE = \{ width: VIEWPORT\.width \* SCALE, height: VIEWPORT\.height \* SCALE \}/.test(tour));
+  ok("the layout is still the 1280 wide one the product was designed against",
+    /const VIEWPORT = \{ width: 1280, height: 800 \}/.test(tour));
+
+  /* Every one of these is a departure from a default, and every one of them is
+     the difference between legible text and a grey smear at the size this gets
+     watched. A tidy-up back to defaults would not fail anything else. */
+  for (const [name, pattern] of [
+    ["downsamples with Lanczos rather than bilinear", /scale=1920:1200:flags=lanczos/],
+    ["encodes at crf 18 with the slow preset", /-c:v libx264 -crf 18 -preset slow/],
+    ["normalises to 30fps, which the screencast cannot do itself", /-r 30/],
+    ["writes yuv420p so phones do not show a black frame", /-pix_fmt yuv420p/],
+    ["puts the index first so the file streams", /-movflags \+faststart/],
+  ] as const) {
+    ok(`the workflow ${name}`, pattern.test(flow));
+  }
+
+  ok("the workflow stays manual, with the URL as an input",
+    /on:\s*\n\s*workflow_dispatch:/.test(flow) && /inputs:\s*\n\s*url:/.test(flow));
+  ok("it uploads the video, the mp4 and the chapter list",
+    /recordings\/tour\.webm/.test(flow) && /recordings\/tour\.mp4/.test(flow) && /recordings\/chapters\.txt/.test(flow));
+
+  /* Timestamps, so the tour can be cut into clips without rewatching it. */
+  ok("the recorder writes a chapter list with timestamps",
+    /chapters\.txt/.test(tour) && /function stamp\(ms\)/.test(tour));
+
+  /* The rule that makes the video worth trusting. A fixture renders exactly
+     like a real reading, so a viewer cannot tell, which is precisely why the
+     recorder has to. */
+  ok("it aborts rather than filming a fallback",
+    /class Degraded extends Error/.test(tour) && /\[data-degraded\]/.test(tour));
+  ok("and the notice card is tagged so that check is not matching translated prose",
+    /data-degraded="true"/.test(
+      readFileSync(path.join(process.cwd(), "components", "app", "Cards.tsx"), "utf8"),
+    ));
+  /* A refused chat turn renders as text with no intent, which is the only
+     thing that distinguishes it from a real reply without reading the copy. */
+  ok("a refused turn counts as degraded too",
+    /pp-turn-text:not\(\[data-intent\]\)/.test(tour));
+
+  /* Two promises this recording cannot be allowed to break, since a video
+     cannot be un-shared. */
+  /* Navigation, not any mention of the route: the header comment says these
+     are never visited, and a bare search for the string finds that sentence. */
+  ok("the tour never visits the operations screens",
+    ![...tour.matchAll(/goto\(page, "([^"]+)"\)/g)].some((m) => (m[1] ?? "").startsWith("/ops")));
+  ok("and it checks the account screen for an address rather than trusting it",
+    /an email address was on the account screen/.test(tour));
+
+  /* A screencast has no audio track. Saying what is being spoken is honest;
+     showing someone press a microphone and leaving the viewer to imagine it
+     is not. */
+  ok("the chapters that speak carry an on screen caption",
+    /this recording has no sound/.test(tour) && /showOverlay/.test(tour));
+
+  ok("the microphone is a fake device with a file behind it",
+    /--use-fake-device-for-media-stream/.test(tour) && /use-file-for-fake-audio-capture/.test(tour));
+
+  /* Both of these were bugs in the first cut of this script. The screenshot
+     was taken during the wordmark reveal, so the check chapter uploaded a
+     picture of a logo animation and the site correctly reported that it could
+     not read the page. */
+  ok("the worksheet screenshot waits out the wordmark reveal",
+    tour.indexOf("await wait(REVEAL_MS)", tour.indexOf("async function captureWorksheet")) > 0);
+  ok("and is measured rather than assumed to contain anything",
+    /is not a photograph of anything/.test(tour));
+
+  /* Scrolling and typing are the two things that read as fake when they are
+     instant. */
+  ok("scrolling is wheel increments rather than a jump",
+    /page\.mouse\.wheel\(0, delta\)/.test(tour));
+  ok("typing is per character",
+    /pressSequentially\(text, \{ delay: KEYSTROKE \}\)/.test(tour));
+  ok("every page waits for its fonts before anything is filmed",
+    /document\.fonts\.ready/.test(tour));
+}
+
+// ---------------------------------------------------------------------------
+
 console.log(
   failures === 0
     ? `\n${checks} checks, all passing.`
