@@ -239,7 +239,7 @@ export function cardsForPacket(
       verification: bundle.verification,
       standardCode: standard?.code ?? null,
       standardPlain: standard?.plainLanguage ?? null,
-      standardUncertain: standardIsUncertain(problem.standardSimilarity),
+      standardUncertain: standardIsUncertain(problem.standardSimilarity, bundle.standardScope),
       grade: standard?.grade ?? null,
     },
     {

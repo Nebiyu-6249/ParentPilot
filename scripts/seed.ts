@@ -120,6 +120,40 @@ async function readAllStandards(): Promise<StandardSeed[]> {
   return out;
 }
 
+/**
+ * Removes standards the files no longer contain.
+ *
+ * Upserting alone is not enough once a code can be renamed. A row whose code
+ * has changed is not updated, it is joined by a new row, and the old one stays
+ * in the corpus fully embedded and perfectly reachable: retrieval will keep
+ * offering a standard that no longer exists in the curriculum, and nothing on
+ * the screen distinguishes it from one that does.
+ *
+ * Scoped to the curricula whose file actually held entries, so an absent or
+ * still-template file never deletes a corpus it knows nothing about. Loud
+ * rather than silent, because deleting curriculum content is not a detail.
+ */
+async function pruneStandards(kept: StandardSeed[]): Promise<void> {
+  const curricula = [...new Set(kept.map((s) => s.curriculum).filter((c): c is string => Boolean(c)))];
+  if (curricula.length === 0) return;
+
+  const ids = kept.map((s) => s.id);
+  const stale = await prisma.standard.findMany({
+    where: { curriculum: { in: curricula }, id: { notIn: ids } },
+    select: { id: true, curriculum: true },
+  });
+  if (stale.length === 0) return;
+
+  console.log(
+    `  Removing ${stale.length} standard(s) no longer in the files: ${stale.map((s) => s.id).join(", ")}`,
+  );
+  /* A Problem row may still name a deleted code. There is no foreign key and
+     `standardByCode` already returns null for an unknown one, which renders as
+     a packet with no citation rather than as an error. That is the honest
+     outcome: the standard it cited has been withdrawn. */
+  await prisma.standard.deleteMany({ where: { id: { in: stale.map((s) => s.id) } } });
+}
+
 async function importStandards(reembed: boolean): Promise<void> {
   const standards = await readAllStandards();
   console.log(`Importing ${standards.length} standards.`);
@@ -146,6 +180,8 @@ async function importStandards(reembed: boolean): Promise<void> {
       },
     });
   }
+
+  await pruneStandards(standards);
 
   const missing = reembed
     ? standards

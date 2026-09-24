@@ -37,11 +37,69 @@ export interface ProblemView {
  */
 export const STANDARD_CERTAIN_AT = 0.6;
 
-/** True when the chip should hedge rather than assert. */
-export function standardIsUncertain(similarity: number | null): boolean {
+/**
+ * The same line, for a search that had no curriculum to scope by.
+ *
+ * Higher, because an unscoped 0.6 is not a weaker version of a scoped 0.6, it
+ * is a different claim. Two curricula now teach the same mathematics in
+ * different words, so a search with no scope is choosing a syllabus as well as
+ * a standard, and the similarity score says nothing at all about the first
+ * choice. The eval measures how much that matters: with the scope removed,
+ * around half the Common Core probes and a quarter of the England ones land on
+ * the other country's standard.
+ *
+ * 0.75 is the bottom of the band the comment above describes as plainly on
+ * topic. Unscoped, the chip asserts only from inside that band and hedges
+ * everywhere else.
+ */
+export const STANDARD_UNSCOPED_CERTAIN_AT = 0.75;
+
+/**
+ * What the search that produced a citation was allowed to look at.
+ *
+ * Carried on the bundle rather than recomputed, because the component that
+ * renders the chip is a long way from the query that answered it and the only
+ * honest place to decide is next to the search.
+ */
+export interface StandardScope {
+  /**
+   * The curriculum the search was restricted to, or null when nothing
+   * restricted it.
+   *
+   * Null means the anonymous path: no profile, so no child, so no curriculum.
+   * `Child.curriculum` is not nullable, so a parent who has told us about a
+   * child has always told us this.
+   */
+  requested: string | null;
+  /** True when the requested curriculum held nothing and the whole corpus was
+   *  searched instead. */
+  fellBack: boolean;
+  /** True when the shortlist spanned more than one curriculum, so the syllabus
+   *  was as open a question as the standard. */
+  mixed: boolean;
+}
+
+/**
+ * True when the chip should hedge rather than assert.
+ *
+ * The scope is a required argument rather than an optional one. A caller that
+ * has not thought about where its answer came from is precisely the caller
+ * that should not be asserting a child's curriculum on screen.
+ */
+export function standardIsUncertain(similarity: number | null, scope: StandardScope): boolean {
   // Null is a problem matched before scores were recorded. Not known is not
   // the same as low, and a backfilled hedge would be a guess on screen.
-  return similarity !== null && similarity < STANDARD_CERTAIN_AT;
+  if (similarity === null) return false;
+
+  const leftTheScope = scope.requested === null || scope.fellBack;
+  if (!leftTheScope) return similarity < STANDARD_CERTAIN_AT;
+
+  /* Evidence rather than a threshold. A shortlist holding two curricula says
+     the syllabus this came from was close to a tie, whatever the similarity,
+     and there is no honest way to name one of them on a chip. */
+  if (scope.mixed) return true;
+
+  return similarity < STANDARD_UNSCOPED_CERTAIN_AT;
 }
 
 /**
@@ -120,6 +178,9 @@ export interface PacketBundle {
   standard: StandardView | null;
   misconception: MisconceptionView | null;
   packet: PacketView;
+  /** What the search that found `standard` was allowed to look at. Decides
+   *  whether the chip asserts the standard or hedges it. */
+  standardScope: StandardScope;
   /** Set when the packet came from the demo fixture or a generic fallback. */
   notice: string | null;
   /** Where this packet came from. See PacketSource. */

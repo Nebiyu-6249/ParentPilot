@@ -60,6 +60,14 @@ write it the way a worksheet talks, not the way a standards document does.
 The second is the source document's sentence. It will match other standards
 documents and not a child's homework.
 
+### Do not repeat the year group in `plainLanguage`
+
+The importer already prefixes the embedded text with `Grade N.`, and the code
+carries the year. A description that opens `"Year 5. "` puts a token in every
+row of one corpus that no row of the other has, which makes the two corpora
+systematically different in a way that has nothing to do with mathematics.
+Describe the mathematics and let the columns carry the age.
+
 ### Scope
 
 Year 3 to Year 6 for England, which is `grade: 2` to `grade: 5` once
@@ -68,7 +76,7 @@ weighted the way the Common Core file is: number and fractions heaviest,
 geometry lightest.
 
 England is filled in: 95 standards, heaviest on fractions (22) and on
-multiplication and division (13), lightest on algebra and on position and
+multiplication and division (17), lightest on algebra and on position and
 direction (3 each). CBSE is still a template.
 
 ## `misconceptions.json`

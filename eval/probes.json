@@ -308,9 +308,17 @@
         "meters, 24 hour times, and 'work out' rather than 'solve'.",
         "",
         "The mapping from probe to expected code is a reading of the corpus in",
-        "seed/standards-england.json, not an external answer key. Where the",
-        "corpus teaches the same thing twice, both codes are accepted: long",
-        "multiplication is filed under both Y5.MD.3 and Y6.AS.1."
+        "seed/standards-england.json, not an external answer key.",
+        "",
+        "Long multiplication appears in both Year 5 and Year 6, and the two",
+        "entries are deliberately worded apart: Year 5 is the first formal",
+        "encounter with the written layout, Year 6 is the same operation",
+        "expected fluent inside a longer problem. Two probes test that the",
+        "difference is in the embedding and not only in the code, the bare",
+        "exercise and the multi step word problem. The word problem accepts the",
+        "Year 5 multi step standard as well, because a careful human would:",
+        "narrowing it to the Year 6 code alone would be scoring the test",
+        "rather than taking it."
       ],
       "topics": {
         "NPV": [
@@ -367,18 +375,6 @@
               "NC.MATH.Y4.AS.2",
               "NC.MATH.Y5.AS.1"
             ]
-          },
-          {
-            "text": "Work out 8 + 2 x 5. Now work out (8 + 2) x 5.",
-            "expect": [
-              "NC.MATH.Y6.AS.3"
-            ]
-          },
-          {
-            "text": "Work out 4 356 divided by 17. Give the remainder as a fraction.",
-            "expect": [
-              "NC.MATH.Y6.AS.2"
-            ]
           }
         ],
         "MD": [
@@ -410,8 +406,26 @@
           {
             "text": "Work out 2 748 x 36 using long multiplication.",
             "expect": [
-              "NC.MATH.Y5.MD.3",
-              "NC.MATH.Y6.AS.1"
+              "NC.MATH.Y5.MD.3"
+            ]
+          },
+          {
+            "text": "Work out 8 + 2 x 5. Now work out (8 + 2) x 5.",
+            "expect": [
+              "NC.MATH.Y6.MD.3"
+            ]
+          },
+          {
+            "text": "Work out 4 356 divided by 17. Give the remainder as a fraction.",
+            "expect": [
+              "NC.MATH.Y6.MD.2"
+            ]
+          },
+          {
+            "text": "A factory makes 1 248 boxes a day. How many boxes in 36 days, and how many pallets of 50 is that?",
+            "expect": [
+              "NC.MATH.Y6.MD.1",
+              "NC.MATH.Y5.AS.1"
             ]
           }
         ],
