@@ -2,9 +2,9 @@
   {
     "id": "NC.MATH.Y3.NPV.1",
     "code": "NC.MATH.Y3.NPV.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 2,
-    "plainLanguage": "Year 3. Every digit in a three digit number has a value that depends on its column. In 346 the 3 is worth three hundred, not three.",
+    "plainLanguage": "Every digit in a three digit number has a value that depends on its column. In 346 the 3 is worth three hundred, not three.",
     "expectedMethods": [
       "Build the number with base ten blocks or place value counters",
       "Partition it out loud as 300 and 40 and 6",
@@ -15,9 +15,9 @@
   {
     "id": "NC.MATH.Y3.NPV.2",
     "code": "NC.MATH.Y3.NPV.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 2,
-    "plainLanguage": "Year 3. Counting on and back in steps of 4, 8, 50 and 100, and finding ten or a hundred more or less than a number.",
+    "plainLanguage": "Counting on and back in steps of 4, 8, 50 and 100, and finding ten or a hundred more or less than a number.",
     "expectedMethods": [
       "Jump along a number line in equal steps",
       "Use a hundred square and move a whole row for ten",
@@ -28,9 +28,9 @@
   {
     "id": "NC.MATH.Y3.NPV.3",
     "code": "NC.MATH.Y3.NPV.3",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 2,
-    "plainLanguage": "Year 3. Comparing and ordering numbers up to 1000, using the greater than and less than signs.",
+    "plainLanguage": "Comparing and ordering numbers up to 1000, using the greater than and less than signs.",
     "expectedMethods": [
       "Compare the hundreds first, then the tens, then the ones",
       "Place both numbers on a number line and see which is further right",
@@ -41,9 +41,9 @@
   {
     "id": "NC.MATH.Y3.AS.1",
     "code": "NC.MATH.Y3.AS.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 2,
-    "plainLanguage": "Year 3. Adding and subtracting in your head with three digit numbers, adding ones, tens or hundreds at a time.",
+    "plainLanguage": "Adding and subtracting in your head with three digit numbers, adding ones, tens or hundreds at a time.",
     "expectedMethods": [
       "Add the hundreds, then the tens, then the ones, keeping a running total",
       "Round to a friendly number and adjust at the end",
@@ -54,9 +54,9 @@
   {
     "id": "NC.MATH.Y3.AS.2",
     "code": "NC.MATH.Y3.AS.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 2,
-    "plainLanguage": "Year 3. Column addition and subtraction with up to three digits, including carrying and exchanging.",
+    "plainLanguage": "Column addition and subtraction with up to three digits, including carrying and exchanging.",
     "expectedMethods": [
       "Set the digits out in place value columns before calculating",
       "Exchange a ten for ten ones with counters before recording it",
@@ -67,9 +67,9 @@
   {
     "id": "NC.MATH.Y3.AS.3",
     "code": "NC.MATH.Y3.AS.3",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 2,
-    "plainLanguage": "Year 3. Estimating an answer before calculating, and using the opposite operation to check it afterwards.",
+    "plainLanguage": "Estimating an answer before calculating, and using the opposite operation to check it afterwards.",
     "expectedMethods": [
       "Round both numbers and work out roughly what to expect",
       "Check a subtraction by adding the answer back on",
@@ -80,9 +80,9 @@
   {
     "id": "NC.MATH.Y3.MD.1",
     "code": "NC.MATH.Y3.MD.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 2,
-    "plainLanguage": "Year 3. Knowing the 3, 4 and 8 times tables and the division facts that go with them.",
+    "plainLanguage": "Knowing the 3, 4 and 8 times tables and the division facts that go with them.",
     "expectedMethods": [
       "Double the 2 times table to get 4, and double again for 8",
       "Build the fact as an array of rows and columns",
@@ -93,9 +93,9 @@
   {
     "id": "NC.MATH.Y3.MD.2",
     "code": "NC.MATH.Y3.MD.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 2,
-    "plainLanguage": "Year 3. Multiplying a two digit number by a one digit number, moving from jottings towards a written method.",
+    "plainLanguage": "Multiplying a two digit number by a one digit number, moving from jottings towards a written method.",
     "expectedMethods": [
       "Split the two digit number into tens and ones and multiply each",
       "Draw a grid with the tens and ones along the top",
@@ -106,9 +106,9 @@
   {
     "id": "NC.MATH.Y3.MD.3",
     "code": "NC.MATH.Y3.MD.3",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 2,
-    "plainLanguage": "Year 3. Word problems where something is scaled up, or where every one of a set can be paired with every one of another set.",
+    "plainLanguage": "Word problems where something is scaled up, or where every one of a set can be paired with every one of another set.",
     "expectedMethods": [
       "Draw a bar model showing one part and how many times bigger the other is",
       "List the pairings systematically rather than at random",
@@ -119,9 +119,9 @@
   {
     "id": "NC.MATH.Y3.F.1",
     "code": "NC.MATH.Y3.F.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 2,
-    "plainLanguage": "Year 3. Tenths. One tenth is what you get when a whole is cut into ten equal parts, or when a number is divided by ten.",
+    "plainLanguage": "Tenths. One tenth is what you get when a whole is cut into ten equal parts, or when a number is divided by ten.",
     "expectedMethods": [
       "Cut a strip or a circle into ten equal parts and shade some",
       "Count up and down in tenths along a number line",
@@ -132,9 +132,9 @@
   {
     "id": "NC.MATH.Y3.F.2",
     "code": "NC.MATH.Y3.F.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 2,
-    "plainLanguage": "Year 3. Finding a fraction of a set of objects, both unit fractions like one third and non unit fractions like two thirds.",
+    "plainLanguage": "Finding a fraction of a set of objects, both unit fractions like one third and non unit fractions like two thirds.",
     "expectedMethods": [
       "Share the objects into the number of groups the bottom number says",
       "Take as many of those groups as the top number says",
@@ -145,9 +145,9 @@
   {
     "id": "NC.MATH.Y3.F.3",
     "code": "NC.MATH.Y3.F.3",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 2,
-    "plainLanguage": "Year 3. Treating a fraction as a number in its own right, with a place on the number line, rather than only as part of a shape.",
+    "plainLanguage": "Treating a fraction as a number in its own right, with a place on the number line, rather than only as part of a shape.",
     "expectedMethods": [
       "Mark the fraction on a number line between 0 and 1",
       "Count on in that fraction past 1",
@@ -158,9 +158,9 @@
   {
     "id": "NC.MATH.Y3.F.4",
     "code": "NC.MATH.Y3.F.4",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 2,
-    "plainLanguage": "Year 3. Fractions that look different but are the same size, such as one half and two quarters, shown with diagrams.",
+    "plainLanguage": "Fractions that look different but are the same size, such as one half and two quarters, shown with diagrams.",
     "expectedMethods": [
       "Fold or shade two identical strips and compare the shaded amounts",
       "Line up two fraction walls and look for equal lengths",
@@ -171,9 +171,9 @@
   {
     "id": "NC.MATH.Y3.F.5",
     "code": "NC.MATH.Y3.F.5",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 2,
-    "plainLanguage": "Year 3. Adding and subtracting fractions that already have the same bottom number, staying within one whole.",
+    "plainLanguage": "Adding and subtracting fractions that already have the same bottom number, staying within one whole.",
     "expectedMethods": [
       "Shade the pieces on one diagram and count them",
       "Count on in that size of piece along a number line",
@@ -184,9 +184,9 @@
   {
     "id": "NC.MATH.Y3.M.1",
     "code": "NC.MATH.Y3.M.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 2,
-    "plainLanguage": "Year 3. Measuring, comparing, adding and subtracting lengths in metres, centimetres and millimetres, mass in kilograms and grams, and volume in litres and millilitres.",
+    "plainLanguage": "Measuring, comparing, adding and subtracting lengths in metres, centimetres and millimetres, mass in kilograms and grams, and volume in litres and millilitres.",
     "expectedMethods": [
       "Convert both amounts to the same unit before calculating",
       "Read the scale carefully and work out what one interval is worth",
@@ -197,9 +197,9 @@
   {
     "id": "NC.MATH.Y3.M.2",
     "code": "NC.MATH.Y3.M.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 2,
-    "plainLanguage": "Year 3. Perimeter is the distance all the way round the outside of a shape.",
+    "plainLanguage": "Perimeter is the distance all the way round the outside of a shape.",
     "expectedMethods": [
       "Mark a starting corner and add the sides going round",
       "Trace round the edge with a finger while counting",
@@ -210,9 +210,9 @@
   {
     "id": "NC.MATH.Y3.M.3",
     "code": "NC.MATH.Y3.M.3",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 2,
-    "plainLanguage": "Year 3. Telling the time on an analogue clock to the nearest minute, including Roman numerals, and using both 12 hour and 24 hour clocks.",
+    "plainLanguage": "Telling the time on an analogue clock to the nearest minute, including Roman numerals, and using both 12 hour and 24 hour clocks.",
     "expectedMethods": [
       "Read the hour hand first, then count round in fives for the minutes",
       "Use a clock face with movable hands to show the time",
@@ -223,9 +223,9 @@
   {
     "id": "NC.MATH.Y3.GS.1",
     "code": "NC.MATH.Y3.GS.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 2,
-    "plainLanguage": "Year 3. An angle is an amount of turn. A right angle is a quarter turn, and four of them make a full turn.",
+    "plainLanguage": "An angle is an amount of turn. A right angle is a quarter turn, and four of them make a full turn.",
     "expectedMethods": [
       "Turn a physical object and count the quarter turns",
       "Compare an angle against the corner of a piece of paper",
@@ -236,9 +236,9 @@
   {
     "id": "NC.MATH.Y3.GS.2",
     "code": "NC.MATH.Y3.GS.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 2,
-    "plainLanguage": "Year 3. Lines that are horizontal or vertical, lines that meet at a right angle (perpendicular), and lines that never meet (parallel).",
+    "plainLanguage": "Lines that are horizontal or vertical, lines that meet at a right angle (perpendicular), and lines that never meet (parallel).",
     "expectedMethods": [
       "Find examples of each in the room and describe them",
       "Mark parallel lines with arrows and right angles with a square",
@@ -249,9 +249,9 @@
   {
     "id": "NC.MATH.Y3.S.1",
     "code": "NC.MATH.Y3.S.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 2,
-    "plainLanguage": "Year 3. Reading and drawing bar charts, pictograms and tables, where one symbol or one square may stand for more than one thing.",
+    "plainLanguage": "Reading and drawing bar charts, pictograms and tables, where one symbol or one square may stand for more than one thing.",
     "expectedMethods": [
       "Work out what one interval or one symbol is worth before reading anything off",
       "Answer how many more and how many fewer by comparing two bars",
@@ -259,13 +259,12 @@
     ],
     "parentMethod": "Read the number off the axis."
   },
-
   {
     "id": "NC.MATH.Y4.NPV.1",
     "code": "NC.MATH.Y4.NPV.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Place value in four digit numbers, up to thousands, and ordering numbers beyond 1000.",
+    "plainLanguage": "Place value in four digit numbers, up to thousands, and ordering numbers beyond 1000.",
     "expectedMethods": [
       "Partition the number into thousands, hundreds, tens and ones",
       "Set it out in a place value chart",
@@ -276,9 +275,9 @@
   {
     "id": "NC.MATH.Y4.NPV.2",
     "code": "NC.MATH.Y4.NPV.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Negative numbers, met by counting backwards through zero. Minus five is smaller than minus three, not bigger.",
+    "plainLanguage": "Negative numbers, met by counting backwards through zero. Minus five is smaller than minus three, not bigger.",
     "expectedMethods": [
       "Count back past zero along a number line that extends both ways",
       "Use a thermometer or a lift as a context",
@@ -289,9 +288,9 @@
   {
     "id": "NC.MATH.Y4.NPV.3",
     "code": "NC.MATH.Y4.NPV.3",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Rounding any number to the nearest 10, 100 or 1000.",
+    "plainLanguage": "Rounding any number to the nearest 10, 100 or 1000.",
     "expectedMethods": [
       "Find the two multiples the number sits between",
       "Mark it on a number line and see which end is nearer",
@@ -302,9 +301,9 @@
   {
     "id": "NC.MATH.Y4.NPV.4",
     "code": "NC.MATH.Y4.NPV.4",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Reading Roman numerals up to 100, and knowing that the system had no zero and no place value.",
+    "plainLanguage": "Reading Roman numerals up to 100, and knowing that the system had no zero and no place value.",
     "expectedMethods": [
       "Read left to right, subtracting when a smaller letter comes first",
       "Break the numeral into chunks and total them",
@@ -315,9 +314,9 @@
   {
     "id": "NC.MATH.Y4.AS.1",
     "code": "NC.MATH.Y4.AS.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Column addition and subtraction with up to four digits, including exchanging across a zero.",
+    "plainLanguage": "Column addition and subtraction with up to four digits, including exchanging across a zero.",
     "expectedMethods": [
       "Line the digits up by place value, not by the end of the number",
       "Show the exchange with counters before recording it",
@@ -328,9 +327,9 @@
   {
     "id": "NC.MATH.Y4.AS.2",
     "code": "NC.MATH.Y4.AS.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Two step word problems where you have to decide which operations to use and in what order.",
+    "plainLanguage": "Two step word problems where you have to decide which operations to use and in what order.",
     "expectedMethods": [
       "Draw a bar model showing the parts and the whole",
       "Write down what the first step gives you before starting the second",
@@ -341,9 +340,9 @@
   {
     "id": "NC.MATH.Y4.MD.1",
     "code": "NC.MATH.Y4.MD.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Knowing all the times tables up to 12 times 12, and the division facts that come with them. This is the year they are expected to be automatic.",
+    "plainLanguage": "Knowing all the times tables up to 12 times 12, and the division facts that come with them. This is the year they are expected to be automatic.",
     "expectedMethods": [
       "Practise the facts that are still slow rather than the whole table",
       "Derive a hard fact from an easy one, so 7 times 8 from 7 times 4 doubled",
@@ -354,9 +353,9 @@
   {
     "id": "NC.MATH.Y4.MD.2",
     "code": "NC.MATH.Y4.MD.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Factor pairs. Two numbers that multiply to make a third are a factor pair of it, and the order they are multiplied in does not matter.",
+    "plainLanguage": "Factor pairs. Two numbers that multiply to make a third are a factor pair of it, and the order they are multiplied in does not matter.",
     "expectedMethods": [
       "Work through 1, 2, 3 and so on, testing each in turn",
       "Arrange counters into every possible rectangle",
@@ -367,9 +366,9 @@
   {
     "id": "NC.MATH.Y4.MD.3",
     "code": "NC.MATH.Y4.MD.3",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Short multiplication: multiplying a two or three digit number by a single digit in a formal written layout.",
+    "plainLanguage": "Short multiplication: multiplying a two or three digit number by a single digit in a formal written layout.",
     "expectedMethods": [
       "Split the big number into its parts and multiply each one",
       "Use a grid with the parts along the top before moving to the compact layout",
@@ -380,9 +379,9 @@
   {
     "id": "NC.MATH.Y4.MD.4",
     "code": "NC.MATH.Y4.MD.4",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Breaking a multiplication into easier parts, so 39 times 7 becomes 30 times 7 plus 9 times 7.",
+    "plainLanguage": "Breaking a multiplication into easier parts, so 39 times 7 becomes 30 times 7 plus 9 times 7.",
     "expectedMethods": [
       "Partition one number and multiply each part separately",
       "Show it as two rectangles side by side",
@@ -393,9 +392,9 @@
   {
     "id": "NC.MATH.Y4.F.1",
     "code": "NC.MATH.Y4.F.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Families of equivalent fractions, and simplifying by spotting a common factor, so six ninths is two thirds.",
+    "plainLanguage": "Families of equivalent fractions, and simplifying by spotting a common factor, so six ninths is two thirds.",
     "expectedMethods": [
       "Line up fraction strips and look for equal lengths",
       "Find a number that divides into both the top and the bottom",
@@ -406,9 +405,9 @@
   {
     "id": "NC.MATH.Y4.F.2",
     "code": "NC.MATH.Y4.F.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Hundredths. One hundredth is a whole cut into a hundred parts, or a tenth cut into ten.",
+    "plainLanguage": "Hundredths. One hundredth is a whole cut into a hundred parts, or a tenth cut into ten.",
     "expectedMethods": [
       "Shade a hundred square and name the amount",
       "Divide a tenth strip into ten and name one piece",
@@ -419,9 +418,9 @@
   {
     "id": "NC.MATH.Y4.F.3",
     "code": "NC.MATH.Y4.F.3",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Writing tenths and hundredths as decimals, and knowing the decimal equivalents of a quarter, a half and three quarters.",
+    "plainLanguage": "Writing tenths and hundredths as decimals, and knowing the decimal equivalents of a quarter, a half and three quarters.",
     "expectedMethods": [
       "Shade the same amount on a hundred square and a fraction strip",
       "Place the fraction and the decimal at the same point on a number line",
@@ -432,9 +431,9 @@
   {
     "id": "NC.MATH.Y4.F.4",
     "code": "NC.MATH.Y4.F.4",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Dividing a number by 10 or 100 and seeing the digits move into the tenths and hundredths columns.",
+    "plainLanguage": "Dividing a number by 10 or 100 and seeing the digits move into the tenths and hundredths columns.",
     "expectedMethods": [
       "Move the digits along a place value chart and keep the point still",
       "Say what each digit is worth after the move",
@@ -445,9 +444,9 @@
   {
     "id": "NC.MATH.Y4.F.5",
     "code": "NC.MATH.Y4.F.5",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Comparing decimals with the same number of decimal places, and rounding a decimal with one place to the nearest whole number.",
+    "plainLanguage": "Comparing decimals with the same number of decimal places, and rounding a decimal with one place to the nearest whole number.",
     "expectedMethods": [
       "Compare the whole numbers first, then the tenths, then the hundredths",
       "Place both on a number line between two whole numbers",
@@ -458,9 +457,9 @@
   {
     "id": "NC.MATH.Y4.M.1",
     "code": "NC.MATH.Y4.M.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Converting between units of measure, such as kilometres to metres or hours to minutes.",
+    "plainLanguage": "Converting between units of measure, such as kilometres to metres or hours to minutes.",
     "expectedMethods": [
       "Decide first whether the answer should be bigger or smaller",
       "Multiply going to a smaller unit, divide going to a larger one",
@@ -471,9 +470,9 @@
   {
     "id": "NC.MATH.Y4.M.2",
     "code": "NC.MATH.Y4.M.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Perimeter of a shape made only of straight lines and right angles, including working out sides that are not labelled.",
+    "plainLanguage": "Perimeter of a shape made only of straight lines and right angles, including working out sides that are not labelled.",
     "expectedMethods": [
       "Work out the missing sides from the ones you are given",
       "Mark each side as you add it so none is counted twice",
@@ -484,9 +483,9 @@
   {
     "id": "NC.MATH.Y4.M.3",
     "code": "NC.MATH.Y4.M.3",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Area, introduced by counting the squares that cover a shape rather than by a formula.",
+    "plainLanguage": "Area, introduced by counting the squares that cover a shape rather than by a formula.",
     "expectedMethods": [
       "Count the squares inside the shape one at a time",
       "Notice the squares make rows that are all the same size",
@@ -497,9 +496,9 @@
   {
     "id": "NC.MATH.Y4.M.4",
     "code": "NC.MATH.Y4.M.4",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Reading and converting between 12 hour and 24 hour clocks, and solving problems about how long something lasts.",
+    "plainLanguage": "Reading and converting between 12 hour and 24 hour clocks, and solving problems about how long something lasts.",
     "expectedMethods": [
       "Count on to the next whole hour first, then on to the end time",
       "Use a blank number line to record the jumps",
@@ -510,9 +509,9 @@
   {
     "id": "NC.MATH.Y4.GS.1",
     "code": "NC.MATH.Y4.GS.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Sorting triangles and quadrilaterals by their properties, so equilateral, isosceles and scalene, or parallelogram, rhombus and trapezium.",
+    "plainLanguage": "Sorting triangles and quadrilaterals by their properties, so equilateral, isosceles and scalene, or parallelogram, rhombus and trapezium.",
     "expectedMethods": [
       "Check the sides and the angles, not just the overall look",
       "Sort a set of shapes and say what rule was used",
@@ -523,9 +522,9 @@
   {
     "id": "NC.MATH.Y4.GS.2",
     "code": "NC.MATH.Y4.GS.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Acute angles are smaller than a right angle and obtuse angles are bigger, and angles can be put in order by size.",
+    "plainLanguage": "Acute angles are smaller than a right angle and obtuse angles are bigger, and angles can be put in order by size.",
     "expectedMethods": [
       "Compare each angle against a right angle corner",
       "Order a set of angles without measuring them",
@@ -536,9 +535,9 @@
   {
     "id": "NC.MATH.Y4.GS.3",
     "code": "NC.MATH.Y4.GS.3",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Lines of symmetry in two dimensional shapes, including shapes that are not the right way up, and completing a symmetric figure.",
+    "plainLanguage": "Lines of symmetry in two dimensional shapes, including shapes that are not the right way up, and completing a symmetric figure.",
     "expectedMethods": [
       "Fold or use a mirror to test a line",
       "Count corresponding points the same distance from the line",
@@ -549,9 +548,9 @@
   {
     "id": "NC.MATH.Y4.GP.1",
     "code": "NC.MATH.Y4.GP.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Coordinates in the first quadrant, written as a pair, and describing a move as so many left or right and so many up or down.",
+    "plainLanguage": "Coordinates in the first quadrant, written as a pair, and describing a move as so many left or right and so many up or down.",
     "expectedMethods": [
       "Read along the bottom first, then up",
       "Plot the points and join them to complete a shape",
@@ -562,9 +561,9 @@
   {
     "id": "NC.MATH.Y4.S.1",
     "code": "NC.MATH.Y4.S.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 3,
-    "plainLanguage": "Year 4. Bar charts and time graphs, and answering comparison, total and difference questions from them.",
+    "plainLanguage": "Bar charts and time graphs, and answering comparison, total and difference questions from them.",
     "expectedMethods": [
       "Work out what one interval on the axis is worth first",
       "Read both values before comparing them",
@@ -572,13 +571,12 @@
     ],
     "parentMethod": "Read the numbers off the graph."
   },
-
   {
     "id": "NC.MATH.Y5.NPV.1",
     "code": "NC.MATH.Y5.NPV.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 4,
-    "plainLanguage": "Year 5. Reading, writing, ordering and comparing numbers up to a million, and knowing what each digit is worth.",
+    "plainLanguage": "Reading, writing, ordering and comparing numbers up to a million, and knowing what each digit is worth.",
     "expectedMethods": [
       "Group the digits in threes to read the number",
       "Use a place value chart with a thousands column",
@@ -589,9 +587,9 @@
   {
     "id": "NC.MATH.Y5.NPV.2",
     "code": "NC.MATH.Y5.NPV.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 4,
-    "plainLanguage": "Year 5. Negative numbers in real contexts, counting forwards and backwards through zero.",
+    "plainLanguage": "Negative numbers in real contexts, counting forwards and backwards through zero.",
     "expectedMethods": [
       "Use a number line that runs both sides of zero",
       "Count the distance to zero and then onwards",
@@ -602,9 +600,9 @@
   {
     "id": "NC.MATH.Y5.NPV.3",
     "code": "NC.MATH.Y5.NPV.3",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 4,
-    "plainLanguage": "Year 5. Rounding any number up to a million to the nearest 10, 100, 1000, 10 000 or 100 000.",
+    "plainLanguage": "Rounding any number up to a million to the nearest 10, 100, 1000, 10 000 or 100 000.",
     "expectedMethods": [
       "Identify the two multiples the number sits between",
       "Underline the digit in the column you are rounding to",
@@ -615,9 +613,9 @@
   {
     "id": "NC.MATH.Y5.AS.1",
     "code": "NC.MATH.Y5.AS.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 4,
-    "plainLanguage": "Year 5. Column addition and subtraction with numbers of more than four digits, and multi step problems where you choose the operations.",
+    "plainLanguage": "Column addition and subtraction with numbers of more than four digits, and multi step problems where you choose the operations.",
     "expectedMethods": [
       "Estimate by rounding before calculating",
       "Line the digits up by place value",
@@ -628,9 +626,9 @@
   {
     "id": "NC.MATH.Y5.MD.1",
     "code": "NC.MATH.Y5.MD.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 4,
-    "plainLanguage": "Year 5. Factors and multiples, including all the factor pairs of a number and the factors two numbers share.",
+    "plainLanguage": "Factors and multiples, including all the factor pairs of a number and the factors two numbers share.",
     "expectedMethods": [
       "Test 1, 2, 3 and so on in order until the pairs meet",
       "List the factors of both numbers and look for the ones in both",
@@ -641,9 +639,9 @@
   {
     "id": "NC.MATH.Y5.MD.2",
     "code": "NC.MATH.Y5.MD.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 4,
-    "plainLanguage": "Year 5. Prime numbers have exactly two factors, one and themselves. Numbers with more than two are composite.",
+    "plainLanguage": "Prime numbers have exactly two factors, one and themselves. Numbers with more than two are composite.",
     "expectedMethods": [
       "Test divisibility by 2, 3, 5 and 7 in turn",
       "Try to build a rectangle other than a single row",
@@ -654,22 +652,22 @@
   {
     "id": "NC.MATH.Y5.MD.3",
     "code": "NC.MATH.Y5.MD.3",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 4,
-    "plainLanguage": "Year 5. Long multiplication: multiplying a number of up to four digits by a two digit number in a formal written layout.",
+    "plainLanguage": "Long multiplication met for the first time as a formal written layout: a number of up to four digits times a two digit number, set out in columns with one row for the ones and one for the tens. The layout itself is what is being learned here.",
     "expectedMethods": [
-      "Multiply by the ones, then by the tens, then add the two rows",
+      "Set it out in columns and multiply by the ones, then by the tens",
       "Put a zero as a place holder on the second row and say why it is there",
-      "Estimate the answer first by rounding both numbers"
+      "Add the two rows, lining the columns up"
     ],
     "parentMethod": "Long multiplication, with a zero on the second line."
   },
   {
     "id": "NC.MATH.Y5.MD.4",
     "code": "NC.MATH.Y5.MD.4",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 4,
-    "plainLanguage": "Year 5. Short division by a single digit, and deciding what to do with a remainder depending on the question.",
+    "plainLanguage": "Short division by a single digit, and deciding what to do with a remainder depending on the question.",
     "expectedMethods": [
       "Carry the remainder into the next column as a small digit",
       "Decide whether the context needs a remainder, a fraction, a decimal or rounding",
@@ -680,9 +678,9 @@
   {
     "id": "NC.MATH.Y5.MD.5",
     "code": "NC.MATH.Y5.MD.5",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 4,
-    "plainLanguage": "Year 5. Multiplying and dividing by 10, 100 and 1000, including with decimals.",
+    "plainLanguage": "Multiplying and dividing by 10, 100 and 1000, including with decimals.",
     "expectedMethods": [
       "Move the digits along the place value chart and keep the point fixed",
       "Say how many places and in which direction before moving anything",
@@ -693,9 +691,9 @@
   {
     "id": "NC.MATH.Y5.MD.6",
     "code": "NC.MATH.Y5.MD.6",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 4,
-    "plainLanguage": "Year 5. Square numbers and cube numbers, and the notation for squared and cubed.",
+    "plainLanguage": "Square numbers and cube numbers, and the notation for squared and cubed.",
     "expectedMethods": [
       "Build the square as a square array of counters",
       "Build the cube as a cube of blocks",
@@ -706,9 +704,9 @@
   {
     "id": "NC.MATH.Y5.F.1",
     "code": "NC.MATH.Y5.F.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 4,
-    "plainLanguage": "Year 5. Comparing and ordering fractions whose bottom numbers are multiples of the same number.",
+    "plainLanguage": "Comparing and ordering fractions whose bottom numbers are multiples of the same number.",
     "expectedMethods": [
       "Change them to a common bottom number, then compare the tops",
       "Place them all on one number line",
@@ -719,9 +717,9 @@
   {
     "id": "NC.MATH.Y5.F.2",
     "code": "NC.MATH.Y5.F.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 4,
-    "plainLanguage": "Year 5. Mixed numbers and improper fractions, and converting between them, so six fifths is one and one fifth.",
+    "plainLanguage": "Mixed numbers and improper fractions, and converting between them, so six fifths is one and one fifth.",
     "expectedMethods": [
       "Shade whole shapes and a part to show the mixed number",
       "Count on in fifths past one on a number line",
@@ -732,9 +730,9 @@
   {
     "id": "NC.MATH.Y5.F.3",
     "code": "NC.MATH.Y5.F.3",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 4,
-    "plainLanguage": "Year 5. Adding and subtracting fractions where one bottom number is a multiple of the other, by making the pieces the same size first.",
+    "plainLanguage": "Adding and subtracting fractions where one bottom number is a multiple of the other, by making the pieces the same size first.",
     "expectedMethods": [
       "Change only the fraction that needs changing",
       "Draw both fractions and cut the pieces so they match",
@@ -745,9 +743,9 @@
   {
     "id": "NC.MATH.Y5.F.4",
     "code": "NC.MATH.Y5.F.4",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 4,
-    "plainLanguage": "Year 5. Multiplying a fraction or a mixed number by a whole number, supported by diagrams.",
+    "plainLanguage": "Multiplying a fraction or a mixed number by a whole number, supported by diagrams.",
     "expectedMethods": [
       "Show it as repeated addition of the same fraction",
       "Draw the fraction the right number of times and total the pieces",
@@ -758,9 +756,9 @@
   {
     "id": "NC.MATH.Y5.F.5",
     "code": "NC.MATH.Y5.F.5",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 4,
-    "plainLanguage": "Year 5. Decimals to three places, including thousandths, and reading, ordering and rounding them.",
+    "plainLanguage": "Decimals to three places, including thousandths, and reading, ordering and rounding them.",
     "expectedMethods": [
       "Use a place value chart with tenths, hundredths and thousandths",
       "Compare place by place from the left",
@@ -771,9 +769,9 @@
   {
     "id": "NC.MATH.Y5.F.6",
     "code": "NC.MATH.Y5.F.6",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 4,
-    "plainLanguage": "Year 5. Per cent means parts per hundred. Fifty per cent is fifty hundredths, a half, or 0.5.",
+    "plainLanguage": "Per cent means parts per hundred. Fifty per cent is fifty hundredths, a half, or 0.5.",
     "expectedMethods": [
       "Shade a hundred square to show the percentage",
       "Write it as a fraction over a hundred and simplify",
@@ -784,9 +782,9 @@
   {
     "id": "NC.MATH.Y5.M.1",
     "code": "NC.MATH.Y5.M.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 4,
-    "plainLanguage": "Year 5. Converting between metric units, and knowing roughly how they compare with inches, pounds and pints.",
+    "plainLanguage": "Converting between metric units, and knowing roughly how they compare with inches, pounds and pints.",
     "expectedMethods": [
       "Decide whether the number should get bigger or smaller first",
       "Use the place value chart rather than a remembered rule",
@@ -797,9 +795,9 @@
   {
     "id": "NC.MATH.Y5.M.2",
     "code": "NC.MATH.Y5.M.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 4,
-    "plainLanguage": "Year 5. Area of rectangles in square centimetres and square metres, and estimating the area of irregular shapes.",
+    "plainLanguage": "Area of rectangles in square centimetres and square metres, and estimating the area of irregular shapes.",
     "expectedMethods": [
       "Split a composite shape into rectangles and total the areas",
       "Count whole squares and pair up the part squares for an estimate",
@@ -810,9 +808,9 @@
   {
     "id": "NC.MATH.Y5.M.3",
     "code": "NC.MATH.Y5.M.3",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 4,
-    "plainLanguage": "Year 5. Perimeter of composite shapes made from rectangles, including finding lengths that are not marked.",
+    "plainLanguage": "Perimeter of composite shapes made from rectangles, including finding lengths that are not marked.",
     "expectedMethods": [
       "Work out the unmarked sides from the ones you are given",
       "Go round once, marking each side as it is added",
@@ -823,9 +821,9 @@
   {
     "id": "NC.MATH.Y5.GS.1",
     "code": "NC.MATH.Y5.GS.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 4,
-    "plainLanguage": "Year 5. Measuring and drawing angles in degrees with a protractor, including reflex angles over 180 degrees.",
+    "plainLanguage": "Measuring and drawing angles in degrees with a protractor, including reflex angles over 180 degrees.",
     "expectedMethods": [
       "Line the centre of the protractor on the point and the zero on one arm",
       "Decide first whether the angle is acute or obtuse, then pick the right scale",
@@ -836,9 +834,9 @@
   {
     "id": "NC.MATH.Y5.GS.2",
     "code": "NC.MATH.Y5.GS.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 4,
-    "plainLanguage": "Year 5. Angles round a point total 360 degrees and angles on a straight line total 180, which lets you find a missing one.",
+    "plainLanguage": "Angles round a point total 360 degrees and angles on a straight line total 180, which lets you find a missing one.",
     "expectedMethods": [
       "Write the total down first, then subtract the known angles",
       "Mark the angles that make the whole turn or the straight line",
@@ -849,9 +847,9 @@
   {
     "id": "NC.MATH.Y5.GP.1",
     "code": "NC.MATH.Y5.GP.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 4,
-    "plainLanguage": "Year 5. Reflecting and translating a shape, and knowing the shape itself does not change size or form.",
+    "plainLanguage": "Reflecting and translating a shape, and knowing the shape itself does not change size or form.",
     "expectedMethods": [
       "Measure each point's distance from the mirror line and match it",
       "Move every vertex by the same amount for a translation",
@@ -862,9 +860,9 @@
   {
     "id": "NC.MATH.Y5.S.1",
     "code": "NC.MATH.Y5.S.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 4,
-    "plainLanguage": "Year 5. Reading line graphs and timetables, and answering comparison, total and difference questions from them.",
+    "plainLanguage": "Reading line graphs and timetables, and answering comparison, total and difference questions from them.",
     "expectedMethods": [
       "Work out the scale on both axes before reading anything",
       "Track across and down to read a point accurately",
@@ -872,13 +870,12 @@
     ],
     "parentMethod": "Find it on the graph and read it off."
   },
-
   {
     "id": "NC.MATH.Y6.NPV.1",
     "code": "NC.MATH.Y6.NPV.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Reading, writing, ordering and comparing numbers up to ten million, and rounding any of them to a stated accuracy.",
+    "plainLanguage": "Reading, writing, ordering and comparing numbers up to ten million, and rounding any of them to a stated accuracy.",
     "expectedMethods": [
       "Group the digits in threes to read the number aloud",
       "Compare from the leftmost digit",
@@ -889,9 +886,9 @@
   {
     "id": "NC.MATH.Y6.NPV.2",
     "code": "NC.MATH.Y6.NPV.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Negative numbers in context, and working out the gap between a negative and a positive number.",
+    "plainLanguage": "Negative numbers in context, and working out the gap between a negative and a positive number.",
     "expectedMethods": [
       "Count up to zero first, then on to the other number",
       "Use a number line running both sides of zero",
@@ -900,24 +897,24 @@
     "parentMethod": "Subtract and change the sign."
   },
   {
-    "id": "NC.MATH.Y6.AS.1",
-    "code": "NC.MATH.Y6.AS.1",
-    "curriculum": "NC_ENGLAND",
+    "id": "NC.MATH.Y6.MD.1",
+    "code": "NC.MATH.Y6.MD.1",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Long multiplication of a number up to four digits by a two digit number.",
+    "plainLanguage": "The same long multiplication, now expected to be fluent and used as one step inside a longer problem rather than as the exercise itself. The work is spotting that a multiplication is needed and judging whether the result is a sensible size, not the written layout.",
     "expectedMethods": [
-      "Multiply by the ones, then by the tens, then add the rows",
-      "Explain why the second row starts with a zero rather than just writing one",
-      "Estimate first so a misplaced row shows up"
+      "Spot which part of a multi step problem needs the multiplication",
+      "Estimate first and check the answer is the right order of size",
+      "Carry the result into the next step without losing track of it"
     ],
-    "parentMethod": "Long multiplication with a zero on the second line."
+    "parentMethod": "Long multiplication, done without being reminded how it is set out."
   },
   {
-    "id": "NC.MATH.Y6.AS.2",
-    "code": "NC.MATH.Y6.AS.2",
-    "curriculum": "NC_ENGLAND",
+    "id": "NC.MATH.Y6.MD.2",
+    "code": "NC.MATH.Y6.MD.2",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Long division by a two digit number, and interpreting the remainder as a remainder, a fraction, a decimal or by rounding.",
+    "plainLanguage": "Long division by a two digit number, and interpreting the remainder as a remainder, a fraction, a decimal or by rounding.",
     "expectedMethods": [
       "Write out the first few multiples of the divisor before starting",
       "Subtract each chunk and bring the next digit down",
@@ -926,11 +923,11 @@
     "parentMethod": "Long division, or the bus stop method if it fits."
   },
   {
-    "id": "NC.MATH.Y6.AS.3",
-    "code": "NC.MATH.Y6.AS.3",
-    "curriculum": "NC_ENGLAND",
+    "id": "NC.MATH.Y6.MD.3",
+    "code": "NC.MATH.Y6.MD.3",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. The order of operations, including brackets. Two plus one times three is five, but with brackets round the two plus one it is nine.",
+    "plainLanguage": "The order of operations, including brackets. Two plus one times three is five, but with brackets round the two plus one it is nine.",
     "expectedMethods": [
       "Do the brackets first, then multiply and divide, then add and subtract",
       "Rewrite the calculation after each step rather than doing it all at once",
@@ -939,11 +936,11 @@
     "parentMethod": "BODMAS."
   },
   {
-    "id": "NC.MATH.Y6.AS.4",
-    "code": "NC.MATH.Y6.AS.4",
-    "curriculum": "NC_ENGLAND",
+    "id": "NC.MATH.Y6.MD.4",
+    "code": "NC.MATH.Y6.MD.4",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Common factors, common multiples and prime numbers, used to simplify and to find common denominators.",
+    "plainLanguage": "Common factors, common multiples and prime numbers, used to simplify and to find common denominators.",
     "expectedMethods": [
       "List the factors or multiples of both and look for shared ones",
       "Use prime factors to find the highest common factor",
@@ -954,9 +951,9 @@
   {
     "id": "NC.MATH.Y6.F.1",
     "code": "NC.MATH.Y6.F.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Simplifying a fraction using a common factor, and rewriting fractions so they share a bottom number.",
+    "plainLanguage": "Simplifying a fraction using a common factor, and rewriting fractions so they share a bottom number.",
     "expectedMethods": [
       "Find the highest number that divides into both top and bottom",
       "Use a common multiple of both bottom numbers",
@@ -967,9 +964,9 @@
   {
     "id": "NC.MATH.Y6.F.2",
     "code": "NC.MATH.Y6.F.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Adding and subtracting fractions with different bottom numbers, and with mixed numbers, by making the pieces the same size first.",
+    "plainLanguage": "Adding and subtracting fractions with different bottom numbers, and with mixed numbers, by making the pieces the same size first.",
     "expectedMethods": [
       "Find a common multiple of both bottom numbers",
       "Draw both fractions and cut them so the pieces match",
@@ -980,9 +977,9 @@
   {
     "id": "NC.MATH.Y6.F.3",
     "code": "NC.MATH.Y6.F.3",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Multiplying two proper fractions, which gives an answer smaller than either of them.",
+    "plainLanguage": "Multiplying two proper fractions, which gives an answer smaller than either of them.",
     "expectedMethods": [
       "Shade one fraction of a rectangle, then that fraction of the shaded part",
       "Multiply the tops and multiply the bottoms, then simplify",
@@ -993,9 +990,9 @@
   {
     "id": "NC.MATH.Y6.F.4",
     "code": "NC.MATH.Y6.F.4",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Dividing a proper fraction by a whole number, so a third shared between two people is a sixth each.",
+    "plainLanguage": "Dividing a proper fraction by a whole number, so a third shared between two people is a sixth each.",
     "expectedMethods": [
       "Draw the fraction and cut each piece into the number of shares",
       "Say what one share is worth of the original whole",
@@ -1006,9 +1003,9 @@
   {
     "id": "NC.MATH.Y6.F.5",
     "code": "NC.MATH.Y6.F.5",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. A fraction is also a division, so three eighths is three divided by eight, which is 0.375.",
+    "plainLanguage": "A fraction is also a division, so three eighths is three divided by eight, which is 0.375.",
     "expectedMethods": [
       "Divide the top by the bottom using short division",
       "Recall the common equivalents rather than calculating every time",
@@ -1019,9 +1016,9 @@
   {
     "id": "NC.MATH.Y6.F.6",
     "code": "NC.MATH.Y6.F.6",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Moving freely between fractions, decimals and percentages, because they are three ways of saying the same proportion.",
+    "plainLanguage": "Moving freely between fractions, decimals and percentages, because they are three ways of saying the same proportion.",
     "expectedMethods": [
       "Go through a hundredth as the common step between the three",
       "Learn the common set for halves, quarters, fifths and tenths",
@@ -1032,9 +1029,9 @@
   {
     "id": "NC.MATH.Y6.RP.1",
     "code": "NC.MATH.Y6.RP.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Ratio compares two quantities by how many times bigger one is, not by how much bigger. Two to three scales up to four to six, not three to four.",
+    "plainLanguage": "Ratio compares two quantities by how many times bigger one is, not by how much bigger. Two to three scales up to four to six, not three to four.",
     "expectedMethods": [
       "Draw a bar model with one bar per part",
       "Find what one part is worth, then scale up",
@@ -1045,9 +1042,9 @@
   {
     "id": "NC.MATH.Y6.RP.2",
     "code": "NC.MATH.Y6.RP.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Finding a percentage of an amount, and using percentages to compare two things.",
+    "plainLanguage": "Finding a percentage of an amount, and using percentages to compare two things.",
     "expectedMethods": [
       "Find ten per cent first, then build the rest from it",
       "Draw a bar split into ten or a hundred parts",
@@ -1058,9 +1055,9 @@
   {
     "id": "NC.MATH.Y6.RP.3",
     "code": "NC.MATH.Y6.RP.3",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Scale factor, and problems about similar shapes where one is an enlargement of the other.",
+    "plainLanguage": "Scale factor, and problems about similar shapes where one is an enlargement of the other.",
     "expectedMethods": [
       "Compare one pair of matching sides to find the factor",
       "Apply the same factor to every length",
@@ -1071,9 +1068,9 @@
   {
     "id": "NC.MATH.Y6.RP.4",
     "code": "NC.MATH.Y6.RP.4",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Unequal sharing, such as splitting an amount so one person gets three parts for every two the other gets.",
+    "plainLanguage": "Unequal sharing, such as splitting an amount so one person gets three parts for every two the other gets.",
     "expectedMethods": [
       "Count the total number of parts first",
       "Divide the total by the number of parts to find one part",
@@ -1084,9 +1081,9 @@
   {
     "id": "NC.MATH.Y6.A.1",
     "code": "NC.MATH.Y6.A.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Using a simple formula, where a letter stands for a number that can change.",
+    "plainLanguage": "Using a simple formula, where a letter stands for a number that can change.",
     "expectedMethods": [
       "Say the formula in words before using symbols",
       "Substitute the value and work through one step at a time",
@@ -1097,9 +1094,9 @@
   {
     "id": "NC.MATH.Y6.A.2",
     "code": "NC.MATH.Y6.A.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Number sequences that go up or down by the same amount each time, and describing the rule.",
+    "plainLanguage": "Number sequences that go up or down by the same amount each time, and describing the rule.",
     "expectedMethods": [
       "Find the difference between consecutive terms",
       "Describe the rule in words before writing it with a letter",
@@ -1110,9 +1107,9 @@
   {
     "id": "NC.MATH.Y6.A.3",
     "code": "NC.MATH.Y6.A.3",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Writing a missing number problem with a letter, and finding pairs of numbers that fit an equation with two unknowns.",
+    "plainLanguage": "Writing a missing number problem with a letter, and finding pairs of numbers that fit an equation with two unknowns.",
     "expectedMethods": [
       "Replace the empty box with a letter and keep the rest the same",
       "Work backwards using the opposite operation",
@@ -1123,9 +1120,9 @@
   {
     "id": "NC.MATH.Y6.M.1",
     "code": "NC.MATH.Y6.M.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Converting between units of length, mass, volume and time using decimals, and between miles and kilometres.",
+    "plainLanguage": "Converting between units of length, mass, volume and time using decimals, and between miles and kilometres.",
     "expectedMethods": [
       "Decide first whether the number should get bigger or smaller",
       "Use the place value chart rather than a remembered rule",
@@ -1136,9 +1133,9 @@
   {
     "id": "NC.MATH.Y6.M.2",
     "code": "NC.MATH.Y6.M.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Area of parallelograms and triangles, and the fact that shapes with the same area can have different perimeters.",
+    "plainLanguage": "Area of parallelograms and triangles, and the fact that shapes with the same area can have different perimeters.",
     "expectedMethods": [
       "Cut and rearrange a parallelogram into a rectangle",
       "See a triangle as half of a rectangle around it",
@@ -1149,9 +1146,9 @@
   {
     "id": "NC.MATH.Y6.M.3",
     "code": "NC.MATH.Y6.M.3",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Volume of cubes and cuboids in cubic centimetres and cubic metres.",
+    "plainLanguage": "Volume of cubes and cuboids in cubic centimetres and cubic metres.",
     "expectedMethods": [
       "Build the cuboid from unit cubes and count a layer",
       "Multiply one layer by the number of layers",
@@ -1162,9 +1159,9 @@
   {
     "id": "NC.MATH.Y6.GS.1",
     "code": "NC.MATH.Y6.GS.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Finding unknown angles in triangles, quadrilaterals and regular polygons using the angle totals.",
+    "plainLanguage": "Finding unknown angles in triangles, quadrilaterals and regular polygons using the angle totals.",
     "expectedMethods": [
       "Write the total for the shape first, then subtract the known angles",
       "Split a polygon into triangles to find its total",
@@ -1175,9 +1172,9 @@
   {
     "id": "NC.MATH.Y6.GS.2",
     "code": "NC.MATH.Y6.GS.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. The parts of a circle: radius, diameter and circumference, and that the diameter is twice the radius.",
+    "plainLanguage": "The parts of a circle: radius, diameter and circumference, and that the diameter is twice the radius.",
     "expectedMethods": [
       "Label a drawn circle with all three parts",
       "Fold a paper circle to find the diameter and then the radius",
@@ -1188,9 +1185,9 @@
   {
     "id": "NC.MATH.Y6.GS.3",
     "code": "NC.MATH.Y6.GS.3",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Angles that meet at a point, sit on a straight line, or are vertically opposite when two lines cross.",
+    "plainLanguage": "Angles that meet at a point, sit on a straight line, or are vertically opposite when two lines cross.",
     "expectedMethods": [
       "Mark which angles make the full turn or the straight line",
       "Identify the vertically opposite pair and say they are equal",
@@ -1201,9 +1198,9 @@
   {
     "id": "NC.MATH.Y6.GP.1",
     "code": "NC.MATH.Y6.GP.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Coordinates in all four quadrants, including negative ones, and translating or reflecting a shape on the grid.",
+    "plainLanguage": "Coordinates in all four quadrants, including negative ones, and translating or reflecting a shape on the grid.",
     "expectedMethods": [
       "Read along the x axis first, then up or down the y axis",
       "Move every vertex by the same amount and rejoin them",
@@ -1214,9 +1211,9 @@
   {
     "id": "NC.MATH.Y6.S.1",
     "code": "NC.MATH.Y6.S.1",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. Pie charts and line graphs, where the whole circle is 360 degrees and each slice is a share of it.",
+    "plainLanguage": "Pie charts and line graphs, where the whole circle is 360 degrees and each slice is a share of it.",
     "expectedMethods": [
       "Connect each slice to a fraction or percentage of the whole",
       "Work out what one part is worth before reading individual slices",
@@ -1227,9 +1224,9 @@
   {
     "id": "NC.MATH.Y6.S.2",
     "code": "NC.MATH.Y6.S.2",
-    "curriculum": "NC_ENGLAND",
+    "curriculum": "ENC",
     "grade": 5,
-    "plainLanguage": "Year 6. The mean, found by totalling the values and dividing by how many there are, and knowing when it is a sensible thing to use.",
+    "plainLanguage": "The mean, found by totalling the values and dividing by how many there are, and knowing when it is a sensible thing to use.",
     "expectedMethods": [
       "Level out a set of towers of cubes so they are all equal",
       "Total the values and divide by the count",

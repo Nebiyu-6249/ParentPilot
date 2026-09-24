@@ -202,6 +202,9 @@ export const es: LocaleOverlay = {
     discloseTeaching: "¿Qué se aprende con esto?",
     discloseScripts: "Qué decir y qué callar",
     discloseAnswer: "Dime el resultado y ya",
+    standardClosest: "Lo más parecido:",
+    standardUncertainHelp:
+      "La búsqueda no ha quedado convencida con este, así que tómalo como lo más parecido que hemos encontrado y no como lo que tu hija está viendo en clase seguro. El método y las preguntas de arriba no dependen de esto.",
     primerMore: "Leerlo entero",
     genericFallback:
       "No he podido escribir un resumen nuevo para este, así que esta es la explicación general guardada para el tema. Es correcta, pero no está hecha a partir de lo que escribió tu hija.",

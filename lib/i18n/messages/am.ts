@@ -196,6 +196,9 @@ export const am: LocaleOverlay = {
     discloseTeaching: "ይህ ምን ያስተምራል?",
     discloseScripts: "የሚባለውና የሚታለፈው",
     discloseAnswer: "መልሱን ብቻ ንገረኝ",
+    standardClosest: "በጣም ቅርብ የሆነው፦",
+    standardUncertainHelp:
+      "ፍለጋው በዚህ ላይ እርግጠኛ አልነበረም፤ ስለዚህ ልጅዎ በክፍል እየሠራ ያለው ይህ ነው ከማለት ይልቅ ያገኘነው በጣም ቅርብ ነገር እንደሆነ ይውሰዱት። ከላይ ያሉት ዘዴና ጥያቄዎች በዚህ ላይ አይመሠረቱም።",
     primerMore: "ሙሉውን ያንብቡ",
     genericFallback:
       "ለዚህ አዲስ ማብራሪያ መጻፍ አልቻልኩም፤ ስለዚህ ይህ ለርዕሱ የተቀመጠው አጠቃላይ ማብራሪያ ነው። ትክክል ነው፣ ግን ከልጅዎ ሥራ ተነስቶ የተሠራ አይደለም።",

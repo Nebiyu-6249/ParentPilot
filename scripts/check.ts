@@ -32,6 +32,7 @@ import {
   threadTranscript,
 } from "../lib/thread";
 import { resolveAppUrl } from "../lib/app-url";
+import { STANDARD_CERTAIN_AT, STANDARD_UNSCOPED_CERTAIN_AT, standardIsUncertain } from "../lib/types";
 import { overheardSafety, safeSpoken, soundsLikeAVerdict } from "../lib/voice";
 import { coverage, type LocaleOverlay } from "../lib/i18n";
 import { LOCALES, localeFor } from "../lib/i18n/locales";
@@ -2141,6 +2142,389 @@ section("Voice Mode, and what may be said in a room");
   ok("voice-turn: forbids naming the misconception", /never name what the child got wrong/i.test(prompt));
   ok("voice-turn: forbids the child's name", /never use the child's name/i.test(prompt));
   ok("voice-turn: contains no em dash of its own", !/—|―/.test(prompt));
+}
+
+
+// ---------------------------------------------------------------------------
+
+section("Standard selection, and saying so when it is a guess");
+
+{
+  /** A search that knew the child's curriculum and stayed inside it. */
+  const scoped = { requested: "CCSS", fellBack: false, mixed: false };
+  /** The anonymous path: no profile, so no curriculum to scope by. */
+  const unscoped = { requested: null, fellBack: false, mixed: false };
+
+  eq("a strong match asserts the standard", standardIsUncertain(0.82, scoped), false);
+  eq("a weak one hedges", standardIsUncertain(0.41, scoped), true);
+  eq("the threshold itself is certain", standardIsUncertain(STANDARD_CERTAIN_AT, scoped), false);
+  eq("just below it is not", standardIsUncertain(STANDARD_CERTAIN_AT - 0.001, scoped), true);
+  /* Null is a problem matched before scores were recorded. Not known is not
+     the same as low, and a backfilled hedge would be a guess on screen. */
+  eq("an unscored match neither asserts nor hedges", standardIsUncertain(null, scoped), false);
+
+  /* The anonymous path searches the whole corpus, because there is no profile
+     to scope by. That is where cross-curriculum leakage actually happens: the
+     eval's unscoped control shows around half the Common Core probes and a
+     quarter of the England ones landing on the other country's standard. The
+     chip cannot prevent it, so it stops short of asserting instead. */
+  ok("the unscoped bar is higher than the scoped one",
+    STANDARD_UNSCOPED_CERTAIN_AT > STANDARD_CERTAIN_AT);
+  eq("a match that would assert when scoped hedges when nothing scoped it",
+    standardIsUncertain(0.68, unscoped), true);
+  eq("and the same match still asserts when it was scoped",
+    standardIsUncertain(0.68, scoped), false);
+  eq("a strong unscoped match still asserts",
+    standardIsUncertain(STANDARD_UNSCOPED_CERTAIN_AT, unscoped), false);
+  eq("just below the unscoped bar it does not",
+    standardIsUncertain(STANDARD_UNSCOPED_CERTAIN_AT - 0.001, unscoped), true);
+  /* Evidence beats the threshold. A shortlist holding two curricula says the
+     syllabus was close to a tie however high the score, and there is no honest
+     way to name one of them on a chip. */
+  eq("a shortlist spanning curricula hedges however strong the match",
+    standardIsUncertain(0.97, { requested: null, fellBack: false, mixed: true }), true);
+  /* A fallback is the same situation as no scope at all: the search left the
+     child's curriculum, so the citation may be from another country's. */
+  eq("a fallback out of the child's curriculum is held to the unscoped bar",
+    standardIsUncertain(0.68, { requested: "ENC", fellBack: true, mixed: false }), true);
+  eq("an unscored unscoped match still neither asserts nor hedges",
+    standardIsUncertain(null, unscoped), false);
+
+  const types = readFileSync(path.join(process.cwd(), "lib", "types.ts"), "utf8");
+  /* Required rather than optional on purpose. A caller that has not thought
+     about where its answer came from is the caller that should not be
+     asserting a child's curriculum on screen, and an optional argument lets it
+     skip the question silently. */
+  ok("the scope is a required argument rather than an optional one",
+    /standardIsUncertain\(similarity: number \| null, scope: StandardScope\)/.test(types));
+
+  const thread = readFileSync(path.join(process.cwd(), "lib", "thread.ts"), "utf8");
+  ok("the worksheet card passes the bundle's scope rather than similarity alone",
+    /standardIsUncertain\(problem\.standardSimilarity, bundle\.standardScope\)/.test(thread));
+
+  const pktScope = readFileSync(path.join(process.cwd(), "lib", "packet.ts"), "utf8");
+  ok("the scope is built beside the search that produced it",
+    /mixed: new Set\(candidates\.map\(\(c\) => c\.curriculum\)\)\.size > 1/.test(pktScope));
+  ok("and a problem that needed no search still reports the curriculum it would have used",
+    pktScope.indexOf("let scope: StandardScope") < pktScope.indexOf("if (!standardCode) {"));
+
+  const pkt = readFileSync(path.join(process.cwd(), "lib", "packet.ts"), "utf8");
+
+  ok("retrieval asks for three candidates",
+    /nearestStandards\(printedText, grade, 3,/.test(pkt));
+  ok("and hands all three to generation", /candidates,/.test(pkt));
+
+  /* The one that matters. A model that returns a code it was never offered
+     would otherwise put a citation on screen for a standard that does not
+     exist, which is worse than the nearest match rather than better. */
+  ok("the model's choice is checked against what it was offered",
+    /candidates\.find\(\(c\) => c\.code === payload\.standardCode\)/.test(pkt));
+  ok("and an unrecognised code falls back rather than being shown",
+    pkt.indexOf("if (chosen) {") > pkt.indexOf("payload.standardCode && !chosen"));
+  ok("an invented code is logged rather than swallowed", /logFailure\(\s*"packet-standard"/.test(pkt));
+
+  ok("the chosen standard is persisted after the choice, not before",
+    pkt.indexOf("const chosen = candidates.find") < pkt.indexOf('data: { standardCode, standardSimilarity'));
+
+  const schemas = readFileSync(path.join(process.cwd(), "lib", "ai", "schemas.ts"), "utf8");
+  ok("the packet schema carries the choice", /standardCode: z\.string\(\)\.nullable\(\)/.test(schemas));
+  /* Nullable with a default, so a payload cached before the model chose still
+     parses rather than failing validation on every old row. */
+  ok("and an older cached payload still parses", /standardCode: z\.string\(\)\.nullable\(\)\.default\(null\)/.test(schemas));
+
+  const prompt = readFileSync(path.join(process.cwd(), "prompts", "generate-packet.md"), "utf8");
+  ok("the prompt is given candidates rather than one standard",
+    prompt.includes("{{STANDARD_CANDIDATES}}") && !prompt.includes("{{STANDARD_CODE}}"));
+  ok("it is told similarity is a hint rather than an instruction",
+    /[Ss]imilarity is a hint, not an instruction/.test(prompt));
+  ok("and told never to invent a code", /[Nn]ever invent one/.test(prompt));
+  ok("it is told to use the chosen candidate's methods",
+    /chosen candidate's `expectedMethods`/.test(prompt));
+
+  const citation = readFileSync(path.join(process.cwd(), "components", "Citation.tsx"), "utf8");
+  ok("the chip hedges rather than asserting when the search was weak",
+    reads(citation, "packet.standardClosest"));
+  ok("and says why, once opened", reads(citation, "packet.standardUncertainHelp"));
+  /* Dashed as well as greyed, so the hedge survives greyscale and a reader
+     who does not distinguish the two greens. */
+  ok("the hedge is not carried by colour alone", /1px dashed/.test(citation));
+
+  const evalSrc = readFileSync(path.join(process.cwd(), "scripts", "eval.ts"), "utf8");
+  ok("the eval reports top-1 and top-3 separately",
+    /top-1 retrieved/.test(evalSrc) && /top-3 retrieved/.test(evalSrc));
+  ok("and asserts on the selected standard rather than the nearest",
+    /selected standard correct in at least/.test(evalSrc));
+  ok("it also checks that choosing did not lose ground the search had found",
+    /choosing does not lose ground/.test(evalSrc));
+}
+
+section("Language identification, where the script check cannot see");
+
+{
+  const evalSrc = readFileSync(path.join(process.cwd(), "scripts", "eval.ts"), "utf8");
+  ok("a model identifies the language of the generated prose",
+    /identifyLanguage\(prose\)/.test(evalSrc));
+  /* The script test is exact for Arabic and Amharic and blind for Spanish,
+     which shares an alphabet with English. It stays as a free fast fail for
+     the two it can judge. */
+  ok("the script test is kept as a pre-filter for non-Latin locales",
+    /const nonLatin = locale\.script !== "latin"/.test(evalSrc));
+  ok("and it is skipped for Latin ones rather than passing them vacuously",
+    /Spanish there is nothing to pre-filter/.test(evalSrc));
+  ok("a failed pre-filter does not then pay for the model call",
+    evalSrc.indexOf("Skipping the language check") < evalSrc.indexOf("identifyLanguage(prose)"));
+  ok("a half translated packet fails as its own thing", /as one language rather than two/.test(evalSrc));
+
+  const provider = readFileSync(path.join(process.cwd(), "lib", "ai", "provider.ts"), "utf8");
+  const fn = provider.slice(provider.indexOf("export async function identifyLanguage"));
+  ok("the classifier is told to judge prose, not notation",
+    /Mathematical notation, digits, operators/.test(fn.slice(0, 2000)));
+  /* The product deliberately writes a key term twice, parent's language with
+     the school's in brackets. A classifier that counted that as mixing would
+     fail every bilingual packet the prompt was asked to produce. */
+  ok("and told a bilingual key term is not a second language",
+    /not evidence/.test(fn.slice(0, 2500)) && /parentheses/.test(fn.slice(0, 2500)));
+}
+
+// ---------------------------------------------------------------------------
+
+section("A second curriculum, on one age normalised scale");
+
+{
+  interface SeedStandard {
+    id: string;
+    code: string;
+    curriculum?: string;
+    grade: number;
+    plainLanguage: string;
+  }
+
+  const england = readSeed<SeedStandard[]>("standards-england.json");
+  const ccss = readSeed<SeedStandard[] | { standards: SeedStandard[] }>("standards.json");
+  const ccssRows = Array.isArray(ccss) ? ccss : ccss.standards;
+
+  ok(`the England corpus is filled in (${england.length} standards)`, england.length >= 50);
+
+  /* One file per curriculum, and the seeder throws if a row disagrees with the
+     file it is in. The value has to be the one the seeder maps that file to,
+     not a longer name that reads better: `lib/standards.ts` scopes by exact
+     string, so ENC and NC_ENGLAND are two different curricula as far as
+     retrieval is concerned and one of them holds nothing. */
+  const seedSrc = readFileSync(path.join(process.cwd(), "scripts", "seed.ts"), "utf8");
+  const mapped = /\{ file: "standards-england\.json", curriculum: "([A-Z_]+)" \}/.exec(seedSrc)?.[1];
+  ok(`the seeder maps standards-england.json to one curriculum (${mapped ?? "none"})`, mapped !== undefined);
+
+  const labels = [...new Set(england.map((s) => s.curriculum ?? "(absent)"))];
+  ok(
+    `every England row is labelled with that curriculum (${labels.join(", ")})`,
+    mapped !== undefined && labels.length === 1 && labels[0] === mapped,
+  );
+
+  /* The whole point of converting year groups on the way in. A Year 4 child in
+     England is the age of a US grade 3 child, and `nearestStandards` filters
+     one year either side of whatever number is stored, so two corpora on two
+     scales would silently search the wrong age band whenever the curriculum
+     scope falls back to the whole corpus. seed/README.md is where this is
+     written down. */
+  const readme = readFileSync(path.join(process.cwd(), "seed", "README.md"), "utf8");
+  ok("seed/README.md states the year group conversion",
+    /England Year 4 is `grade: 3`/.test(readme));
+
+  const misfiled = england.filter((s) => {
+    const year = /\.Y(\d)\./.exec(s.code)?.[1];
+    return year === undefined || s.grade !== Number(year) - 1;
+  });
+  ok(
+    `every England code's year group matches its stored grade, Year N as grade N-1` +
+      `${misfiled.length > 0 ? ` (${misfiled.slice(0, 3).map((s) => `${s.code} at ${s.grade}`).join(", ")})` : ""}`,
+    misfiled.length === 0,
+  );
+
+  /* Both corpora are upserted by id into one table, so a shared id is not a
+     duplicate row, it is one curriculum's standard overwritten by the other's. */
+  const ccssIds = new Set(ccssRows.map((s) => s.id));
+  const clashes = england.filter((s) => ccssIds.has(s.id));
+  ok(`no England id collides with a Common Core one${clashes.length > 0 ? ` (${clashes[0]?.id})` : ""}`,
+    clashes.length === 0);
+
+  ok("every England row carries the fields the seeder reads",
+    england.every((s) => s.id === s.code && s.plainLanguage.trim().length > 0 && Number.isInteger(s.grade)));
+}
+
+section("Retrieval probes, one set per curriculum");
+
+{
+  interface Probe { text: string; expect: string[] }
+  interface ProbeFileShape {
+    curricula: Record<string, { topics: Record<string, Probe[]> }>;
+    localised?: Record<string, Probe[]>;
+  }
+
+  const probes = JSON.parse(
+    readFileSync(path.join(process.cwd(), "eval", "probes.json"), "utf8"),
+  ) as ProbeFileShape;
+
+  const names = Object.keys(probes.curricula ?? {});
+  ok(`probes are grouped by curriculum (${names.join(", ")})`, names.length >= 2);
+  ok("Common Core and England are both probed",
+    names.includes("CCSS") && names.includes("ENC"));
+
+  /* A probe whose expected code is not in the corpus can never pass, and it
+     fails as a retrieval miss rather than as the typo it is. */
+  const corpus = new Map<string, Set<string>>([
+    ["CCSS", new Set(
+      (() => {
+        const raw = readSeed<{ code: string }[] | { standards: { code: string }[] }>("standards.json");
+        return (Array.isArray(raw) ? raw : raw.standards).map((s) => s.code);
+      })(),
+    )],
+    ["ENC", new Set(readSeed<{ code: string }[]>("standards-england.json").map((s) => s.code))],
+  ]);
+
+  for (const [name, set] of Object.entries(probes.curricula ?? {})) {
+    const all = Object.values(set.topics ?? {}).flat();
+    const codes = corpus.get(name);
+    if (!codes) continue;
+    const unknown = all.flatMap((p) => p.expect).filter((c) => !codes.has(c));
+    ok(
+      `${name}: ${all.length} probes, every expected code exists in that corpus` +
+        `${unknown.length > 0 ? ` (${[...new Set(unknown)].slice(0, 3).join(", ")})` : ""}`,
+      all.length > 0 && unknown.length === 0,
+    );
+    /* Cross-curriculum expectations would make the scoped search unpassable,
+       since it can only ever return codes from inside the scope. */
+    const other = [...corpus.entries()].filter(([n]) => n !== name);
+    const leaked = all.flatMap((p) => p.expect).filter((c) => other.some(([, s]) => s.has(c)));
+    ok(`${name}: no probe expects another curriculum's code`, leaked.length === 0);
+  }
+
+  const evalSrc = readFileSync(path.join(process.cwd(), "scripts", "eval.ts"), "utf8");
+  ok("the eval runs retrieval per curriculum rather than against one constant",
+    /Object\.entries\(probes\.curricula/.test(evalSrc) && !/const CURRICULUM = /.test(evalSrc));
+  ok("and reports each curriculum's numbers separately",
+    /selected standard correct in at least/.test(evalSrc) && /\$\{r\.curriculum\}: selected/.test(evalSrc));
+  /* The silent failure the second corpus introduces: a scoped search that
+     answers from the other syllabus, which every accuracy number above would
+     score as an ordinary miss. */
+  ok("it asserts the scope held rather than only measuring accuracy",
+    /no candidate came from another curriculum while scoped/.test(evalSrc));
+  ok("and that no probe had to fall back to the whole corpus",
+    /every probe was answered from inside its own curriculum/.test(evalSrc));
+  /* Scoping that is never tested against an unscoped search is unfalsifiable:
+     zero leaks is what the query shape guarantees, not what it earns. */
+  ok("the unscoped search is run as the control",
+    /nearestStandards\(probe\.text, null, 1, null\)/.test(evalSrc));
+
+  const dbSrc = readFileSync(path.join(process.cwd(), "scripts", "check-db.ts"), "utf8");
+  ok("check:db asserts every standard in the database carries a curriculum",
+    /every standard carries a curriculum/.test(dbSrc));
+  ok("and that both corpora are actually loaded",
+    /corpus is loaded/.test(dbSrc) && /for \(const wanted of \["CCSS", "ENC"\]\)/.test(dbSrc));
+  /* A corpus that is present but unembedded is worse than one that is absent:
+     the scope finds nothing, the search falls back, and the count looks fine. */
+  ok("and that each corpus is embedded rather than just present",
+    /standards are embedded/.test(dbSrc));
+}
+
+// ---------------------------------------------------------------------------
+
+section("The feature tour, and the settings that make it watchable");
+
+{
+  const tour = readFileSync(path.join(process.cwd(), "scripts", "record-demo.mjs"), "utf8");
+  const flow = readFileSync(path.join(process.cwd(), ".github", "workflows", "demo-video.yml"), "utf8");
+
+  const titles = [...tour.matchAll(/^\s{4}title: "(.+)",$/gm)].map((m) => m[1]);
+  ok(`the tour has its chapters (${titles.length})`, titles.length === 19);
+  /* Order is the argument the video makes. The research chapter earns the
+     product before anything is demonstrated, and privacy closes it. */
+  ok("it opens on the landing page and closes on privacy",
+    titles[0] === "Opening" && titles[titles.length - 1] === "Private by design");
+
+  /* The trap this rerun existed to fix, written down as an assertion because
+     the wrong one looks more correct. Playwright's deviceScaleFactor is
+     emulation the screencast never sees: it pads a 1280 wide surface into
+     whatever frame you asked for and fills the rest with grey, so the capture
+     is nominally 2560 and actually contains a 1280 wide picture. The browser
+     flag scales the compositor surface itself. */
+  ok("the capture is scaled by the browser flag, not by deviceScaleFactor",
+    /--force-device-scale-factor=\$\{SCALE\}/.test(tour) && !/deviceScaleFactor:\s*2/.test(tour));
+  ok("and the requested frame is the viewport times that same scale",
+    /const CAPTURE = \{ width: VIEWPORT\.width \* SCALE, height: VIEWPORT\.height \* SCALE \}/.test(tour));
+  ok("the layout is still the 1280 wide one the product was designed against",
+    /const VIEWPORT = \{ width: 1280, height: 800 \}/.test(tour));
+
+  /* Every one of these is a departure from a default, and every one of them is
+     the difference between legible text and a grey smear at the size this gets
+     watched. A tidy-up back to defaults would not fail anything else. */
+  for (const [name, pattern] of [
+    ["downsamples with Lanczos rather than bilinear", /scale=1920:1200:flags=lanczos/],
+    ["encodes at crf 18 with the slow preset", /-c:v libx264 -crf 18 -preset slow/],
+    ["normalises to 30fps, which the screencast cannot do itself", /-r 30/],
+    ["writes yuv420p so phones do not show a black frame", /-pix_fmt yuv420p/],
+    ["puts the index first so the file streams", /-movflags \+faststart/],
+  ] as const) {
+    ok(`the workflow ${name}`, pattern.test(flow));
+  }
+
+  ok("the workflow stays manual, with the URL as an input",
+    /on:\s*\n\s*workflow_dispatch:/.test(flow) && /inputs:\s*\n\s*url:/.test(flow));
+  ok("it uploads the video, the mp4 and the chapter list",
+    /recordings\/tour\.webm/.test(flow) && /recordings\/tour\.mp4/.test(flow) && /recordings\/chapters\.txt/.test(flow));
+
+  /* Timestamps, so the tour can be cut into clips without rewatching it. */
+  ok("the recorder writes a chapter list with timestamps",
+    /chapters\.txt/.test(tour) && /function stamp\(ms\)/.test(tour));
+
+  /* The rule that makes the video worth trusting. A fixture renders exactly
+     like a real reading, so a viewer cannot tell, which is precisely why the
+     recorder has to. */
+  ok("it aborts rather than filming a fallback",
+    /class Degraded extends Error/.test(tour) && /\[data-degraded\]/.test(tour));
+  ok("and the notice card is tagged so that check is not matching translated prose",
+    /data-degraded="true"/.test(
+      readFileSync(path.join(process.cwd(), "components", "app", "Cards.tsx"), "utf8"),
+    ));
+  /* A refused chat turn renders as text with no intent, which is the only
+     thing that distinguishes it from a real reply without reading the copy. */
+  ok("a refused turn counts as degraded too",
+    /pp-turn-text:not\(\[data-intent\]\)/.test(tour));
+
+  /* Two promises this recording cannot be allowed to break, since a video
+     cannot be un-shared. */
+  /* Navigation, not any mention of the route: the header comment says these
+     are never visited, and a bare search for the string finds that sentence. */
+  ok("the tour never visits the operations screens",
+    ![...tour.matchAll(/goto\(page, "([^"]+)"\)/g)].some((m) => (m[1] ?? "").startsWith("/ops")));
+  ok("and it checks the account screen for an address rather than trusting it",
+    /an email address was on the account screen/.test(tour));
+
+  /* A screencast has no audio track. Saying what is being spoken is honest;
+     showing someone press a microphone and leaving the viewer to imagine it
+     is not. */
+  ok("the chapters that speak carry an on screen caption",
+    /this recording has no sound/.test(tour) && /showOverlay/.test(tour));
+
+  ok("the microphone is a fake device with a file behind it",
+    /--use-fake-device-for-media-stream/.test(tour) && /use-file-for-fake-audio-capture/.test(tour));
+
+  /* Both of these were bugs in the first cut of this script. The screenshot
+     was taken during the wordmark reveal, so the check chapter uploaded a
+     picture of a logo animation and the site correctly reported that it could
+     not read the page. */
+  ok("the worksheet screenshot waits out the wordmark reveal",
+    tour.indexOf("await wait(REVEAL_MS)", tour.indexOf("async function captureWorksheet")) > 0);
+  ok("and is measured rather than assumed to contain anything",
+    /is not a photograph of anything/.test(tour));
+
+  /* Scrolling and typing are the two things that read as fake when they are
+     instant. */
+  ok("scrolling is wheel increments rather than a jump",
+    /page\.mouse\.wheel\(0, delta\)/.test(tour));
+  ok("typing is per character",
+    /pressSequentially\(text, \{ delay: KEYSTROKE \}\)/.test(tour));
+  ok("every page waits for its fonts before anything is filmed",
+    /document\.fonts\.ready/.test(tour));
 }
 
 // ---------------------------------------------------------------------------

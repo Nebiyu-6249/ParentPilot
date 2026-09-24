@@ -380,6 +380,14 @@ export const en = {
     discloseTeaching: "What is this teaching?",
     discloseScripts: "What to say, and what to skip",
     discloseAnswer: "Just tell me the answer",
+    /* Shown instead of asserting a citation when the search was weak. Two
+       different sentences: "this is what your class is doing" is a claim
+       about a child's classroom, and "this is the nearest thing we found" is
+       a claim about a search. Saying the first when only the second is true
+       is the confident wrongness this product exists to avoid. */
+    standardClosest: "Closest match:",
+    standardUncertainHelp:
+      "The search was not confident about this one, so treat it as the nearest thing we found rather than as what your child's class is definitely working on. The method and the questions above do not depend on it.",
     primerMore: "Read the whole thing",
     genericFallback:
       "I could not generate a fresh primer for this one, so this is the saved general explanation for this topic. It is accurate but not tailored to your child's working.",

@@ -1,6 +1,6 @@
 import { prisma, hasDatabase } from "@/lib/db";
 import { embed } from "@/lib/ai/provider";
-import type { StandardView } from "@/lib/types";
+import type { StandardCandidate, StandardView } from "@/lib/types";
 
 /**
  * Standard retrieval over pgvector.
@@ -33,6 +33,15 @@ function toView(row: StandardRow): StandardView {
   };
 }
 
+/** The same row, carrying how close the search put it. */
+function toCandidate(row: StandardRow): StandardCandidate {
+  // `distance` arrives as a string from some drivers and as a number from
+  // others, so it is coerced rather than trusted.
+  const distance = Number(row.distance);
+  const similarity = Number.isFinite(distance) ? Math.max(0, Math.min(1, 1 - distance)) : 0;
+  return { ...toView(row), similarity };
+}
+
 /**
  * What a search found, and whether it had to leave the child's curriculum to
  * find it.
@@ -43,7 +52,8 @@ function toView(row: StandardRow): StandardView {
  * being helpful and being misleading is entirely whether the screen says so.
  */
 export interface StandardMatch {
-  standards: StandardView[];
+  /** Ordered, nearest first. */
+  standards: StandardCandidate[];
   /** The curriculum that was asked for, or null when none was. */
   requested: string | null;
   /** True when the requested curriculum held nothing and the whole corpus was
@@ -79,10 +89,10 @@ export async function nearestStandards(
   const embedding = await embed(problemText);
   const literal = vectorLiteral(embedding);
 
-  const search = async (scope: string | null): Promise<StandardView[]> => {
+  const search = async (scope: string | null): Promise<StandardCandidate[]> => {
     try {
       const rows = await query(literal, grade, limit, scope);
-      return rows.map(toView);
+      return rows.map(toCandidate);
     } catch (error) {
       console.error("[standards] vector search failed", error);
       return [];

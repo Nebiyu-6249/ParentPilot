@@ -1,4 +1,5 @@
 import type { ChatIntent, MethodMatch, RegisterName, Script } from "@/lib/ai/schemas";
+import { standardIsUncertain } from "@/lib/types";
 import type { PacketBundle } from "@/lib/types";
 
 /**
@@ -48,6 +49,8 @@ export interface WorksheetCard {
   verification: PacketBundle["verification"];
   standardCode: string | null;
   standardPlain: string | null;
+  /** True when the search was weak enough that the chip should hedge. */
+  standardUncertain: boolean;
   grade: number | null;
 }
 
@@ -236,6 +239,7 @@ export function cardsForPacket(
       verification: bundle.verification,
       standardCode: standard?.code ?? null,
       standardPlain: standard?.plainLanguage ?? null,
+      standardUncertain: standardIsUncertain(problem.standardSimilarity, bundle.standardScope),
       grade: standard?.grade ?? null,
     },
     {

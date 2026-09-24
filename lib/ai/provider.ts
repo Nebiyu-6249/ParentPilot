@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
+import type { StandardCandidate } from "@/lib/types";
 import { z } from "zod";
 
 import { sanitizeDeep } from "@/lib/copy";
@@ -10,6 +11,7 @@ import {
   checkResultSchema,
   classificationSchema,
   extractionSchema,
+  languageIdSchema,
   misconceptionJudgeSchema,
   packetSchema,
   recapSchema,
@@ -19,6 +21,7 @@ import {
   type CheckResult,
   type Classification,
   type Extraction,
+  type LanguageId,
   type MisconceptionJudgement,
   type PacketPayload,
   type Recap,
@@ -257,10 +260,15 @@ export interface PacketArgs {
   printedText: string;
   childWorkText: string | null;
   childAnswer: string | null;
-  standardCode: string | null;
-  standardPlain: string | null;
-  expectedMethods: string[];
-  parentMethod: string | null;
+  /**
+   * The three nearest standards, ordered, with their similarity scores.
+   *
+   * The model picks one and says which in `standardCode`. Retrieval orders by
+   * how close the wording is; which standard a teacher would file a problem
+   * under is a different question, and the nearest by wording answers it
+   * usually rather than always.
+   */
+  candidates: StandardCandidate[];
   computedAnswer: string | null;
   misconception: string | null;
   register: RegisterName;
@@ -273,6 +281,30 @@ export interface PacketArgs {
   grade: number | null;
 }
 
+/**
+ * The candidates, as the prompt reads them.
+ *
+ * One block per candidate with its own methods, because the model is told to
+ * use the chosen candidate's methods for the comparison rather than a blend
+ * of the three. Similarity is rounded to two places: the third decimal is
+ * noise from an embedding model and printing it invites the model to treat a
+ * rounding difference as a signal.
+ */
+function renderCandidates(candidates: StandardCandidate[]): string {
+  if (candidates.length === 0) return "none";
+  return candidates
+    .map((c, i) =>
+      [
+        `${i + 1}. code: ${c.code}`,
+        `   curriculum: ${c.curriculum}   grade: ${c.grade}   similarity: ${c.similarity.toFixed(2)}`,
+        `   about: ${c.plainLanguage}`,
+        `   expectedMethods: ${c.expectedMethods.join("; ") || "none recorded"}`,
+        `   parentMethod: ${c.parentMethod || "none recorded"}`,
+      ].join("\n"),
+    )
+    .join("\n\n");
+}
+
 export async function generatePacket(args: PacketArgs): Promise<PacketPayload> {
   const system = await loadPrompt("generate-packet", {
     REGISTER: args.register,
@@ -282,10 +314,7 @@ export async function generatePacket(args: PacketArgs): Promise<PacketPayload> {
     PRINTED_TEXT: args.printedText,
     CHILD_WORK: args.childWorkText,
     CHILD_ANSWER: args.childAnswer,
-    STANDARD_CODE: args.standardCode,
-    STANDARD_PLAIN: args.standardPlain,
-    EXPECTED_METHODS: args.expectedMethods.join("; "),
-    PARENT_METHOD: args.parentMethod,
+    STANDARD_CANDIDATES: renderCandidates(args.candidates),
     COMPUTED_ANSWER: args.computedAnswer,
     MISCONCEPTION: args.misconception,
   });
@@ -690,6 +719,61 @@ export async function judgeMisconception(
         role: "user",
         content: `PROBLEM: ${args.printedText}\nCHILD_WORK:\n${args.childWorkText}\nCHILD_ANSWER: ${args.childAnswer ?? "null"}`,
       },
+    ],
+  });
+}
+
+/**
+ * Which language this text is written in.
+ *
+ * An eval instrument rather than a product call, and the only one in this
+ * file. It is here because everything that touches the model SDK is here, and
+ * a second client constructed in `scripts/` would be the beginning of two
+ * ways to call a model.
+ *
+ * No prompt file, for the same reason `judgeMisconception` has none: it emits
+ * no prose, has no register and no language of its own, and a markdown file
+ * whose whole content is one classification instruction is a file somebody
+ * has to find before they can understand the call.
+ *
+ * Told to judge the *prose* rather than the notation, because a maths packet
+ * in any language is full of Latin digits and operators and a classifier that
+ * counted those would call every locale English.
+ */
+export async function identifyLanguage(text: string): Promise<LanguageId> {
+  const system = [
+    "You identify which language a piece of text is written in.",
+    "",
+    "Standing rules:",
+    "1. Judge the prose only. Mathematical notation, digits, operators and",
+    "   standard codes appear in every language and are not evidence.",
+    "2. A term quoted in another language inside parentheses is not evidence",
+    "   either. This product deliberately writes a key term twice, in the",
+    "   parent's language with the school's term in brackets, and the text is",
+    "   still written in the parent's language.",
+    "3. Never write an em dash.",
+    "",
+    "Return the ISO 639-1 code, lowercased: en, es, ar, am, fr, pt, zh, hi,",
+    "so, ur. Use `unknown` if the text is too short or too mixed to tell.",
+    "",
+    "`mixed` is true when substantial prose appears in more than one language,",
+    "which is different from one quoted term. Set `language` to whichever",
+    "carries the most prose.",
+    "",
+    "`confidence` is your calibrated probability that a careful human would",
+    "give the same answer.",
+    "",
+    'Return strict JSON only: { "language": "es", "confidence": 0.0, "mixed": false }',
+  ].join("\n");
+
+  return complete({
+    task: "classify",
+    schema: languageIdSchema,
+    temperature: 0,
+    maxTokens: 80,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: text.slice(0, 4000) },
     ],
   });
 }

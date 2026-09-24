@@ -27,6 +27,10 @@ const demoPacketSchema = z.object({
     childAnswer: z.string().nullable(),
     ocrConfidence: z.number().nullable(),
     standardCode: z.string().nullable(),
+    /* The saved example is hand matched, not searched, so it has no score.
+       Null reads as "not known", which keeps the chip plain rather than
+       hedging about a standard somebody chose deliberately. */
+    standardSimilarity: z.number().nullable().default(null),
     expectedMethod: z.string().nullable(),
     verified: z.boolean(),
     computedAnswer: z.string().nullable(),
@@ -94,6 +98,15 @@ export async function demoBundle(register: RegisterName, notice: string | null =
     standard: fixture.standard,
     misconception: fixture.misconception,
     packet: { register, language: fixture.language, ...packet },
+    /* A fixture is not a search. It asserts one standard by construction, so
+       the honest scope is that standard's own curriculum: nothing was chosen
+       between and nothing fell back. The fixture carries no similarity either,
+       so the chip neither asserts nor hedges on a score it does not have. */
+    standardScope: {
+      requested: fixture.standard?.curriculum ?? null,
+      fellBack: false,
+      mixed: false,
+    },
     notice,
     source: "fixture",
     verification: "checked",

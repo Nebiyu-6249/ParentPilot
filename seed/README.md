@@ -26,6 +26,27 @@ their child's school. An invented one is worse than none.
 | `expectedMethods` | Two to four strings. How the classroom teaches it. The right-hand column of Method Match. |
 | `parentMethod` | One string. How an adult was most likely taught the same thing. The left-hand column. Not a worse method, a different one. |
 
+### It is matched in two steps, not one
+
+Retrieval returns the **three** nearest standards, and the packet generation
+call picks one of them and says which. The search orders by how close the
+wording is, which is not the same question as which standard a teacher would
+file a problem under: `6 x 40` is worded like a times table fact and belongs
+under multiplying by a multiple of ten, and a word problem about sharing
+sweets is worded like a story and belongs under division.
+
+Two consequences for anyone filling these files in.
+
+- **A standard is worth adding even if a near neighbour already covers the
+  wording.** It will reach the shortlist and the model can tell them apart.
+- **`plainLanguage` is doing two jobs**: it decides whether a standard reaches
+  the shortlist, and it is what the model reads when choosing between three.
+  A vague one gets retrieved and then passed over.
+
+When the best similarity is below a threshold, the chip in the thread says
+"Closest match" rather than asserting the standard, so a weak corpus degrades
+into an honest hedge rather than a confident wrong citation.
+
 ### Writing `plainLanguage` well
 
 The embedding is built from this field, and probes are worksheet lines. So
@@ -39,11 +60,24 @@ write it the way a worksheet talks, not the way a standards document does.
 The second is the source document's sentence. It will match other standards
 documents and not a child's homework.
 
+### Do not repeat the year group in `plainLanguage`
+
+The importer already prefixes the embedded text with `Grade N.`, and the code
+carries the year. A description that opens `"Year 5. "` puts a token in every
+row of one corpus that no row of the other has, which makes the two corpora
+systematically different in a way that has nothing to do with mathematics.
+Describe the mathematics and let the columns carry the age.
+
 ### Scope
 
-Grades 3 to 6 for England and CBSE, matching the existing Common Core corpus.
-Roughly 60 to 70 entries each, weighted the way the Common Core file is:
-number and fractions heaviest, geometry lightest.
+Year 3 to Year 6 for England, which is `grade: 2` to `grade: 5` once
+converted, and grades 3 to 6 for CBSE. Roughly 60 to 100 entries each,
+weighted the way the Common Core file is: number and fractions heaviest,
+geometry lightest.
+
+England is filled in: 95 standards, heaviest on fractions (22) and on
+multiplication and division (17), lightest on algebra and on position and
+direction (3 each). CBSE is still a template.
 
 ## `misconceptions.json`
 

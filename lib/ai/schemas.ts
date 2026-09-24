@@ -60,6 +60,16 @@ export const scriptSchema = z.object({
 });
 
 export const packetSchema = z.object({
+  /**
+   * Which of the three retrieval candidates this packet is about.
+   *
+   * Nullable with a null default so an older cached payload, written before
+   * the model chose, still parses. The caller never trusts it: it checks the
+   * code against the candidates it actually offered and falls back to the
+   * nearest, because a model that invents a standard code would otherwise put
+   * a citation on screen for a standard that does not exist.
+   */
+  standardCode: z.string().nullable().default(null),
   primer: z.string().min(1),
   methodMatch: methodMatchSchema,
   // Exactly five rungs. The UI reveals one per tap and a short ladder would
@@ -197,6 +207,24 @@ export const voiceTurnSchema = z.object({
 });
 
 export type VoiceTurn = z.infer<typeof voiceTurnSchema>;
+
+/**
+ * Which language a piece of text is written in.
+ *
+ * Used by the eval rather than by the product. It exists because the cheap
+ * check, "does this text use the script this locale is written in", cannot
+ * see the commonest failure for Spanish: a model asked for Spanish that
+ * answers in English passes a Latin-script test perfectly.
+ */
+export const languageIdSchema = z.object({
+  /** A two letter code, lowercased, or `unknown`. */
+  language: z.string().min(2).max(12),
+  confidence: z.number().min(0).max(1),
+  /** True when the text mixes languages rather than being written in one. */
+  mixed: z.boolean().default(false),
+});
+
+export type LanguageId = z.infer<typeof languageIdSchema>;
 
 export const misconceptionJudgeSchema = z.object({
   misconceptionId: z.string().nullable(),
